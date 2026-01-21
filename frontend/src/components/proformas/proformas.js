@@ -8,12 +8,24 @@ export default function Proformas() {
   const [cliente, setCliente] = useState("");
   const [celular, setCelular] = useState("");
 
-  // ✅ ahora cada fila puede ser normal o "oferta"
+  // ✅ NÚMERO DE PROFORMA (temporal)
+  const [proformaRef] = useState("0000001");
+
+  // ✅ ESTADO DEL DOCUMENTO
+  const [estadoProforma, setEstadoProforma] = useState("ACTIVA"); // ACTIVA | CANCELADA
+
+  // ✅ Anticipo (pago parcial)
+  const [anticipo, setAnticipo] = useState("0");
+
+  // ✅ filas
   const [rows, setRows] = useState([
     { cantidad: "1", detalle: "", precio_unitario: "0", modo_oferta: false },
   ]);
 
+  const bloqueada = estadoProforma === "CANCELADA";
+
   const addRow = () => {
+    if (bloqueada) return;
     setRows((prev) => [
       ...prev,
       { cantidad: "1", detalle: "", precio_unitario: "0", modo_oferta: false },
@@ -21,29 +33,28 @@ export default function Proformas() {
   };
 
   const removeRow = (index) => {
+    if (bloqueada) return;
     setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateRow = (index, key, value) => {
+    if (bloqueada) return;
     setRows((prev) =>
       prev.map((r, i) => (i === index ? { ...r, [key]: value } : r))
     );
   };
 
-  // Convierte a número SOLO para cálculos
   const toNumber = (v) => {
     const n = Number(String(v).replace(",", "."));
     return Number.isFinite(n) ? n : 0;
   };
 
-  // Cantidad: solo enteros, sin ceros a la izquierda
   const cleanInt = (v) => {
     const onlyDigits = String(v).replace(/\D+/g, "");
     const noLeadingZeros = onlyDigits.replace(/^0+(?=\d)/, "");
     return noLeadingZeros === "" ? "0" : noLeadingZeros;
   };
 
-  // Precio: permite decimales, sin ceros raros al inicio
   const cleanMoney = (v) => {
     let s = String(v).replace(",", ".");
     s = s.replace(/[^0-9.]/g, "");
@@ -53,15 +64,23 @@ export default function Proformas() {
     return s === "" ? "0" : s;
   };
 
-  // ✅ ofertas (paquetes)
+  const cleanMoneyOrEmpty = (v) => {
+    let s = String(v).replace(",", ".");
+    s = s.replace(/[^0-9.]/g, "");
+    const parts = s.split(".");
+    if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
+    s = s.replace(/^0+(?=\d)/, "");
+    return s === "" ? "0" : s;
+  };
+
   const OFERTAS = {
     "2x20": { cantidad: "2", precio_unitario: "20" },
     "2x30": { cantidad: "2", precio_unitario: "30" },
     "4x30": { cantidad: "4", precio_unitario: "30" },
   };
 
-  // ✅ aplicar oferta a la fila
   const aplicarOferta = (index, key) => {
+    if (bloqueada) return;
     const oferta = OFERTAS[key];
     if (!oferta) return;
 
@@ -79,16 +98,13 @@ export default function Proformas() {
     );
   };
 
-  // ✅ quitar oferta (vuelve a modo normal, no borra detalle)
   const quitarOferta = (index) => {
+    if (bloqueada) return;
     setRows((prev) =>
       prev.map((r, i) => (i === index ? { ...r, modo_oferta: false } : r))
     );
   };
 
-  // ✅ total por fila:
-  // - normal: cantidad * precio_unitario
-  // - oferta: total = precio del paquete (precio_unitario)
   const rowTotal = (r) => {
     if (r.modo_oferta) return toNumber(r.precio_unitario);
     return toNumber(r.cantidad) * toNumber(r.precio_unitario);
@@ -99,13 +115,52 @@ export default function Proformas() {
     [rows]
   );
 
+  const anticipoNum = useMemo(() => toNumber(anticipo), [anticipo]);
+
+  const saldo = useMemo(() => {
+    if (estadoProforma === "CANCELADA") return 0;
+    const s = totalGeneral - anticipoNum;
+    return s > 0 ? s : 0;
+  }, [totalGeneral, anticipoNum, estadoProforma]);
+
+  const estadoPago = useMemo(() => {
+    if (estadoProforma === "CANCELADA") return "ANULADA";
+    if (totalGeneral <= 0) return "—";
+    if (saldo === 0 && totalGeneral > 0) return "CANCELADO";
+    return "PENDIENTE";
+  }, [estadoProforma, totalGeneral, saldo]);
+
+  const clampAnticipo = () => {
+    if (bloqueada) return;
+    const a = toNumber(anticipo);
+    if (a > totalGeneral) setAnticipo(String(totalGeneral.toFixed(2)));
+    if (a < 0) setAnticipo("0");
+  };
+
+  const pagarTodo = () => {
+    if (bloqueada) return;
+    setAnticipo(totalGeneral.toFixed(2));
+  };
+
+  const anularProforma = () => {
+    if (window.confirm("¿Anular esta proforma?")) {
+      setEstadoProforma("CANCELADA");
+      setAnticipo("0");
+    }
+  };
+
   return (
     <div className="print-area container-fluid p-3">
-
-      {/* ✅ SOLO ESTO SE IMPRIME */}
       <div className="print-area">
         <div className="d-flex align-items-center justify-content-between mb-3">
-          <h2 className="m-0">Proforma</h2>
+          <div>
+            <h2 className="m-0">Proforma</h2>
+            <div className="proforma-ref">N° {proformaRef}</div>
+
+            {estadoProforma === "CANCELADA" && (
+              <div className="badge-anulada">PROFORMA ANULADA</div>
+            )}
+          </div>
 
           <div className="d-flex align-items-center gap-2">
             <label className="form-label m-0">Fecha:</label>
@@ -115,6 +170,7 @@ export default function Proformas() {
               style={{ width: 180 }}
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
+              disabled={bloqueada}
             />
           </div>
         </div>
@@ -129,6 +185,7 @@ export default function Proformas() {
                   placeholder="Nombre del cliente"
                   value={cliente}
                   onChange={(e) => setCliente(e.target.value)}
+                  disabled={bloqueada}
                 />
               </div>
 
@@ -136,9 +193,10 @@ export default function Proformas() {
                 <label className="form-label">Celular</label>
                 <input
                   className="form-control"
-                  placeholder="Ej: 7xxxxxxx"
+                  placeholder="Celular"
                   value={celular}
                   onChange={(e) => setCelular(e.target.value)}
+                  disabled={bloqueada}
                 />
               </div>
             </div>
@@ -148,34 +206,35 @@ export default function Proformas() {
         <div className="card">
           <div className="card-body">
             <div className="d-flex justify-content-between align-items-center mb-2">
-              <h5 className="m-0">Detalle</h5>
-
-              {/* ✅ NO SE IMPRIME */}
               <button
                 className="btn btn-sm btn-primary no-print"
                 onClick={addRow}
+                disabled={bloqueada}
               >
                 + Agregar fila
               </button>
             </div>
 
             <div className="table-responsive">
-              <table className="table table-bordered align-middle">
+              <table className="table table-bordered align-middle proforma-table">
+                {/* ✅ COLGROUP: fija anchos y NO se chuequea en impresión */}
+                <colgroup>
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "53%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col className="no-print" style={{ width: "0%" }} />
+                  <col style={{ width: "20%" }} />
+                  <col className="no-print" style={{ width: "0%" }} />
+                </colgroup>
+
                 <thead>
                   <tr>
-                    <th style={{ width: 120 }}>Cantidad</th>
+                    <th>Cantidad</th>
                     <th>Detalle</th>
-                    <th style={{ width: 180 }}>Precio Unitario</th>
-
-                    {/* ✅ NO SE IMPRIME */}
-                    <th className="no-print" style={{ width: 160 }}>
-                      Oferta
-                    </th>
-
-                    <th style={{ width: 160 }}>Total</th>
-
-                    {/* ✅ NO SE IMPRIME */}
-                    <th className="no-print" style={{ width: 70 }}></th>
+                    <th>Precio Unitario</th>
+                    <th className="no-print">Oferta</th>
+                    <th>Total</th>
+                    <th className="no-print"></th>
                   </tr>
                 </thead>
 
@@ -188,7 +247,7 @@ export default function Proformas() {
                           inputMode="numeric"
                           className="form-control"
                           value={r.cantidad}
-                          disabled={r.modo_oferta}
+                          disabled={bloqueada || r.modo_oferta}
                           onChange={(e) =>
                             updateRow(i, "cantidad", cleanInt(e.target.value))
                           }
@@ -199,14 +258,29 @@ export default function Proformas() {
                       </td>
 
                       <td>
-                        <input
-                          className="form-control"
-                          placeholder="Ej: Bordado apache policía, nombre, etc."
+                        {/* ✅ PANTALLA: textarea (NO imprime) */}
+                        <textarea
+                          className="form-control detalle-textarea auto-grow no-print"
                           value={r.detalle}
-                          onChange={(e) =>
-                            updateRow(i, "detalle", e.target.value)
-                          }
+                          rows={1}
+                          disabled={bloqueada}
+                          onChange={(e) => {
+                            updateRow(i, "detalle", e.target.value);
+                            e.target.style.height = "auto";
+                            e.target.style.height = e.target.scrollHeight + "px";
+                          }}
+                          onInput={(e) => {
+                            e.target.style.height = "auto";
+                            e.target.style.height = e.target.scrollHeight + "px";
+                          }}
+                          style={{ overflow: "hidden", resize: "none" }}
+                          placeholder="Detalle del Bordado"
                         />
+
+                        {/* ✅ IMPRESIÓN: texto plano (no se repite) */}
+                        <div className="only-print detalle-print">
+                          {r.detalle}
+                        </div>
                       </td>
 
                       <td>
@@ -215,7 +289,7 @@ export default function Proformas() {
                           inputMode="decimal"
                           className="form-control"
                           value={r.precio_unitario}
-                          disabled={r.modo_oferta}
+                          disabled={bloqueada || r.modo_oferta}
                           onChange={(e) =>
                             updateRow(
                               i,
@@ -233,12 +307,12 @@ export default function Proformas() {
                         />
                       </td>
 
-                      {/* ✅ NO SE IMPRIME */}
                       <td className="no-print">
                         {!r.modo_oferta ? (
                           <select
                             className="form-select"
                             defaultValue=""
+                            disabled={bloqueada}
                             onChange={(e) => {
                               const val = e.target.value;
                               if (!val) return;
@@ -255,7 +329,7 @@ export default function Proformas() {
                           <button
                             className="btn btn-sm btn-outline-secondary"
                             onClick={() => quitarOferta(i)}
-                            title="Quitar oferta"
+                            disabled={bloqueada}
                           >
                             Quitar
                           </button>
@@ -264,12 +338,11 @@ export default function Proformas() {
 
                       <td className="fw-bold">{rowTotal(r).toFixed(2)}</td>
 
-                      {/* ✅ NO SE IMPRIME */}
                       <td className="no-print">
                         <button
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => removeRow(i)}
-                          disabled={rows.length === 1}
+                          disabled={bloqueada || rows.length === 1}
                           title="Eliminar"
                         >
                           X
@@ -281,32 +354,94 @@ export default function Proformas() {
 
                 <tfoot>
                   <tr>
-                    {/* ✅ ANTES ERA 4, AHORA ES 3 porque "Oferta" NO se imprime */}
                     <td colSpan="3" className="text-end fw-bold">
                       TOTAL GENERAL
                     </td>
+                    <td className="no-print"></td>
                     <td className="fw-bold">{totalGeneral.toFixed(2)}</td>
-
-                    {/* ✅ NO SE IMPRIME */}
                     <td className="no-print"></td>
                   </tr>
                 </tfoot>
               </table>
             </div>
 
-            {/* ✅ NO SE IMPRIME */}
-            <div className="d-flex gap-2 no-print">
+            <div className="row g-2 mt-2">
+              <div className="col-12 col-md-4">
+                <label className="form-label">Adelanto (Bs)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="form-control print-keep"
+                  value={anticipo}
+                  onChange={(e) =>
+                    setAnticipo(cleanMoneyOrEmpty(e.target.value))
+                  }
+                  onBlur={clampAnticipo}
+                  disabled={bloqueada}
+                />
+              </div>
+
+              <div className="col-12 col-md-4">
+                <label className="form-label">Saldo (Bs)</label>
+                <input
+                  type="text"
+                  className="form-control print-keep"
+                  value={saldo.toFixed(2)}
+                  disabled
+                />
+              </div>
+
+              <div className="col-12 col-md-4">
+                <label className="form-label">Estado</label>
+                <input
+                  type="text"
+                  className="form-control print-keep"
+                  value={estadoPago}
+                  disabled
+                />
+              </div>
+            </div>
+
+            <div className="d-flex gap-2 no-print mt-3">
               <button
                 className="btn btn-success"
-                onClick={() => alert("Luego: Guardar en BD")}
+                onClick={() =>
+                  alert(
+                    `Luego: Guardar en BD\nTotal: ${totalGeneral.toFixed(
+                      2
+                    )}\nAdelanto: ${anticipoNum.toFixed(
+                      2
+                    )}\nSaldo: ${saldo.toFixed(2)}\nEstado: ${estadoPago}`
+                  )
+                }
+                disabled={bloqueada}
               >
                 Guardar
               </button>
+
               <button
                 className="btn btn-outline-secondary"
                 onClick={() => window.print()}
               >
                 Imprimir
+              </button>
+
+              <button
+                className="btn btn-outline-primary"
+                onClick={pagarTodo}
+                disabled={bloqueada || totalGeneral <= 0}
+                title="Pagar el total"
+              >
+                Cancelar pago
+              </button>
+
+              <button
+                className="btn btn-outline-danger"
+                onClick={anularProforma}
+                disabled={bloqueada}
+                title="Anular proforma"
+              >
+                Anular
               </button>
             </div>
           </div>

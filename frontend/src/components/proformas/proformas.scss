@@ -1,58 +1,160 @@
+/* =========================
+   PROFORMAS - ESTILOS PRINT (FORMATO “BONITO”)
+   - Imprime SOLO .print-area
+   - Centrado y ancho fijo (como tu foto buena)
+========================= */
+
+/* helpers */
+.only-print { display: none; }
+.detalle-print { white-space: pre-wrap; line-height: 1.25; }
+
+/* textarea detalle (pantalla) */
+.detalle-textarea { white-space: pre-wrap; }
+.auto-grow { min-height: 38px; line-height: 1.4; resize: none; overflow: hidden; }
+
 @media print {
-  @page {
-    size: letter;
-    margin: 8mm;
+  @page { size: letter; margin: 8mm; }
+
+  * {
+    box-sizing: border-box !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   html, body {
     margin: 0 !important;
     padding: 0 !important;
+    background: #fff !important;
     height: auto !important;
     overflow: visible !important;
   }
-
-  /* ✅ OCULTA TODO por defecto */
-  body * {
-    visibility: hidden !important;
+  
+   /* ===== HEADER PROFORMA ALINEADO ===== */
+  .print-area > .d-flex {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: center !important;
+    column-gap: 12px !important;
   }
 
-  /* ✅ MUESTRA SOLO la proforma */
-  .print-area,
-  .print-area * {
-    visibility: visible !important;
+  /* título */
+  .print-area h2 {
+    margin: 0 !important;
+    text-align: left !important;
   }
 
-  /* ✅ Coloca la proforma arriba y ocupa toda la hoja */
+  /* número de proforma */
+  .proforma-ref {
+    margin-top: 2px !important;
+    font-size: 12px !important;
+  }
+
+  /* bloque fecha */
+  .print-area input[type="date"] {
+    width: 140px !important;
+    text-align: center !important;
+  }
+
+  /* etiqueta Fecha */
+  .print-area label {
+    margin-right: 6px !important;
+    font-weight: 600 !important;
+  }
+
+
+  /* ✅ Oculta TODO */
+  body * { visibility: hidden !important; }
+
+  /* ✅ Muestra SOLO la proforma */
+  .print-area, .print-area * { visibility: visible !important; }
+
+  /* ✅ “Formato bonito”: centrado + ancho fijo (NO full width) */
   .print-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    position: fixed !important;
+    left: 50% !important;
+    top: 8mm !important;
+    transform: translateX(-50%) !important;
+
+    width: 175mm !important;     /* ✅ ajusta si quieres: 170mm–185mm */
+    max-width: 175mm !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  /* ✅ Oculta sidebar/topbar por si tu layout se cuela */
+  aside, nav, header, footer { display: none !important; }
+
+  /* ✅ Oculta botones y cosas de pantalla */
+  .no-print, .no-print * { display: none !important; }
+
+  /* ✅ Mostrar el detalle como TEXTO en impresión (para que no se repita ni se deforme) */
+  .only-print { display: block !important; }
+  textarea.no-print { display: none !important; }
+
+  /* ✅ Oculta columna Oferta */
+  th.no-print, td.no-print { display: none !important; }
+
+  /* ✅ Evita responsive */
+  .table-responsive { overflow: visible !important; }
+
+  /* ✅ Tabla rígida (líneas rectas) */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    border-spacing: 0 !important;
+    table-layout: fixed !important;
+  }
+
+  th, td {
+    border: 1px solid #8f8f8f !important;
+    padding: 7px 8px !important;
+    font-size: 12px !important;
+    color: #000 !important;
+    vertical-align: middle !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  th {
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+  }
+
+  /* ✅ Anchos por columnas (tu tabla real tiene: 1 Cantidad | 2 Detalle | 3 Precio | 4 Oferta(oculta) | 5 Total) */
+  th:nth-child(1), td:nth-child(1) { width: 18% !important; } /* Cantidad */
+  th:nth-child(2), td:nth-child(2) { width: 50% !important; } /* Detalle */
+  th:nth-child(3), td:nth-child(3) { width: 18% !important; } /* Precio Unitario */
+  th:nth-child(5), td:nth-child(5) { width: 14% !important; } /* Total */
+
+  /* ✅ Inputs/Select como cajas */
+  input, textarea, select, .form-control, .form-select {
+    border: 1px solid #8f8f8f !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
     width: 100% !important;
     max-width: 100% !important;
-  }
-
-  /* ✅ Quita estilos que inflan altura */
-  .container-fluid,
-  .card,
-  .card-body {
-    padding: 0 !important;
+    display: block !important;
     margin: 0 !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
   }
 
-  .card {
-    box-shadow: none !important;
-    border: 1px solid #ddd !important;
-  }
-
-  /* ✅ Oculta cosas que no quieres imprimir */
-  .no-print,
-  .no-print * {
-    display: none !important;
+  /* ✅ Labels visibles (Cliente, Celular, Adelanto, Saldo, Estado) */
+  label {
+    color: #000 !important;
+    font-weight: 600 !important;
   }
 
   /* ✅ Evita cortes raros */
-  table, tr, td, th {
+  table, tr, td, th, .card, .card-body {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+  
+
+  
 }
