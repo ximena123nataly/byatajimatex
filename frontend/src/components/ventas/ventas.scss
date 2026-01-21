@@ -1,0 +1,75 @@
+/* ====== detalle auto-grow ====== */
+.detalle-textarea {
+  resize: none;
+  overflow: hidden; /* para que no salga scroll */
+  min-height: 38px; /* altura normal de input bootstrap */
+  line-height: 1.3;
+}
+
+/* ====== impresión ====== */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: letter;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  /* Oculta todo lo que no sea la venta */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Quita sidebar/menu/header del layout (si existen) */
+  .asideNavbar__panel,
+  .asideNavbar__menu,
+  .navbar,
+  header,
+  nav,
+  .toggelDiv {
+    display: none !important;
+  }
+
+  /* Ajustes para que no saque "segunda hoja fantasma" */
+  .container-fluid,
+  .card,
+  .card-body {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .card {
+    box-shadow: none !important;
+  }
+
+  /* En impresión: mostrar texto en vez de select */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Evita cortes raros */
+  .print-area,
+  .card,
+  table,
+  tr,
+  td {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Detalle importante: que se vea claro */
+  .detalle-textarea {
+    border: 1px solid #bbb !important;
+    padding: 6px 8px !important;
+    font-weight: 600;
+  }
+}
