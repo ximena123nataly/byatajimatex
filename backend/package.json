@@ -6,9 +6,10 @@
   "engines": {
     "node": "18.x"
   },
-  "scripts": {
-    "start": "node app.js"
-  },
+ "scripts": {
+  "start": "node app.js",
+  "dev": "nodemon app.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

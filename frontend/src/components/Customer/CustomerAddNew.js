@@ -15,6 +15,7 @@ function CustomerAddNew() {
 
 	const [submitButtonState, setSubmitButtonState] = useState(false)
 
+	/*
 	useEffect(() => {
 
 		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
@@ -51,7 +52,36 @@ function CustomerAddNew() {
 			.catch((error) => {
 				console.log(error)
 			})
-	}, [])
+	}, [])*/
+	useEffect(() => {
+			//moment.locale("es");
+		  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+			method: 'POST',
+			credentials: 'include'
+		  })
+			.then(res => res.json())
+			.then(body => {
+			  if (body.operation === 'success') {
+				fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+				  method: 'POST',
+				  credentials: 'include'
+				})
+				  .then(res => res.json())
+				  .then(body => {
+					const p = body.permissions?.find(x => x.page === 'customers');
+		
+					if (p?.view && p?.create) {
+					  setPermission(p);
+					} else {
+					  window.location.href = '/unauthorized';
+					}
+				  });
+			  } else {
+				window.location.href = '/login';
+			  }
+			})
+			.catch(console.log);
+		}, [])
 
 	useEffect(() => {
 		if (permission !== null) {

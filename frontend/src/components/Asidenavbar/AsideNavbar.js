@@ -37,10 +37,15 @@ function AsideNavbar() {
             method: 'POST',
             credentials: 'include'
           })
-            .then(async (response) => {
+            //ORIGINAL
+              /*.then(async (response) => {
               let body = await response.json()
               let p = JSON.parse(body.info)
-              setPermission(p)
+              setPermission(p)*/
+              .then(res => res.json())
+          .then(body => {
+            console.log("📥 permisos recibidos:", body.permissions);
+            setPermission(body.permissions || []);
             })
             .catch((error) => {
               console.log(error)
@@ -77,7 +82,28 @@ function AsideNavbar() {
       });
   }
 
-  const isView = (page) => permission?.find(x => x.page === page)?.view === true;
+
+  
+  //const isView = (page) => permission?.find(x => x.page === page)?.view === true;
+  //const isView = (page) => permission && permission[page]?.view === true;
+ /*const isView = (page) => {
+  console.log("🔍 isView llamado con page:", page);
+  console.log("📦 permission:", permission);
+  console.log("📐 es array?", Array.isArray(permission));
+
+  if (!Array.isArray(permission)) return false;
+
+  const result = permission.find(x => x.page === page);
+  console.log("🎯 resultado find:", result);
+
+  return result?.view === true;
+};*/
+const isView = (page) => {
+  if (!Array.isArray(permission)) return false;
+  console.log("📦 permission:", permission);
+  return permission.find(p => p.page === page)?.view === true;
+};
+  //console.log("PERMISSIONS RAW:", p, Array.isArray(p))
 
   const LogoText = () => (
     <>

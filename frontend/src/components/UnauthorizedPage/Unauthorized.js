@@ -34,8 +34,8 @@ function Unauthorized() {
 					{/* Content */}
 					<div className="error__content">
 						<div className="error__message message">
-							<h1 className="message__title">Page Unauthorized</h1>
-							<p className="message__text">We're sorry, the page you were looking for isn't authorized.</p>
+							<h1 className="message__title">Pagina no autorizada</h1>
+							<p className="message__text">Lo sentimos, la pagina que quiere ver no esta autorizada.</p>
 						</div>
 						<div className="error__nav e-nav">
 							<Link to={"/dashboard"} className = "e-nav__link">

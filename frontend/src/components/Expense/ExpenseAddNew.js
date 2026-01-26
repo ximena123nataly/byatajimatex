@@ -23,42 +23,34 @@ function ExpenseAddNew() {
 	const [submitButtonState, setSubmitButtonState] = useState(false)
 
 	useEffect(() => {
-
-		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-			method: 'POST',
-			credentials: 'include'
-		})
-			.then(async (response) => {
-				let body = await response.json()
-				// console.log(body)
-				if (body.operation === 'success') {
-
+				//moment.locale("es");
+			  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+				method: 'POST',
+				credentials: 'include'
+			  })
+				.then(res => res.json())
+				.then(body => {
+				  if (body.operation === 'success') {
 					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-						method: 'POST',
-						credentials: 'include'
+					  method: 'POST',
+					  credentials: 'include'
 					})
-						.then(async (response) => {
-							let body = await response.json()
-
-							//console.log(JSON.parse(body.info));
-							let p = JSON.parse(body.info).find(x => x.page === 'expenses')
-							if (p.view && p.create) {
-								setPermission(p)
-							} else {
-								window.location.href = '/unauthorized';
-							}
-						})
-						.catch((error) => {
-							console.log(error)
-						})
-				} else {
-					window.location.href = '/login'
-				}
-			})
-			.catch((error) => {
-				console.log(error)
-			})
-	}, [])
+					  .then(res => res.json())
+					  .then(body => {
+						const p = body.permissions?.find(x => x.page === 'expenses');
+			
+						if (p?.view && p?.create) {
+						  setPermission(p);
+						} else {
+						  window.location.href = '/unauthorized';
+						}
+					  });
+				  } else {
+					window.location.href = '/login';
+				  }
+				})
+				.catch(console.log);
+			}, [])
 
 	const getProducts = async (value) => {
 		let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_search`, {

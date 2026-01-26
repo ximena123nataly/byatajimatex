@@ -1,0 +1,14 @@
+//CAMBIADO EL FRONTEND/PACAGE.JSON
+
+ "scripts": {
+    "start": "node app.js"
+  },
+
+//POR
+
+"scripts": {
+  "start": "HOST=0.0.0.0 react-scripts start",
+  "build": "react-scripts build",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject"
+},

@@ -34,8 +34,8 @@ function NotFound() {
 					{/* Content */}
 					<div className="error__content">
 						<div className="error__message message">
-							<h1 className="message__title">Page Not Found</h1>
-							<p className="message__text">We're sorry, the page you were looking for isn't found here. The link you followed may either be broken or no longer exists. Please try again, or take a look at our.</p>
+							<h1 className="message__title">Pagina no encontada</h1>
+							<p className="message__text">Lo sentimos, la pagina que busca no puede ser encontrada o el link puede estar roto o no existe.</p>
 						</div>
 						<div className="error__nav e-nav">
 							<Link to={"/dashboard"} className = "e-nav__link">

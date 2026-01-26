@@ -29,40 +29,34 @@ function Profile() {
 	const [confirmPassword, setConfirmPassword] = useState('')
 	const [submitButtonState2, setSubmitButtonState2] = useState(false)
 
-	useEffect(() => {
-
-		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-			method: 'POST',
-			credentials: 'include'
-		})
-			.then(async (response) => {
-				let body = await response.json()
-				if (body.operation === 'success') {
-
-					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-						method: 'POST',
-						credentials: 'include'
-					})
-						.then(async (response) => {
-							let body = await response.json()
-
-							let p = JSON.parse(body.info).find(x => x.page === 'profile')
-							if (p.view !== true) {
-								window.location.href = '/unauthorized';
-							} else {
-								setPermission(p)
-							}
-						})
-						.catch((error) => {
-							console.log(error)
-						})
+useEffect(() => {
+		//moment.locale("es");
+	  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+		method: 'POST',
+		credentials: 'include'
+	  })
+		.then(res => res.json())
+		.then(body => {
+		  if (body.operation === 'success') {
+			fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+			  method: 'POST',
+			  credentials: 'include'
+			})
+			  .then(res => res.json())
+			  .then(body => {
+				const p = body.permissions?.find(x => x.page === 'profile');
+	
+				if (p?.view && p?.create) {
+				  setPermission(p);
 				} else {
-					window.location.href = '/login'
+				  window.location.href = '/unauthorized';
 				}
-			})
-			.catch((error) => {
-				console.log(error)
-			})
+			  });
+		  } else {
+			window.location.href = '/login';
+		  }
+		})
+		.catch(console.log);
 	}, [])
 
 

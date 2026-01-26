@@ -1,0 +1,97 @@
+
+
+services:
+  # Backend Node.js
+  backend:
+    build: ./backend
+    container_name: inventarios-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - inventarios-network
+    depends_on:
+      - mysql
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=mysql
+      - DB_USER=inventarios_user
+      - DB_PASSWORD=user_password
+      - DB_NAME=inventory
+      - DB_PORT=3306
+      - PORT=5000
+    restart: unless-stopped
+
+  # Frontend (React/Node.js)
+  frontend:
+    build: ./frontend
+    container_name: inventarios-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - inventarios-network
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://backend:5000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # Base de datos MySQL 5.7
+  mysql:
+    image: mysql:5.7
+    container_name: inventarios-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: inventory
+      MYSQL_USER: inventarios_user
+      MYSQL_PASSWORD: user_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - inventarios-network
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 60s
+
+  # PHPMyAdmin (opcional, para gestionar la base de datos)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: inventarios-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 128M
+    networks:
+      - inventarios-network
+    depends_on:
+      - mysql        
+
+  # Nginx como reverse proxy (opcional pero recomendado)
+
+networks:
+  inventarios-network:
+    driver: bridge
+
+volumes:
+  mysql-data:

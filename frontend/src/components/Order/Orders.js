@@ -29,34 +29,34 @@ function Orders() {
 	const [productDetails, setProductDetails] = useState([])
 
 	useEffect(() => {
-		moment.locale("es");
-
-		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-			method: 'POST',
-			credentials: 'include'
-		})
-			.then(async (response) => {
-				let body = await response.json()
-				if (body.operation === 'success') {
-
+			moment.locale("es");
+			  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+				method: 'POST',
+				credentials: 'include'
+			  })
+				.then(res => res.json())
+				.then(body => {
+				  if (body.operation === 'success') {
 					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-						method: 'POST',
-						credentials: 'include'
+					  method: 'POST',
+					  credentials: 'include'
 					})
-						.then(async (response) => {
-							let body = await response.json()
-							let p = JSON.parse(body.info).find(x => x.page === 'orders')
-							if (p.view !== true) {
-								window.location.href = '/unauthorized';
-							} else {
-								setPermission(p)
-							}
-						})
-				} else {
-					window.location.href = '/login'
-				}
-			})
-	}, [])
+					  .then(res => res.json())
+					  .then(body => {
+						const p = body.permissions?.find(x => x.page === 'orders');
+			
+						if (p?.view && p?.create) {
+						  setPermission(p);
+						} else {
+						  window.location.href = '/unauthorized';
+						}
+					  });
+				  } else {
+					window.location.href = '/login';
+				  }
+				})
+				.catch(console.log);
+			}, [])
 
 	const getOrders = async (sv, sc, so, scv) => {
 		let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_orders`, {

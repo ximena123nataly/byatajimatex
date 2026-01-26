@@ -33,40 +33,34 @@ function Suppliers() {
   const [editModalSubmitButton, setEditModalSubmitButton] = useState(false)
 
   useEffect(() => {
-
-    fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+      moment.locale("es");
+      fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
       method: 'POST',
       credentials: 'include'
-    })
-      .then(async (response) => {
-        let body = await response.json()
+      })
+      .then(res => res.json())
+      .then(body => {
         if (body.operation === 'success') {
-
-          fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-            method: 'POST',
-            credentials: 'include'
-          })
-            .then(async (response) => {
-              let body = await response.json()
-
-              let p = JSON.parse(body.info).find(x => x.page === 'suppliers')
-              if (p.view !== true) {
-                window.location.href = '/unauthorized';
-              } else {
-                setPermission(p)
-              }
-            })
-            .catch((error) => {
-              console.log(error)
-            })
+        fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+          method: 'POST',
+          credentials: 'include'
+        })
+          .then(res => res.json())
+          .then(body => {
+          const p = body.permissions?.find(x => x.page === 'suppliers');
+    
+          if (p?.view && p?.create) {
+            setPermission(p);
+          } else {
+            window.location.href = '/unauthorized';
+          }
+          });
         } else {
-          window.location.href = '/login'
+        window.location.href = '/login';
         }
       })
-      .catch((error) => {
-        console.log(error)
-      })
-  }, [])
+      .catch(console.log);
+    }, [])
 
 
   const getSuppliers = async (sv, sc, so, scv) => {

@@ -83,19 +83,19 @@ class User {
 	}
 
 	verifyToken = (req, res) => {
-		let temptoken = req.cookies.accessToken;
-		
-		jwt.verify(temptoken, process.env.JWT_SEC, (err, payload) => {
-			if (err) {
-				res.send({ operation: "error", message: 'Token expired' });
-				//console.log("jwt token failed from api");
-			}
-			//console.log("token verfied from api")
-			res.send({ operation: "success", message: 'Token verified' });
-		})
-	}
+  let temptoken = req.cookies.accessToken;
 
-	getPermission = (req, res) => {
+  jwt.verify(temptoken, process.env.JWT_SEC, (err, payload) => {
+    if (err) {
+      return res.send({ operation: "error", message: "Token expired" });
+    }
+    return res.send({ operation: "success", message: "Token verified" });
+  });
+};
+
+
+	//ORIGINAL
+	/*getPermission = (req, res) => {
 		try {
 			let d = jwt.decode(req.cookies.accessToken, { complete: true });
 			let email = d.payload.email;
@@ -128,7 +128,43 @@ class User {
 			console.log(error);
 			res.send({ operation: "error", message: 'Something went wrong' });
 		}
-	}
+	}*/
+
+	getPermission = (req, res) => {
+  try {
+    const d = jwt.decode(req.cookies.accessToken);
+    const role = d.role;
+
+    const q = `
+      SELECT user_role_permissions
+      FROM user_roles
+      WHERE user_role_name = ?
+    `;
+
+    db.query(q, [role], (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.send({ operation: "error", message: "DB error" });
+      }
+
+      if (!result.length) {
+        return res.send({ operation: "error", message: "Role not found" });
+      }
+
+      // 🔥 AQUÍ ESTÁ LA CLAVE
+      const permissions = JSON.parse(result[0].user_role_permissions);
+
+      res.send({
+        operation: "success",
+        permissions
+      });
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.send({ operation: "error", message: "Something went wrong" });
+  }
+};
 
 	getEmployees = (req, res) => {
 		try {
