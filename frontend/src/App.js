@@ -1,7 +1,7 @@
-import React, { useContext } from 'react'
-import {BrowserRouter, Route, Routes } from "react-router-dom";
-import { 
-	NotFound,
+import React, { useContext } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import {
+  NotFound,
   Unauthorized,
   Login,
   Forgetpassword,
@@ -21,49 +21,60 @@ import {
   Profile,
   Settings,
   Layout,
-} from './components'
-import "./style/dark.scss"
-import { DarkModeContext } from './context/darkModeContext';
+} from "./components";
+
+import "./style/dark.scss";
+import { DarkModeContext } from "./context/darkModeContext";
+
+// ✅ FORMULARIO (crear/editar)
 import Proformas from "./components/proformas/proformas";
 
-
-
+// ✅ LISTADO (pantalla principal)
+import ProformasList from "./components/proformas/ProformasList";
 
 function App() {
-	const {darkMode} = useContext(DarkModeContext)
-	
-	return (
-		<div className={darkMode ? "dark" : ""} > 
-			<BrowserRouter>
-				<Routes>
-					<Route path='*' element={<NotFound />}/>
-					<Route path='/unauthorized' element={<Unauthorized />}/>
-					{/* <Route path='/' element={<Registration />}/> */}
-					<Route path='/login' element={<Login />}/>
-					<Route path='/forgetpassword' element={<Forgetpassword />}/>
-					<Route path='/' element={<Layout/>}>
-						<Route path='/dashboard' element={<Dashboard/>}/>
-						<Route path='/employees' element={<Employee />}/>
-						<Route path='/employees/addnew' element={<EmployeeAddNew />}/>
-						<Route path='/products' element={<Product />}/>
-						<Route path='/products/addnew' element={<ProductAddNew />}/>
-						<Route path='/suppliers' element={<Supplier/>}/>
-						<Route path='/suppliers/addnew' element={<SupplierAddNew />}/>
-						<Route path='/expenses' element={<Expense />}/>
-						<Route path='/expenses/addnew' element={<ExpenseAddNew />}/>
-						<Route path='/customers' element={<Customer />}/>
-						<Route path='/customers/addnew' element={<CustomerAddNew />}/>
-						<Route path='/orders' element={ <Order/>}/>
-						<Route path='/orders/addnew' element={ <OrderAddNew/>}/>
-						<Route path='/profile' element={<Profile/> }/>
-						<Route path='/settings' element={<Settings/>}/>
-						<Route path="/proformas" element={<Proformas />} />
+  const { darkMode } = useContext(DarkModeContext);
 
-					</Route>
-				</Routes>
-			</BrowserRouter>
-		</div>
-	)
+  return (
+    <div className={darkMode ? "dark" : ""}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<NotFound />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/forgetpassword" element={<Forgetpassword />} />
+
+          <Route path="/" element={<Layout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/employees" element={<Employee />} />
+            <Route path="/employees/addnew" element={<EmployeeAddNew />} />
+            <Route path="/products" element={<Product />} />
+            <Route path="/products/addnew" element={<ProductAddNew />} />
+            <Route path="/suppliers" element={<Supplier />} />
+            <Route path="/suppliers/addnew" element={<SupplierAddNew />} />
+            <Route path="/expenses" element={<Expense />} />
+            <Route path="/expenses/addnew" element={<ExpenseAddNew />} />
+            <Route path="/customers" element={<Customer />} />
+            <Route path="/customers/addnew" element={<CustomerAddNew />} />
+            <Route path="/orders" element={<Order />} />
+            <Route path="/orders/addnew" element={<OrderAddNew />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
+
+            {/* ✅ PROFORMAS */}
+            {/* 1) LISTADO */}
+            <Route path="/proformas" element={<ProformasList />} />
+
+            {/* 2) CREAR NUEVA */}
+            <Route path="/proformas/addnew" element={<Proformas />} />
+
+            {/* 3) EDITAR (siempre al final) */}
+            <Route path="/proformas/:id" element={<Proformas />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </div>
+  );
 }
 
-export default App
+export default App;

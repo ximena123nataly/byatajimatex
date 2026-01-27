@@ -1,22 +1,23 @@
 const router = require("express").Router();
+const proformas = require("../controllers/proformas.controller");
 
-// DEMO: guarda proforma (por ahora solo responde OK)
-router.post("/add", async (req, res) => {
-  try {
-    console.log("✅ PROFORMA RECIBIDA:", req.body);
+// ✅ LISTAR
+router.get("/", proformas.getProformas);
 
-    // aquí luego irá INSERT a la BD
-    return res.status(200).json({
-      operation: "success",
-      proforma_id: "DEMO-" + Date.now(),
-    });
-  } catch (err) {
-    console.error("❌ ERROR add proforma:", err);
-    return res.status(500).json({
-      operation: "error",
-      message: "Error interno",
-    });
-  }
-});
+// ✅ TRAER 1 (para editar/ver)
+router.get("/:id", proformas.getProformaById);
+
+// ✅ CREAR (lo usa tu frontend: POST /proformas/add)
+router.post("/add", proformas.addProforma);
+
+// ✅ ACTUALIZAR
+router.put("/:id", proformas.updateProforma);
+
+// ✅ ELIMINAR
+router.delete("/:id", proformas.deleteProforma);
 
 module.exports = router;
+
+
+
+
