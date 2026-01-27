@@ -1,6 +1,27 @@
 import React, { useContext } from 'react'
 import {BrowserRouter, Route, Routes } from "react-router-dom";
-import { NotFound, Unauthorized, Login, Forgetpassword, Dashboard, Employee, EmployeeAddNew, Product, ProductAddNew, Supplier, SupplierAddNew, Expense, ExpenseAddNew, Customer, CustomerAddNew, Order, OrderAddNew, Profile, Settings, Layout } from './components'
+import { 
+	NotFound,
+  Unauthorized,
+  Login,
+  Forgetpassword,
+  Dashboard,
+  Employee,
+  EmployeeAddNew,
+  Product,
+  ProductAddNew,
+  Supplier,
+  SupplierAddNew,
+  Expense,
+  ExpenseAddNew,
+  Customer,
+  CustomerAddNew,
+  Order,
+  OrderAddNew,
+  Profile,
+  Settings,
+  Layout,
+} from './components'
 import "./style/dark.scss"
 import { DarkModeContext } from './context/darkModeContext';
 import Proformas from "./components/proformas/proformas";

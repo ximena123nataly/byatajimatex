@@ -95,7 +95,7 @@ function Login() {
 					/>
 					<div className='myform'>
 						<img alt='profile' src="./images/avatar.svg" />
-						<h1 className="title">Welcome Back!</h1>
+						<h1 className="title">Bienvenido</h1>
 						<div className="input-div one">
 							<div className="i">
 								<EmailOutlined/>
@@ -114,12 +114,12 @@ function Login() {
 						</div>
 						<div className="d-flex justify-content-between">
 							<Link></Link>
-							<Link to="/forgetpassword">Forgot Password?</Link>
+							<Link to="/forgetpassword">¿Has olvidado tu contraseña?</Link>
 						</div>
 						<button className="btn" disabled={submitButtonState} onClick={() => { login() }}>
 							{
 								!submitButtonState ?
-									<span>Login</span> :
+									<span>ACCESO</span> :
 									<span style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>Please wait<div className="loader"></div></span>
 							}
 						</button>	

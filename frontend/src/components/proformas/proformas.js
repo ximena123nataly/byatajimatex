@@ -1,23 +1,23 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./proformas.scss";
+import axios from "axios";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function Proformas() {
   const todayISO = new Date().toISOString().slice(0, 10);
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
+
+  const [proformaRef, setProformaRef] = useState("—");
 
   const [fecha, setFecha] = useState(todayISO);
   const [cliente, setCliente] = useState("");
   const [celular, setCelular] = useState("");
 
-  // ✅ NÚMERO DE PROFORMA (temporal)
-  const [proformaRef] = useState("0000001");
-
-  // ✅ ESTADO DEL DOCUMENTO
   const [estadoProforma, setEstadoProforma] = useState("ACTIVA"); // ACTIVA | CANCELADA
-
-  // ✅ Anticipo (pago parcial)
   const [anticipo, setAnticipo] = useState("0");
 
-  // ✅ filas
   const [rows, setRows] = useState([
     { cantidad: "1", detalle: "", precio_unitario: "0", modo_oferta: false },
   ]);
@@ -130,6 +130,53 @@ export default function Proformas() {
     return "PENDIENTE";
   }, [estadoProforma, totalGeneral, saldo]);
 
+  // ✅ Cargar proforma si viene con /proformas/:id
+  useEffect(() => {
+    const loadOne = async () => {
+      if (!id) return;
+
+      try {
+        const res = await axios.get(
+          `${process.env.REACT_APP_BACKEND_ORIGIN}/proformas/${id}`,
+          { withCredentials: true }
+        );
+
+        const p = res.data;
+
+        setFecha(String(p.fecha).slice(0, 10));
+        setCliente(p.cliente || "");
+        setCelular(p.celular || "");
+        setEstadoProforma(p.estado || "ACTIVA");
+        setAnticipo(String(p.anticipo ?? "0"));
+        setProformaRef(p.proforma_ref || "—");
+
+        const parsedItems = (() => {
+          try {
+            return JSON.parse(p.items || "[]");
+          } catch {
+            return [];
+          }
+        })();
+
+        if (parsedItems.length > 0) {
+          setRows(
+            parsedItems.map((it) => ({
+              cantidad: String(it.cantidad ?? "1"),
+              detalle: String(it.detalle ?? ""),
+              precio_unitario: String(it.precio_unitario ?? "0"),
+              modo_oferta: !!it.modo_oferta,
+            }))
+          );
+        }
+      } catch (err) {
+        console.error(err);
+        alert("❌ No se pudo cargar la proforma para editar");
+      }
+    };
+
+    loadOne();
+  }, [id]);
+
   const clampAnticipo = () => {
     if (bloqueada) return;
     const a = toNumber(anticipo);
@@ -142,15 +189,66 @@ export default function Proformas() {
     setAnticipo(totalGeneral.toFixed(2));
   };
 
-  const anularProforma = () => {
-    if (window.confirm("¿Anular esta proforma?")) {
-      setEstadoProforma("CANCELADA");
-      setAnticipo("0");
+  
+
+  // ✅ Guardar (POST si es nuevo / PUT si es edición)
+  const handleSave = async () => {
+    if (bloqueada) return alert("❌ No se puede guardar una proforma anulada.");
+
+    if (!cliente.trim()) return alert("❌ Debes escribir el nombre del cliente.");
+    if (!celular.trim()) return alert("❌ Debes escribir el celular.");
+
+    const items = rows
+      .filter((r) => r.detalle.trim() !== "")
+      .map((r) => ({
+        cantidad: String(r.cantidad),
+        detalle: String(r.detalle),
+        precio_unitario: String(r.precio_unitario),
+        modo_oferta: !!r.modo_oferta,
+        total: Number(rowTotal(r).toFixed(2)),
+      }));
+
+    if (items.length === 0) return alert("❌ Agrega al menos 1 detalle.");
+
+    const payload = {
+      fecha,
+      cliente,
+      celular,
+      items,
+      total_general: Number(totalGeneral.toFixed(2)),
+      anticipo: Number(anticipoNum.toFixed(2)),
+      saldo: Number(saldo.toFixed(2)),
+      estado: estadoProforma,
+    };
+
+    try {
+      const url = isEdit
+        ? `${process.env.REACT_APP_BACKEND_ORIGIN}/proformas/${id}`
+        : `${process.env.REACT_APP_BACKEND_ORIGIN}/proformas/add`;
+
+      if (isEdit) {
+        await axios.put(url, payload, { withCredentials: true });
+      } else {
+        await axios.post(url, payload, { withCredentials: true });
+      }
+
+      navigate("/proformas");
+    } catch (err) {
+      console.error("❌ ERROR guardando:", err);
+
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.sqlMessage ||
+        err?.message ||
+        "Error al guardar proforma";
+
+      alert("❌ " + msg);
     }
   };
 
   return (
-    <div className="print-area container-fluid p-3">
+    <div className="container-fluid p-3 proformas">
+
       <div className="print-area">
         <div className="d-flex align-items-center justify-content-between mb-3">
           <div>
@@ -217,14 +315,13 @@ export default function Proformas() {
 
             <div className="table-responsive">
               <table className="table table-bordered align-middle proforma-table">
-                {/* ✅ COLGROUP: fija anchos y NO se chuequea en impresión */}
                 <colgroup>
-                  <col style={{ width: "12%" }} />
-                  <col style={{ width: "53%" }} />
-                  <col style={{ width: "15%" }} />
-                  <col className="no-print" style={{ width: "0%" }} />
-                  <col style={{ width: "20%" }} />
-                  <col className="no-print" style={{ width: "0%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "50%" }} />
+                  <col style={{ width: "18%" }} />
+                  <col className="no-print" />
+                  <col style={{ width: "18%" }} />
+                  <col className="no-print" />
                 </colgroup>
 
                 <thead>
@@ -258,7 +355,6 @@ export default function Proformas() {
                       </td>
 
                       <td>
-                        {/* ✅ PANTALLA: textarea (NO imprime) */}
                         <textarea
                           className="form-control detalle-textarea auto-grow no-print"
                           value={r.detalle}
@@ -277,10 +373,7 @@ export default function Proformas() {
                           placeholder="Detalle del Bordado"
                         />
 
-                        {/* ✅ IMPRESIÓN: texto plano (no se repite) */}
-                        <div className="only-print detalle-print">
-                          {r.detalle}
-                        </div>
+                        <div className="only-print detalle-print">{r.detalle}</div>
                       </td>
 
                       <td>
@@ -291,18 +384,10 @@ export default function Proformas() {
                           value={r.precio_unitario}
                           disabled={bloqueada || r.modo_oferta}
                           onChange={(e) =>
-                            updateRow(
-                              i,
-                              "precio_unitario",
-                              cleanMoney(e.target.value)
-                            )
+                            updateRow(i, "precio_unitario", cleanMoney(e.target.value))
                           }
                           onBlur={() =>
-                            updateRow(
-                              i,
-                              "precio_unitario",
-                              cleanMoney(r.precio_unitario)
-                            )
+                            updateRow(i, "precio_unitario", cleanMoney(r.precio_unitario))
                           }
                         />
                       </td>
@@ -371,11 +456,9 @@ export default function Proformas() {
                 <input
                   type="text"
                   inputMode="decimal"
-                  className="form-control print-keep"
+                  className="form-control"
                   value={anticipo}
-                  onChange={(e) =>
-                    setAnticipo(cleanMoneyOrEmpty(e.target.value))
-                  }
+                  onChange={(e) => setAnticipo(cleanMoneyOrEmpty(e.target.value))}
                   onBlur={clampAnticipo}
                   disabled={bloqueada}
                 />
@@ -385,7 +468,7 @@ export default function Proformas() {
                 <label className="form-label">Saldo (Bs)</label>
                 <input
                   type="text"
-                  className="form-control print-keep"
+                  className="form-control"
                   value={saldo.toFixed(2)}
                   disabled
                 />
@@ -395,7 +478,7 @@ export default function Proformas() {
                 <label className="form-label">Estado</label>
                 <input
                   type="text"
-                  className="form-control print-keep"
+                  className="form-control"
                   value={estadoPago}
                   disabled
                 />
@@ -404,22 +487,16 @@ export default function Proformas() {
 
             <div className="d-flex gap-2 no-print mt-3">
               <button
+                type="button"
                 className="btn btn-success"
-                onClick={() =>
-                  alert(
-                    `Luego: Guardar en BD\nTotal: ${totalGeneral.toFixed(
-                      2
-                    )}\nAdelanto: ${anticipoNum.toFixed(
-                      2
-                    )}\nSaldo: ${saldo.toFixed(2)}\nEstado: ${estadoPago}`
-                  )
-                }
                 disabled={bloqueada}
+                onClick={handleSave}
               >
                 Guardar
               </button>
 
               <button
+                type="button"
                 className="btn btn-outline-secondary"
                 onClick={() => window.print()}
               >
@@ -427,22 +504,15 @@ export default function Proformas() {
               </button>
 
               <button
+                type="button"
                 className="btn btn-outline-primary"
                 onClick={pagarTodo}
                 disabled={bloqueada || totalGeneral <= 0}
-                title="Pagar el total"
               >
                 Cancelar pago
               </button>
 
-              <button
-                className="btn btn-outline-danger"
-                onClick={anularProforma}
-                disabled={bloqueada}
-                title="Anular proforma"
-              >
-                Anular
-              </button>
+              
             </div>
           </div>
         </div>

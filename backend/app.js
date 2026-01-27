@@ -28,6 +28,7 @@ app.use('/', require('./routes/customers.routes.js'));
 app.use('/', require('./routes/suppliers.routes.js'));
 app.use('/', require('./routes/orders.routes.js'));
 app.use('/', require('./routes/expenses.routes.js'));
+app.use("/", require("./routes/proformas.routes"));
 
 app.listen(port, () => {
 	console.log(`App listening on port ${port}!`)
