@@ -1,22 +1,22 @@
-const router = require("express").Router();
-const proformas = require("../controllers/proformas.controller");
+const express = require("express");
+const router = express.Router();
 
-// ✅ LISTAR
-router.get("/", proformas.getProformas);
+const verifyJwt = require("../middlewares/verifyJwt.js");
+const Proforma = require("../models/proformas.model.js");
 
-// ✅ TRAER 1 (para editar/ver)
-router.get("/:id", proformas.getProformaById);
+const proforma = new Proforma();
 
-// ✅ CREAR (lo usa tu frontend: POST /proformas/add)
-router.post("/add", proformas.addProforma);
+// Crear
+router.post("/add_proforma", verifyJwt, proforma.addProforma);
 
-// ✅ ACTUALIZAR
-router.put("/:id", proformas.updateProforma);
+// Eliminar 
+router.post("/delete_proforma", verifyJwt, proforma.deleteProforma);
 
-// ✅ ELIMINAR
-router.delete("/:id", proformas.deleteProforma);
+// Listado
+router.post("/get_proformas", verifyJwt, proforma.getProformas);
 
 module.exports = router;
+
 
 
 

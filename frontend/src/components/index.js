@@ -22,3 +22,7 @@ export { default as  OrderAddNew} from './Order/OrderAddNew'
 export { default as  Profile} from './Profile/Profile'
 export { default as  Settings} from './Settings/Settings'
 export { default as  Layout} from './Layout/Layout'
+export { default as Proformas } from './proformas/proformas'
+export { default as ProformasAddNew } from './proformas/ProformasAddNew'
+
+

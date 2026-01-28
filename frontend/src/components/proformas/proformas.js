@@ -1,652 +1,328 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import Modal from "react-bootstrap/Modal";
 import "./proformas.scss";
-//CAMBIOS: Ximena
-// import axios from "axios";
-import { useNavigate, useParams } from "react-router-dom";
+import Table from "../Table/Table";
 
-export default function Proformas() {
-  // =========================
-  // 1) DATOS BASE / ROUTER
-  // =========================
+import moment from "moment";
+import "moment/locale/es";
+import swal from "sweetalert";
 
-  // Fecha de hoy en formato YYYY-MM-DD para el input type="date"
-  const todayISO = new Date().toISOString().slice(0, 10);
+import Loader from "../PageStates/Loader";
+import Error from "../PageStates/Error";
 
-  // navigate permite redirigir a otra ruta (ej: volver a /proformas)
-  const navigate = useNavigate();
+function Proformas() {
+  const [pageState, setPageState] = useState(1);
+  const [permission, setPermission] = useState(null);
 
-  // useParams toma parámetros de la URL, por ejemplo /proformas/:id
-  // si la URL es /proformas/123 entonces id="123"
-  const { id } = useParams();
+  const [proformas, setProformas] = useState([]);
+  const [count, setCount] = useState(0);
 
-  // isEdit define si estamos creando o editando
-  // - false: crear (no hay id)
-  // - true: editar (hay id)
-  const isEdit = !!id;
+  const [searchInput, setSearchInput] = useState("");
+  const [sortColumn, setSortColumn] = useState("");
+  const [sortOrder, setSortOrder] = useState("");
+  const [tablePage, setTablePage] = useState(1);
+  const [data, setData] = useState([]);
 
-  // =========================
-  // 2) ESTADOS DEL FORMULARIO
-  // =========================
-
-  // Número de proforma visible en pantalla (lo manda backend)
-  const [proformaRef, setProformaRef] = useState("—");
-
-  // Campos principales
-  const [fecha, setFecha] = useState(todayISO);
-  const [cliente, setCliente] = useState("");
-  const [celular, setCelular] = useState("");
-
-  // Estado de la proforma (si está CANCELADA, se bloquea edición)
-  const [estadoProforma, setEstadoProforma] = useState("ACTIVA"); // ACTIVA | CANCELADA
-
-  // Anticipo (adelanto) como string porque viene de un input
-  const [anticipo, setAnticipo] = useState("0");
-
-  // Filas de detalle (cantidad, detalle, precio_unitario, modo_oferta)
-  // rows es la tabla completa de productos/detalles
-  const [rows, setRows] = useState([
-    { cantidad: "1", detalle: "", precio_unitario: "0", modo_oferta: false },
-  ]);
-
-  // Si está CANCELADA => no dejar modificar nada
-  const bloqueada = estadoProforma === "CANCELADA";
-
-  // =========================
-  // 3) HELPERS DE TABLA
-  // =========================
-
-  // Agrega una fila nueva a la tabla (si no está bloqueada)
-  const addRow = () => {
-    if (bloqueada) return;
-    setRows((prev) => [
-      ...prev,
-      { cantidad: "1", detalle: "", precio_unitario: "0", modo_oferta: false },
-    ]);
-  };
-
-  // Elimina una fila por index
-  const removeRow = (index) => {
-    if (bloqueada) return;
-    setRows((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Actualiza un campo específico de una fila (cantidad/detalle/precio_unitario/modo_oferta)
-  const updateRow = (index, key, value) => {
-    if (bloqueada) return;
-    setRows((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, [key]: value } : r))
-    );
-  };
-
-  // =========================
-  // 4) LIMPIEZA / VALIDACIÓN DE INPUTS
-  // =========================
-
-  // Convierte string a número (acepta coma como decimal)
-  const toNumber = (v) => {
-    const n = Number(String(v).replace(",", "."));
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  // Deja solo enteros positivos (para cantidad)
-  const cleanInt = (v) => {
-    const onlyDigits = String(v).replace(/\D+/g, "");
-    const noLeadingZeros = onlyDigits.replace(/^0+(?=\d)/, "");
-    return noLeadingZeros === "" ? "0" : noLeadingZeros;
-  };
-
-  // Deja solo dinero válido (para precio unitario) con punto
-  const cleanMoney = (v) => {
-    let s = String(v).replace(",", ".");
-    s = s.replace(/[^0-9.]/g, "");
-    const parts = s.split(".");
-    if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
-    s = s.replace(/^0+(?=\d)/, "");
-    return s === "" ? "0" : s;
-  };
-
-  // Similar a cleanMoney (aquí retorna "0" cuando está vacío)
-  const cleanMoneyOrEmpty = (v) => {
-    let s = String(v).replace(",", ".");
-    s = s.replace(/[^0-9.]/g, "");
-    const parts = s.split(".");
-    if (parts.length > 2) s = parts[0] + "." + parts.slice(1).join("");
-    s = s.replace(/^0+(?=\d)/, "");
-    return s === "" ? "0" : s;
-  };
-
-  // =========================
-  // 5) OFERTAS
-  // =========================
-
-  // Mapa de ofertas predefinidas
-  const OFERTAS = {
-    "2x20": { cantidad: "2", precio_unitario: "20" },
-    "2x30": { cantidad: "2", precio_unitario: "30" },
-    "4x30": { cantidad: "4", precio_unitario: "30" },
-  };
-
-  // Aplica una oferta a una fila: activa modo_oferta y setea cantidad/precio
-  const aplicarOferta = (index, key) => {
-    if (bloqueada) return;
-    const oferta = OFERTAS[key];
-    if (!oferta) return;
-
-    setRows((prev) =>
-      prev.map((r, i) =>
-        i === index
-          ? {
-              ...r,
-              modo_oferta: true,
-              cantidad: oferta.cantidad,
-              precio_unitario: oferta.precio_unitario,
-            }
-          : r
-      )
-    );
-  };
-
-  // Quita oferta sin tocar cantidad/precio (solo desactiva modo_oferta)
-  const quitarOferta = (index) => {
-    if (bloqueada) return;
-    setRows((prev) =>
-      prev.map((r, i) => (i === index ? { ...r, modo_oferta: false } : r))
-    );
-  };
-
-  // =========================
-  // 6) CÁLCULOS DE TOTALES
-  // =========================
-
-  // Total por fila:
-  // - Si es oferta: el total es el precio_unitario fijo (ej: 20 Bs)
-  // - Si no: cantidad * precio_unitario
-  const rowTotal = (r) => {
-    if (r.modo_oferta) return toNumber(r.precio_unitario);
-    return toNumber(r.cantidad) * toNumber(r.precio_unitario);
-  };
-
-  // totalGeneral: suma todos los rowTotal
-  // useMemo evita recalcular si rows no cambia
-  const totalGeneral = useMemo(
-    () => rows.reduce((acc, r) => acc + rowTotal(r), 0),
-    [rows]
-  );
-
-  // anticipoNum: anticipo convertido a número
-  const anticipoNum = useMemo(() => toNumber(anticipo), [anticipo]);
-
-  // saldo: total - anticipo (nunca menos de 0), y si está anulada => 0
-  const saldo = useMemo(() => {
-    if (estadoProforma === "CANCELADA") return 0;
-    const s = totalGeneral - anticipoNum;
-    return s > 0 ? s : 0;
-  }, [totalGeneral, anticipoNum, estadoProforma]);
-
-  // estadoPago: texto que se muestra (ANULADA / CANCELADO / PENDIENTE)
-  const estadoPago = useMemo(() => {
-    if (estadoProforma === "CANCELADA") return "ANULADA";
-    if (totalGeneral <= 0) return "—";
-    if (saldo === 0 && totalGeneral > 0) return "CANCELADO";
-    return "PENDIENTE";
-  }, [estadoProforma, totalGeneral, saldo]);
-
-  // =========================
-  // CAMBIO PRINCIPAL: FETCH (sin axios)
-  // 7) HELPERS DE FETCH (DENTRO DEL MISMO ARCHIVO)
-  // =========================
-
-  // Backend base (misma variable que usabas en axios)
-  const BACKEND = process.env.REACT_APP_BACKEND_ORIGIN;
-
-  // CAMBIO: helper GET JSON con cookies
-  // - credentials: "include" equivale a axios { withCredentials: true }
-  // - maneja errores y devuelve JSON
-  const getJSON = async (path) => {
-    const res = await fetch(`${BACKEND}${path}`, {
-      method: "GET",
-      credentials: "include",
-    });
-
-    let data = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = null;
-    }
-
-    if (!res.ok) {
-      const msg = data?.message || data?.sqlMessage || `Error HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return data;
-  };
-
-  //CAMBIO: helper para POST/PUT JSON con cookies
-  const sendJSON = async (path, method, bodyObj) => {
-    const res = await fetch(`${BACKEND}${path}`, {
-      method,
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(bodyObj),
-    });
-
-    let data = null;
-    try {
-      data = await res.json();
-    } catch {
-      data = null;
-    }
-
-    if (!res.ok) {
-      const msg = data?.message || data?.sqlMessage || `Error HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return data;
-  };
-
-  // =========================
-  // 8) CARGAR PROFORMA PARA EDICIÓN (GET /proformas/:id)
-  // =========================
+  // Modal Ver detalle
+  const [viewModalShow, setViewModalShow] = useState(false);
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
-    const loadOne = async () => {
-      if (!id) return; // si no hay id => no estamos editando
+    moment.locale("es");
 
-      try {
-        // CAMBIO: antes axios.get(...) ahora fetch con getJSON(...)
-        const p = await getJSON(`/proformas/${id}`);
+    fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((body) => {
+        if (body.operation === "success") {
+          fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+            method: "POST",
+            credentials: "include",
+          })
+            .then((res) => res.json())
+            .then((body) => {
+              const p = body.permissions?.find((x) => x.page === "proformas");
 
-        // Cargamos datos del backend a estados del formulario
-        setFecha(String(p.fecha).slice(0, 10));
-        setCliente(p.cliente || "");
-        setCelular(p.celular || "");
-        setEstadoProforma(p.estado || "ACTIVA");
-        setAnticipo(String(p.anticipo ?? "0"));
-        setProformaRef(p.proforma_ref || "—");
+              if (p?.view && p?.create) {
+                setPermission(p);
+              } else {
+                window.location.href = "/unauthorized";
+              }
 
-        // items puede venir guardado como string JSON
-        const parsedItems = (() => {
-          try {
-            return JSON.parse(p.items || "[]");
-          } catch {
-            return [];
-          }
-        })();
+            });
+  } else {
+    window.location.href = "/login";
+  }
+      })
+      .catch (console.log);
+  }, []);
 
-        // Si hay items, los convertimos a rows para mostrar en la tabla
-        if (parsedItems.length > 0) {
-          setRows(
-            parsedItems.map((it) => ({
-              cantidad: String(it.cantidad ?? "1"),
-              detalle: String(it.detalle ?? ""),
-              precio_unitario: String(it.precio_unitario ?? "0"),
-              modo_oferta: !!it.modo_oferta,
-            }))
-          );
-        }
-      } catch (err) {
-        console.error(err);
-        alert("❌ No se pudo cargar la proforma para editar");
-      }
-    };
+const getProformas = async (sv, sc, so, scv) => {
+  const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_proformas`, {
+    method: "POST",
+    headers: {
+      "Content-type": "application/json; charset=UTF-8"
+    },
+    body: JSON.stringify({ start_value: sv, sort_column: sc, sort_order: so, search_value: scv, }),
+    credentials: "include",
+  });
+  //const es igual a let : la unica diferencia es que const no puede reasignarse
+  const body = await result.json();
+  setProformas(body.info?.proformas || []);
+  setCount(body.info?.count || 0);
+};
 
-    loadOne();
-  }, [id]); // se ejecuta cuando cambia el id
+useEffect(() => {
+  if (permission !== null) {
+    let p1 = getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+    Promise.all([p1])
+      .then(() => {
+        setPageState(2);
+      })
+      .catch((err) => {
+        console.log(err)
+        setPageState(3)
+      });
+  }
+}, [permission]);
 
-  // =========================
-  // 9) CONTROLES DE ANTICIPO
-  // =========================
+useEffect(() => {
+  if (permission !== null) {
+    getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+  }
+}, [permission, tablePage, sortColumn, sortOrder, searchInput]);
 
-  // clampAnticipo: limita anticipo para que no supere el total ni sea negativo
-  const clampAnticipo = () => {
-    if (bloqueada) return;
-    const a = toNumber(anticipo);
-    if (a > totalGeneral) setAnticipo(String(totalGeneral.toFixed(2)));
-    if (a < 0) setAnticipo("0");
-  };
+const deleteProforma = async (id) => {
+  const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_proforma`, {
+    method: "POST",
+    headers: {
+      "Content-type": "application/json; charset=UTF-8"
+    },
+    body: JSON.stringify({ proforma_id: id }),
+    credentials: "include",
+  }
+  );
+  //const es igual a let: la unica diferencia es que const no puede reasignarse
+  const body = await result.json();
+  if (body.operation === "success") {
+    getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+    swal("Éxito", body.message || "Proforma eliminada", "success");
+  } else {
+    swal("¡Ups!", body.message || "Algo salió mal", "error");
+  }
+};
+//---------------------------------------------------------------------
+const openViewModal = (obj) => {
+  let parsed = obj;
 
-  // pagarTodo: pone anticipo = totalGeneral (deja saldo 0)
-  const pagarTodo = () => {
-    if (bloqueada) return;
-    setAnticipo(totalGeneral.toFixed(2));
-  };
-
-  // =========================
-  // 10) GUARDAR (POST crear / PUT editar)
-  // =========================
-
-  const handleSave = async () => {
-    // Validaciones básicas antes de enviar al backend
-    if (bloqueada) return alert("❌ No se puede guardar una proforma anulada.");
-    if (!cliente.trim()) return alert("❌ Debes escribir el nombre del cliente.");
-    if (!celular.trim()) return alert("❌ Debes escribir el celular.");
-
-    // Convertimos rows => items (lo que el backend guardará en la BD)
-    const items = rows
-      .filter((r) => r.detalle.trim() !== "")
-      .map((r) => ({
-        cantidad: String(r.cantidad),
-        detalle: String(r.detalle),
-        precio_unitario: String(r.precio_unitario),
-        modo_oferta: !!r.modo_oferta,
-        total: Number(rowTotal(r).toFixed(2)),
-      }));
-
-    if (items.length === 0) return alert("❌ Agrega al menos 1 detalle.");
-
-    // Payload final al backend (JSON)
-    const payload = {
-      fecha,
-      cliente,
-      celular,
-      items,
-      total_general: Number(totalGeneral.toFixed(2)),
-      anticipo: Number(anticipoNum.toFixed(2)),
-      saldo: Number(saldo.toFixed(2)),
-      estado: estadoProforma,
-    };
-
+  // si items viene como string JSON, convertirlo a array
+  if (parsed?.items && typeof parsed.items === "string") {
     try {
-      // CAMBIO: antes axios.put/post(...) ahora fetch con sendJSON(...)
-      if (isEdit) {
-        await sendJSON(`/proformas/${id}`, "PUT", payload);
-      } else {
-        await sendJSON(`/proformas/add`, "POST", payload);
-      }
-
-      // Si guardó ok => volvemos a la lista
-      navigate("/proformas");
-    } catch (err) {
-      console.error("❌ ERROR guardando:", err);
-
-      // CAMBIO: con fetch el error viene en err.message
-      alert("❌ " + (err?.message || "Error al guardar proforma"));
+      parsed = { ...parsed, items: JSON.parse(parsed.items) };
+    } catch {
+      parsed = { ...parsed, items: [] };
     }
-  };
+  }
 
-  // =========================
-  // 11) UI (RENDER)
-  // =========================
-  // Todo lo que sigue es la pantalla (inputs, tabla, botones).
-  // Aquí NO toca backend; solo usa estados y funciones.
+  setSelected(parsed);
+  setViewModalShow(true);
+};
 
-  return (
-    <div className="container-fluid p-3 proformas">
-      <div className="print-area">
-        <div className="d-flex align-items-center justify-content-between mb-3">
-          <div>
-            <h2 className="m-0">Proforma</h2>
-            <div className="proforma-ref">N° {proformaRef}</div>
+const closeViewModal = () => {
+  setSelected(null);
+  setViewModalShow(false);
+};
 
-            {estadoProforma === "CANCELADA" && (
-              <div className="badge-anulada">PROFORMA ANULADA</div>
-            )}
-          </div>
 
-          <div className="d-flex align-items-center gap-2">
-            <label className="form-label m-0">Fecha:</label>
-            <input
-              type="date"
-              className="form-control"
-              style={{ width: 180 }}
-              value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
-              disabled={bloqueada}
+//---------------------------------------------------------------------
+const estadoES = (e) => {
+  if (!e) return "";
+  const v = String(e).toUpperCase();
+  if (v === "ACTIVA") return "ACTIVA";
+  if (v === "ANULADA") return "ANULADA";
+  if (v === "PAGADA") return "PAGADA";
+  return e;
+};
+//const es igual a let: la unica diferencia es que const no puede reasignarse
+useEffect(() => {
+  if (proformas.length !== 0) {
+    const tArray = proformas.map((obj, i) => {
+      const tObj = {};
+      tObj.sl = i + 1;
+      tObj.ref = obj.proforma_ref || "";
+      tObj.cliente = obj.cliente || "";
+      tObj.total = obj.total_general ?? obj.total ?? 0;
+      tObj.fecha = obj.fecha
+        ? moment(obj.fecha).format("D [de] MMMM, YYYY")
+        : "";
+      tObj.estado = estadoES(obj.estado);
+
+      tObj.action = (
+        <>
+          <button
+            className="btn warning"
+            style={{ marginRight: "0.5rem" }}
+            onClick={() => openViewModal(obj)}
+          >
+            Ver
+          </button>
+
+          {permission?.delete && (
+            <button
+              className="btn danger"
+              style={{ marginLeft: "0.5rem" }}
+              onClick={() => {
+                swal({
+                  title: "¿Estás seguro?",
+                  text: "Si la eliminas, no podrás recuperar este registro.",
+                  icon: "warning",
+                  buttons: ["Cancelar", "Sí, eliminar"],
+                  dangerMode: true,
+                }).then((willDelete) => {
+                  if (willDelete) deleteProforma(obj.proforma_id);
+                });
+              }}
+            >
+              Eliminar
+            </button>
+          )}
+        </>
+      );
+
+      return tObj;
+    });
+
+    setData(tArray);
+  } else {
+    setData([]);
+  }
+}, [proformas, permission]);
+
+return (
+  <div className="products">
+    <div className="products-scroll">
+      <div className="product-header">
+        <div className="title">Proformas</div>
+
+        {permission !== null && permission.create && (
+          <Link
+            to={"/proformas/addnew"}
+            className="btn success"
+            style={{ margin: "0 0.5rem", textDecoration: "none" }}
+          >
+            Agregar nueva
+          </Link>
+        )}
+      </div>
+
+      {pageState === 1 ? (
+        <Loader />
+      ) : pageState === 2 ? (
+        <div className="card">
+          <div className="container">
+            <Table
+              headers={["N°", "Ref", "Cliente", "Total", "Fecha", "Estado", "Acción"]}
+              columnOriginalNames={["proforma_ref", "cliente", "total_general", "fecha", "estado"]}
+              sortColumn={sortColumn}
+              setSortColumn={setSortColumn}
+              sortOrder={sortOrder}
+              setSortOrder={setSortOrder}
+              data={data}
+              data_count={count}
+              searchInput={searchInput}
+              setSearchInput={setSearchInput}
+              custom_styles={["3rem", "6rem", "10rem", "6rem", "8rem", "6rem", "10rem"]}
+              current_page={tablePage}
+              tablePageChangeFunc={setTablePage}
             />
           </div>
         </div>
+      ) : (
+        <Error />
+      )}
 
-        <div className="card mb-3">
-          <div className="card-body">
-            <div className="row g-2">
-              <div className="col-12 col-md-6">
-                <label className="form-label">Cliente</label>
-                <input
-                  className="form-control"
-                  placeholder="Nombre del cliente"
-                  value={cliente}
-                  onChange={(e) => setCliente(e.target.value)}
-                  disabled={bloqueada}
-                />
-              </div>
+      {/* MODAL VER */}
+      <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title className="fs-4 fw-bold" style={{ color: "#2cd498" }}>
+            Detalle de Proforma
+          </Modal.Title>
+        </Modal.Header>
 
-              <div className="col-12 col-md-6">
-                <label className="form-label">Celular</label>
-                <input
-                  className="form-control"
-                  placeholder="Celular"
-                  value={celular}
-                  onChange={(e) => setCelular(e.target.value)}
-                  disabled={bloqueada}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <Modal.Body style={{ backgroundColor: "#fafafa" }}>
+          {!selected ? (
+            <div>Cargando...</div>
+          ) : (
+            <div className="container">
+              <div className="card">
+                <div className="card-body">
+                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                    <div><b>Ref:</b> {selected.proforma_ref}</div>
+                    <div><b>Fecha:</b> {selected.fecha ? moment(selected.fecha).format("D [de] MMMM, YYYY") : "-"}</div>
+                    <div><b>Cliente:</b> {selected.cliente}</div>
+                    <div><b>Celular:</b> {selected.celular || "-"}</div>
+                    <div><b>Estado:</b> {estadoES(selected.estado)}</div>
+                  </div>
 
-        <div className="card">
-          <div className="card-body">
-            <div className="d-flex justify-content-between align-items-center mb-2">
-              <button
-                className="btn btn-sm btn-primary no-print"
-                onClick={addRow}
-                disabled={bloqueada}
-              >
-                + Agregar fila
-              </button>
-            </div>
+                  <hr />
 
-            <div className="table-responsive">
-              <table className="table table-bordered align-middle proforma-table">
-                <colgroup>
-                  <col style={{ width: "14%" }} />
-                  <col style={{ width: "50%" }} />
-                  <col style={{ width: "18%" }} />
-                  <col className="no-print" />
-                  <col style={{ width: "18%" }} />
-                  <col className="no-print" />
-                </colgroup>
+                  <div>
+                    <b>Ítems</b>
+                    <div style={{ marginTop: "0.5rem" }}>
+                      {(selected.items && Array.isArray(selected.items) ? selected.items : []).length === 0 ? (
+                        <div style={{ opacity: 0.7 }}>Sin ítems</div>
+                      ) : (
+                        <table className="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Cant.</th>
+                              <th>Detalle</th>
+                              <th>P.Unit</th>
+                              <th>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selected.items.map((it, idx) => (
+                              <tr key={idx}>
+                                <td>{idx + 1}</td>
+                                <td>{it.cantidad}</td>
+                                <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle}</td>
+                                <td>{it.precio_unitario}</td>
+                                <td>{it.total}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
 
-                <thead>
-                  <tr>
-                    <th>Cantidad</th>
-                    <th>Detalle</th>
-                    <th>Precio Unitario</th>
-                    <th className="no-print">Oferta</th>
-                    <th>Total</th>
-                    <th className="no-print"></th>
-                  </tr>
-                </thead>
+                  <hr />
 
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={i}>
-                      <td>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          className="form-control"
-                          value={r.cantidad}
-                          disabled={bloqueada || r.modo_oferta}
-                          onChange={(e) =>
-                            updateRow(i, "cantidad", cleanInt(e.target.value))
-                          }
-                          onBlur={() =>
-                            updateRow(i, "cantidad", cleanInt(r.cantidad))
-                          }
-                        />
-                      </td>
-
-                      <td>
-                        <textarea
-                          className="form-control detalle-textarea auto-grow no-print"
-                          value={r.detalle}
-                          rows={1}
-                          disabled={bloqueada}
-                          onChange={(e) => {
-                            updateRow(i, "detalle", e.target.value);
-                            e.target.style.height = "auto";
-                            e.target.style.height = e.target.scrollHeight + "px";
-                          }}
-                          onInput={(e) => {
-                            e.target.style.height = "auto";
-                            e.target.style.height = e.target.scrollHeight + "px";
-                          }}
-                          style={{ overflow: "hidden", resize: "none" }}
-                          placeholder="Detalle del Bordado"
-                        />
-
-                        <div className="only-print detalle-print">{r.detalle}</div>
-                      </td>
-
-                      <td>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="form-control"
-                          value={r.precio_unitario}
-                          disabled={bloqueada || r.modo_oferta}
-                          onChange={(e) =>
-                            updateRow(
-                              i,
-                              "precio_unitario",
-                              cleanMoney(e.target.value)
-                            )
-                          }
-                          onBlur={() =>
-                            updateRow(
-                              i,
-                              "precio_unitario",
-                              cleanMoney(r.precio_unitario)
-                            )
-                          }
-                        />
-                      </td>
-
-                      <td className="no-print">
-                        {!r.modo_oferta ? (
-                          <select
-                            className="form-select"
-                            defaultValue=""
-                            disabled={bloqueada}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (!val) return;
-                              aplicarOferta(i, val);
-                              e.target.value = "";
-                            }}
-                          >
-                            <option value="">Oferta</option>
-                            <option value="2x20">2 en 20 Bs</option>
-                            <option value="2x30">2 en 30 Bs</option>
-                            <option value="4x30">4 en 30 Bs</option>
-                          </select>
-                        ) : (
-                          <button
-                            className="btn btn-sm btn-outline-secondary"
-                            onClick={() => quitarOferta(i)}
-                            disabled={bloqueada}
-                          >
-                            Quitar
-                          </button>
-                        )}
-                      </td>
-
-                      <td className="fw-bold">{rowTotal(r).toFixed(2)}</td>
-
-                      <td className="no-print">
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => removeRow(i)}
-                          disabled={bloqueada || rows.length === 1}
-                          title="Eliminar"
-                        >
-                          X
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-
-                <tfoot>
-                  <tr>
-                    <td colSpan="3" className="text-end fw-bold">
-                      TOTAL GENERAL
-                    </td>
-                    <td className="no-print"></td>
-                    <td className="fw-bold">{totalGeneral.toFixed(2)}</td>
-                    <td className="no-print"></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <div className="row g-2 mt-2">
-              <div className="col-12 col-md-4">
-                <label className="form-label">Adelanto (Bs)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="form-control"
-                  value={anticipo}
-                  onChange={(e) => setAnticipo(cleanMoneyOrEmpty(e.target.value))}
-                  onBlur={clampAnticipo}
-                  disabled={bloqueada}
-                />
-              </div>
-
-              <div className="col-12 col-md-4">
-                <label className="form-label">Saldo (Bs)</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={saldo.toFixed(2)}
-                  disabled
-                />
-              </div>
-
-              <div className="col-12 col-md-4">
-                <label className="form-label">Estado</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={estadoPago}
-                  disabled
-                />
+                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                    <div><b>Total:</b> {selected.total_general ?? selected.total ?? 0}</div>
+                    <div><b>Anticipo:</b> {selected.anticipo ?? 0}</div>
+                    <div><b>Saldo:</b> {selected.saldo ?? 0}</div>
+                  </div>
+                </div>
               </div>
             </div>
+          )}
+        </Modal.Body>
 
-            <div className="d-flex gap-2 no-print mt-3">
-              <button
-                type="button"
-                className="btn btn-success"
-                disabled={bloqueada}
-                onClick={handleSave}
-              >
-                Guardar
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => window.print()}
-              >
-                Imprimir
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-outline-primary"
-                onClick={pagarTodo}
-                disabled={bloqueada || totalGeneral <= 0}
-              >
-                Cancelar pago
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <Modal.Footer>
+          <button className="btn btn-outline-danger" onClick={closeViewModal}>
+            Cerrar
+          </button>
+        </Modal.Footer>
+      </Modal>
     </div>
-  );
+  </div>
+);
 }
+
+export default Proformas;
