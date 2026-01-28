@@ -217,7 +217,7 @@ class User {
 		}
 	}
 
-	addEmployee = (req, res) => {
+	/*addEmployee = (req, res) => {
 		try {
 			let d = jwt.decode(req.cookies.accessToken, { complete: true });
 			let email = d.payload.email;
@@ -261,6 +261,53 @@ class User {
 		} catch (error) {
 			console.log(error);
 			res.send({ operation: "error", message: 'Something went wrong' });
+		}
+	}*/
+
+	addEmployee = (req, res) => {
+		try {
+			let d = jwt.decode(req.cookies.accessToken, { complete: true });
+			let email = d.payload.email;
+			let role = d.payload.role;
+
+			new Promise((resolve, reject) => {
+				let q1 = "SELECT * FROM user WHERE email = ?"
+				db.query(q1, [req.body.email], (err1, result1) => {
+					if (err1) {
+						return reject(err1);
+					}
+
+					if (result1.length > 0) {
+						resolve({ operation: "error", message: 'Correo electronico duplicado' });
+					}
+					else {
+						let q2 = "SELECT user_role_permissions, user_role_name,user_role_id FROM user_roles WHERE user_role_name = 'employee'"
+						db.query(q2, (err2, result2) => {
+							if (err2) {
+								return reject(err2);
+							}
+
+							let q3 = "INSERT INTO user(user_id, user_name, address, email, password, permissions, user_role) VALUES (?, ?, ?, ?, ?, ?, ?)"
+							db.query(q3, [uniqid(), req.body.name, req.body.address, req.body.email, req.body.password, result2[0].user_role_id, result2[0].user_role_name], (err3, result3) => {
+								if (err3) {
+									return reject(err3);
+								}
+								resolve({ operation: "success", message: 'Empleado añadido exitosamente' });
+							})
+						})
+					}
+				})
+			})
+				.then((value) => {
+					res.send(value);
+				})
+				.catch((err) => {
+					console.log(err);
+					res.send({ operation: "error", message: 'Ocurio un error' });
+				})
+		} catch (error) {
+			console.log(error);
+			res.send({ operation: "error", message: 'Ocurio un error' });
 		}
 	}
 

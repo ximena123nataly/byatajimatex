@@ -17,47 +17,51 @@ function EmployeeAddNew() {
 
 	const [submitButtonState, setSubmitButtonState] = useState(false)
 
-	useEffect(() => {
+	 useEffect(() => {
+				//moment.locale("es");
+			  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+				method: 'POST',
+				credentials: 'include'
+			  })
+				.then(async res => {
+      const text = await res.text();       // obtenemos la respuesta como texto
+      console.log("Respuesta verifiy_token:", text); // log para depurar
 
-		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-			method: 'POST',
-			credentials: 'include'
-		})
-			.then(async (response) => {
-				let body = await response.json()
-				if (body.operation === 'success') {
+      try {
+        return JSON.parse(text);           // intentamos parsear a JSON
+      } catch (e) {
+        console.error("No es JSON válido:", e);
+        throw e;
+      }
+    })
 
+				.then(body => {
+				  if (body.operation === 'success') {
 					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-						method: 'POST',
-						credentials: 'include'
+					  method: 'POST',
+					  credentials: 'include'
 					})
-						.then(async (response) => {
-							let body = await response.json()
-
-							let p = JSON.parse(body.info).find(x => x.page === 'employees')
-							if (p.view && p.create) {
-								setPermission(p)
-							} else {
-								window.location.href = '/unauthorized';
-							}
-						})
-						.catch((error) => {
-							console.log(error)
-						})
-				} else {
-					window.location.href = '/login'
-				}
-			})
-			.catch((error) => {
-				console.log(error)
-			})
-	}, [])
-
-	useEffect(() => {
-		if (permission !== null) {
-			setPageState(2);
-		}
-	}, [permission])
+					  .then(res => res.json())
+					  .then(body => {
+						const p = body.permissions?.find(x => x.page === 'employees');
+			
+						if (p?.view && p?.create) {
+						  setPermission(p);
+						} else {
+						  window.location.href = '/unauthorized';
+						}
+					  });
+				  } else {
+					window.location.href = '/login';
+				  }
+				})
+				.catch(console.log);
+			}, [])
+			useEffect(() => {
+					if (permission !== null) {
+						setPageState(2);
+					}
+				}, [permission])
 
 	const insertEmployee = async () => {
 		if (name === "") {

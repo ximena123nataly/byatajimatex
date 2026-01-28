@@ -25,6 +25,9 @@ services:
     restart: unless-stopped
 
   # Frontend (React/Node.js)
+  # Necesita libreria "Axios"
+  # En la carpeta del frontend instalar Axios
+  # npm install axios
   frontend:
     build: ./frontend
     container_name: inventarios-frontend
@@ -32,7 +35,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      #- /app/node_modules
     networks:
       - inventarios-network
     depends_on:

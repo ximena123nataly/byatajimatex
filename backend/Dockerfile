@@ -1,4 +1,4 @@
-FROM node:19-alpine
+FROM node:20-alpine
 
 WORKDIR /app/
 
@@ -15,12 +15,14 @@ ENV NODE_ENV development
 
 EXPOSE 5000
 
+
+#INICIO PARA VERIFICAR LA CONEXION A LA DB
+#COPY wait-for-mysql.sh /wait-for-mysql.sh
+#RUN chmod +x /wait-for-mysql.sh
+#ENTRYPOINT ["sh", "/wait-for-mysql.sh"]
+#FIN PARA VERIFICAR LA CONEXION A LA DB
+
 # Comando para iniciar la aplicación
 #CMD ["npm", "start"]
-
-COPY wait-for-mysql.sh /wait-for-mysql.sh
-RUN chmod +x /wait-for-mysql.sh
-
-ENTRYPOINT ["sh", "/wait-for-mysql.sh"]
 CMD ["npm", "start"]
 
