@@ -1,33 +1,10 @@
 import React, { useContext } from 'react'
 import {BrowserRouter, Route, Routes } from "react-router-dom";
-import { 
-	NotFound,
-  Unauthorized,
-  Login,
-  Forgetpassword,
-  Dashboard,
-  Employee,
-  EmployeeAddNew,
-  Product,
-  ProductAddNew,
-  Supplier,
-  SupplierAddNew,
-  Expense,
-  ExpenseAddNew,
-  Customer,
-  CustomerAddNew,
-  Order,
-  OrderAddNew,
-  Profile,
-  Settings,
-  Layout,
-} from './components'
+import { NotFound, Unauthorized, Login, Forgetpassword, Dashboard, Employee, EmployeeAddNew, Product, ProductAddNew, Supplier, SupplierAddNew, Expense, ExpenseAddNew, Customer, CustomerAddNew, Order, OrderAddNew, Profile, Settings, Layout } from './components'
 import "./style/dark.scss"
 import { DarkModeContext } from './context/darkModeContext';
 import Proformas from "./components/proformas/proformas";
-
-
-
+import ProformasAddNew from "./components/proformas/ProformasAddNew";
 
 function App() {
 	const {darkMode} = useContext(DarkModeContext)
@@ -57,7 +34,8 @@ function App() {
 						<Route path='/orders/addnew' element={ <OrderAddNew/>}/>
 						<Route path='/profile' element={<Profile/> }/>
 						<Route path='/settings' element={<Settings/>}/>
-						<Route path="/proformas" element={<Proformas />} />
+            <Route path='/proformas' element={<Proformas />}/>
+            <Route path='/proformas/addnew' element={<ProformasAddNew />}/>
 
 					</Route>
 				</Routes>

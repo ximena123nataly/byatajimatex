@@ -1,169 +1,137 @@
-const db = require("../db/conn");
-const crypto = require("crypto");
+const db = require("../db/conn.js");
+const jwt = require("jsonwebtoken");
+const uniqid = require("uniqid");
 
-// ✅ LISTAR TODAS
-exports.getAll = (req, res) => {
-  const q = `
-    SELECT id, proforma_id, proforma_ref, fecha, cliente, celular,
-           total_general, anticipo, saldo, estado, timeStamp
-    FROM proformas
-    ORDER BY id DESC
-  `;
+class Proforma {
+  constructor() {}
 
-  db.query(q, (err, data) => {
-    if (err) return res.status(500).json(err);
-    return res.status(200).json(data);
-  });
-};
+  //GET PROFORMAS (tabla)
+ 
+  getProformas = (req, res) => {
+    try {
+      let d = jwt.decode(req.cookies.accessToken, { complete: true });
+      let email = d.payload.email;
+      let role = d.payload.role;
 
-// ✅ OBTENER 1 (para Ver/Editar) - por proforma_id (UUID)
-exports.getOne = (req, res) => {
-  const { id } = req.params;
+      new Promise((resolve, reject) => {
+        let tsa = "";
+        if (req.body.search_value != "") {
+          tsa = `WHERE proforma_ref LIKE "%${req.body.search_value}%" OR cliente LIKE "%${req.body.search_value}%"`;
+        }
 
-  const q = `
-    SELECT id, proforma_id, proforma_ref, fecha, cliente, celular,
-           items, total_general, anticipo, saldo, estado, timeStamp
-    FROM proformas
-    WHERE proforma_id = ?
-    LIMIT 1
-  `;
+        let tso = "";
+        if (req.body.sort_column != "" && req.body.sort_order != "") {
+          tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
+        } else {
+          // orden por defecto (opcional)
+          tso = "ORDER BY timeStamp DESC";
+        }
 
-  db.query(q, [id], (err, rows) => {
-    if (err) return res.status(500).json(err);
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "Proforma no encontrada" });
-    }
-    return res.status(200).json(rows[0]);
-  });
-};
+        let q = "SELECT * FROM `proformas` " + tsa + " " + tso + " LIMIT ?, 10";
+        db.query(q, [req.body.start_value], (err, result) => {
+          if (err) return reject(err);
 
-// ✅ CREAR (proforma_ref basado en id AUTO_INCREMENT)
-exports.add = (req, res) => {
-  try {
-    const {
-      fecha,
-      cliente,
-      celular,
-      items,
-      total_general,
-      anticipo,
-      saldo,
-      estado,
-    } = req.body;
+          // si es búsqueda, count = largo del resultado (igual que products)
+          if (req.body.search_value != "") {
+            return resolve({
+              operation: "success",
+              message: "search proformas got",
+              info: { proformas: result, count: result.length },
+            });
+          }
 
-    if (!cliente || !celular || !fecha) {
-      return res.status(400).json({ message: "Faltan datos obligatorios" });
-    }
+          let q2 = "SELECT COUNT(*) AS val FROM `proformas`";
+          db.query(q2, (err2, result2) => {
+            if (err2) return reject(err2);
 
-    const proforma_id = crypto.randomUUID();
-
-    // 1) INSERT sin proforma_ref (se calcula con insertId)
-    const qInsert = `
-      INSERT INTO proformas
-      (proforma_id, fecha, cliente, celular, items, total_general, anticipo, saldo, estado)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const values = [
-      proforma_id,
-      fecha,
-      cliente,
-      celular,
-      JSON.stringify(items || []),
-      Number(total_general || 0),
-      Number(anticipo || 0),
-      Number(saldo || 0),
-      estado || "ACTIVA",
-    ];
-
-    db.query(qInsert, values, (err, result) => {
-      if (err) return res.status(500).json(err);
-
-      // ✅ insertId es el "id" AUTO_INCREMENT
-      const ref = String(result.insertId).padStart(7, "0");
-
-      // 2) UPDATE para guardar el proforma_ref
-      const qUpdate = `
-        UPDATE proformas
-        SET proforma_ref = ?
-        WHERE id = ?
-      `;
-
-      db.query(qUpdate, [ref, result.insertId], (err2) => {
-        if (err2) return res.status(500).json(err2);
-
-        return res.status(201).json({
-          message: "Proforma guardada",
-          proforma_id,
-          proforma_ref: ref,
-          id: result.insertId,
+            resolve({
+              operation: "success",
+              message: "10 proformas got",
+              info: { proformas: result, count: result2[0].val },
+            });
+          });
         });
-      });
-    });
-  } catch (e) {
-    return res.status(500).json({ message: "Error interno", error: String(e) });
-  }
-};
-
-// ✅ ACTUALIZAR (Guardar edición) - por proforma_id (UUID)
-exports.update = (req, res) => {
-  const { id } = req.params;
-  const {
-    fecha,
-    cliente,
-    celular,
-    items,
-    total_general,
-    anticipo,
-    saldo,
-    estado,
-  } = req.body;
-
-  if (!cliente || !celular || !fecha) {
-    return res.status(400).json({ message: "Faltan datos obligatorios" });
-  }
-
-  const q = `
-    UPDATE proformas
-    SET fecha = ?, cliente = ?, celular = ?, items = ?, total_general = ?, anticipo = ?, saldo = ?, estado = ?
-    WHERE proforma_id = ?
-  `;
-
-  const values = [
-    fecha,
-    cliente,
-    celular,
-    JSON.stringify(items || []),
-    Number(total_general || 0),
-    Number(anticipo || 0),
-    Number(saldo || 0),
-    estado || "ACTIVA",
-    id,
-  ];
-
-  db.query(q, values, (err, result) => {
-    if (err) return res.status(500).json(err);
-    if (!result.affectedRows) {
-      return res.status(404).json({ message: "Proforma no encontrada" });
+      })
+        .then((value) => res.send(value))
+        .catch((err) => {
+          console.log(err);
+          res.send({ operation: "error", message: "Something went wrong" });
+        });
+    } catch (error) {
+      console.log(error);
+      res.send({ operation: "error", message: "Something went wrong" });
     }
-    return res.status(200).json({ message: "Proforma actualizada" });
-  });
-};
+  };
 
-// ✅ ELIMINAR - por proforma_id (UUID)
-exports.remove = (req, res) => {
-  const { id } = req.params;
+  // ADD PROFORMA
+  addProforma = (req, res) => {
+    try {
+      let d = jwt.decode(req.cookies.accessToken, { complete: true });
+      let email = d.payload.email;
+      let role = d.payload.role;
 
-  const q = `DELETE FROM proformas WHERE proforma_id = ?`;
+      new Promise((resolve, reject) => {
+        // OJO: items puede venir como array (frontend) => lo guardamos como JSON string
+        const itemsStr =
+          typeof req.body.items === "string" ? req.body.items : JSON.stringify(req.body.items || []);
 
-  db.query(q, [id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    if (!result.affectedRows) {
-      return res.status(404).json({ message: "Proforma no encontrada" });
+        let q =
+          "INSERT INTO `proformas`(`proforma_id`, `proforma_ref`, `fecha`, `cliente`, `celular`, `items`, `anticipo`, `saldo`, `total_general`, `estado`) VALUES (?,?,?,?,?,?,?,?,?,?)";
+
+        db.query(
+          q,
+          [
+            uniqid(),
+            req.body.proforma_ref,
+            req.body.fecha,
+            req.body.cliente,
+            req.body.celular || null,
+            itemsStr,
+            req.body.anticipo ?? 0,
+            req.body.saldo ?? 0,
+            req.body.total_general ?? 0,
+            req.body.estado || "ACTIVA",
+          ],
+          (err, result) => {
+            if (err) return reject(err);
+            resolve({ operation: "success", message: "Proforma added successfully" });
+          }
+        );
+      })
+        .then((value) => res.send(value))
+        .catch((err) => {
+          console.log(err);
+          res.send({ operation: "error", message: "Something went wrong" });
+        });
+    } catch (error) {
+      console.log(error);
+      res.send({ operation: "error", message: "Something went wrong" });
     }
-    return res.status(200).json({ message: "Proforma eliminada" });
-  });
-};
+  };
+  // DELETE PROFORMA
+  deleteProforma = (req, res) => {
+    try {
+      let d = jwt.decode(req.cookies.accessToken, { complete: true });
+      let email = d.payload.email;
+      let role = d.payload.role;
 
+      new Promise((resolve, reject) => {
+        let q = "DELETE FROM `proformas` WHERE proforma_id = ?";
+        db.query(q, [req.body.proforma_id], (err, result) => {
+          if (err) return reject(err);
+          resolve({ operation: "success", message: "Proforma deleted successfully" });
+        });
+      })
+        .then((value) => res.send(value))
+        .catch((err) => {
+          console.log(err);
+          res.send({ operation: "error", message: "Something went wrong" });
+        });
+    } catch (error) {
+      console.log(error);
+      res.send({ operation: "error", message: "Something went wrong" });
+    }
+  };
+}
 
-
+module.exports = Proforma;

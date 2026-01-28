@@ -35,7 +35,7 @@ function Employees() {
 
   /*
   useEffect(() => {
-    // ✅ Para que moment formatee en español
+    
     moment.locale('es');
 
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {

@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useContext } from 'react'
+import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import "./AsideNavbar.scss";
 
-import swal from 'sweetalert';
+import swal from "sweetalert";
 import { DarkModeContext } from "../../context/darkModeContext";
 
+// Icons
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import StoreIcon from "@mui/icons-material/Store";
@@ -21,44 +22,57 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 
 function AsideNavbar() {
+  // Controla tema claro/oscuro
   const { dispatch } = useContext(DarkModeContext);
-  const [permission, setPermission] = useState([])
-  const [toggel, setToggel] = useState(false)
 
+  // permissions: lista de permisos que viene del backend
+  // ejemplo esperado:
+  // [{page:"products", view:true}, {page:"proformas", view:true}, ...]
+  const [permission, setPermission] = useState([]);
+
+  // toggel: abre/cierra el menú en móvil
+  const [toggel, setToggel] = useState(false);
+
+  // =====================================================
+  // 1) Al cargar el componente:
+  // - verifica token (sesión)
+  // - si OK: pide permisos al backend
+  // =====================================================
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-      method: 'POST',
-      credentials: 'include'
+      method: "POST",
+      credentials: "include",
     })
       .then(async (response) => {
-        let body = await response.json()
-        if (body.operation === 'success') {
+        const body = await response.json();
+
+        // Si el token es válido => pedimos permisos
+        if (body.operation === "success") {
           fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-            method: 'POST',
-            credentials: 'include'
+            method: "POST",
+            credentials: "include",
           })
-            //ORIGINAL
-              /*.then(async (response) => {
-              let body = await response.json()
-              let p = JSON.parse(body.info)
-              setPermission(p)*/
-              .then(res => res.json())
-          .then(body => {
-            console.log("📥 permisos recibidos:", body.permissions);
-            setPermission(body.permissions || []);
+            .then((res) => res.json())
+            .then((body) => {
+              // body.permissions debe ser un array
+              setPermission(body.permissions || []);
             })
             .catch((error) => {
-              console.log(error)
-            })
+              console.log(error);
+            });
         } else {
-          window.location.href = '/login'
+          // Si no hay sesión válida => login
+          window.location.href = "/login";
         }
       })
       .catch((error) => {
-        console.log(error)
-      })
-  }, [])
+        console.log(error);
+      });
+  }, []);
 
+  // =====================================================
+  // 2) Logout con confirmación (sweetalert)
+  // =====================================================
   const logout = () => {
     swal({
       title: "¿Estás seguro?",
@@ -66,56 +80,53 @@ function AsideNavbar() {
       icon: "warning",
       buttons: ["Cancelar", "Sí, salir"],
       dangerMode: true,
-    })
-      .then(async (willLogout) => {
-        if (willLogout) {
-          let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/logout`, {
-            method: 'GET',
-            credentials: 'include'
-          })
-
-          let body = await result.json()
-          if (body.operation === 'success') {
-            window.location.href = '/login';
+    }).then(async (willLogout) => {
+      if (willLogout) {
+        const result = await fetch(
+          `${process.env.REACT_APP_BACKEND_ORIGIN}/logout`,
+          {
+            method: "GET",
+            credentials: "include",
           }
+        );
+
+        const body = await result.json();
+        if (body.operation === "success") {
+          window.location.href = "/login";
         }
-      });
-  }
+      }
+    });
+  };
 
+  // =====================================================
+  // 3) isView(page)
+  // Devuelve true si el usuario tiene permiso de "ver" esa página
+  // Esto controla qué items aparecen en el menú
+  // =====================================================
+  const isView = (page) => {
+    if (!Array.isArray(permission)) return false;
+    return permission.find((p) => p.page === page)?.view === true;
+  };
 
-  
-  //const isView = (page) => permission?.find(x => x.page === page)?.view === true;
-  //const isView = (page) => permission && permission[page]?.view === true;
- /*const isView = (page) => {
-  console.log("🔍 isView llamado con page:", page);
-  console.log("📦 permission:", permission);
-  console.log("📐 es array?", Array.isArray(permission));
-
-  if (!Array.isArray(permission)) return false;
-
-  const result = permission.find(x => x.page === page);
-  console.log("🎯 resultado find:", result);
-
-  return result?.view === true;
-};*/
-const isView = (page) => {
-  if (!Array.isArray(permission)) return false;
-  console.log("📦 permission:", permission);
-  return permission.find(p => p.page === page)?.view === true;
-};
-  //console.log("PERMISSIONS RAW:", p, Array.isArray(p))
-
+  // Texto del logo cambia según permiso (admin/empleado)
   const LogoText = () => (
     <>
-      {isView('employees')
-        ? <span className="logo">Administrador</span>
-        : <span className="logo">Empleado</span>}
+      {isView("employees") ? (
+        <span className="logo">Administrador</span>
+      ) : (
+        <span className="logo">Empleado</span>
+      )}
     </>
   );
 
+  // =====================================================
+  // 4) Menú (links)
+  // OJO: Proformas solo aparece si el backend da permiso:
+  // { page: "proformas", view: true }
+  // =====================================================
   const MenuLinks = () => (
     <ul>
-      {isView('dashboard') && (
+      {isView("dashboard") && (
         <>
           <p className="title">PRINCIPAL</p>
           <Link to="/dashboard" style={{ textDecoration: "none" }}>
@@ -127,11 +138,12 @@ const isView = (page) => {
         </>
       )}
 
-      {(isView('employees') || isView('products') || isView('proformas') || isView('ventas')) && (
-        <p className="title">LISTAS</p>
-      )}
+      {(isView("employees") ||
+        isView("products") ||
+        isView("proformas") ||
+        isView("ventas")) && <p className="title">LISTAS</p>}
 
-      {isView('employees') && (
+      {isView("employees") && (
         <Link to="/employees" style={{ textDecoration: "none" }}>
           <li>
             <PersonOutlineIcon className="icon" />
@@ -140,7 +152,7 @@ const isView = (page) => {
         </Link>
       )}
 
-      {isView('products') && (
+      {isView("products") && (
         <Link to="/products" style={{ textDecoration: "none" }}>
           <li>
             <StoreIcon className="icon" />
@@ -149,7 +161,8 @@ const isView = (page) => {
         </Link>
       )}
 
-      {isView('proformas') && (
+      {/* ✅ PROFORMAS */}
+      {isView("proformas") && (
         <Link to="/proformas" style={{ textDecoration: "none" }}>
           <li>
             <DescriptionIcon className="icon" />
@@ -158,7 +171,8 @@ const isView = (page) => {
         </Link>
       )}
 
-      {isView('ventas') && (
+      {/* (Opcional) Ventas: solo si existe esa página en permisos y rutas */}
+      {isView("ventas") && (
         <Link to="/ventas" style={{ textDecoration: "none" }}>
           <li>
             <AttachMoneyIcon className="icon" />
@@ -167,11 +181,11 @@ const isView = (page) => {
         </Link>
       )}
 
-      {(isView('suppliers') || isView('expenses')) && (
+      {(isView("suppliers") || isView("expenses")) && (
         <p className="title">COMPRAS</p>
       )}
 
-      {isView('suppliers') && (
+      {isView("suppliers") && (
         <Link to="/suppliers" style={{ textDecoration: "none" }}>
           <li>
             <StoreIcon className="icon" />
@@ -180,7 +194,7 @@ const isView = (page) => {
         </Link>
       )}
 
-      {isView('expenses') && (
+      {isView("expenses") && (
         <Link to="/expenses" style={{ textDecoration: "none" }}>
           <li>
             <NotificationsNoneIcon className="icon" />
@@ -189,11 +203,9 @@ const isView = (page) => {
         </Link>
       )}
 
-      {(isView('customers') || isView('orders')) && (
-        <p className="title">VENTAS</p>
-      )}
+      {(isView("customers") || isView("orders")) && <p className="title">VENTAS</p>}
 
-      {isView('customers') && (
+      {isView("customers") && (
         <Link to="/customers" style={{ textDecoration: "none" }}>
           <li>
             <SettingsSystemDaydreamOutlinedIcon className="icon" />
@@ -202,7 +214,7 @@ const isView = (page) => {
         </Link>
       )}
 
-      {isView('orders') && (
+      {isView("orders") && (
         <Link to="/orders" style={{ textDecoration: "none" }}>
           <li>
             <PsychologyOutlinedIcon className="icon" />
@@ -213,7 +225,7 @@ const isView = (page) => {
 
       <p className="title">USUARIO</p>
 
-      {isView('profile') && (
+      {isView("profile") && (
         <Link to="/profile" style={{ textDecoration: "none" }}>
           <li>
             <AccountCircleOutlinedIcon className="icon" />
@@ -222,7 +234,7 @@ const isView = (page) => {
         </Link>
       )}
 
-      {isView('settings') && (
+      {isView("settings") && (
         <Link to="/settings" style={{ textDecoration: "none" }}>
           <li>
             <SettingsApplicationsIcon className="icon" />
@@ -231,17 +243,25 @@ const isView = (page) => {
         </Link>
       )}
 
-      <li onClick={() => { logout() }}>
+      <li onClick={logout}>
         <ExitToAppIcon className="icon" />
         <span>Cerrar sesión</span>
       </li>
     </ul>
   );
 
+  // =====================================================
+  // 5) Render:
+  // - panel fijo (desktop)
+  // - menú deslizable (móvil)
+  // =====================================================
   return (
     <div>
-      <div className='toggelDiv'><Menu onClick={() => setToggel(true)} /></div>
+      <div className="toggelDiv">
+        <Menu onClick={() => setToggel(true)} />
+      </div>
 
+      {/* Panel Desktop */}
       <div className="asideNavbar__panel">
         <div className="top border-bottom">
           <Link to="/" style={{ textDecoration: "none" }}>
@@ -254,14 +274,23 @@ const isView = (page) => {
         </div>
 
         <div className="bottom">
-          <div className="colorOption" onClick={() => dispatch({ type: "LIGHT" })}></div>
-          <div className="colorOption" onClick={() => dispatch({ type: "DARK" })}></div>
+          <div
+            className="colorOption"
+            onClick={() => dispatch({ type: "LIGHT" })}
+          ></div>
+          <div
+            className="colorOption"
+            onClick={() => dispatch({ type: "DARK" })}
+          ></div>
         </div>
       </div>
 
-      <div className='asideNavbar__menu' style={toggel ? { left: "0px" } : {}}>
+      {/* Menú Móvil */}
+      <div className="asideNavbar__menu" style={toggel ? { left: "0px" } : {}}>
         <div className="top">
-          <div className='toggelDiv'><CloseOutlined onClick={() => setToggel(false)} /></div>
+          <div className="toggelDiv">
+            <CloseOutlined onClick={() => setToggel(false)} />
+          </div>
         </div>
 
         <div className="center">
@@ -269,12 +298,18 @@ const isView = (page) => {
         </div>
 
         <div className="bottom">
-          <div className="colorOption" onClick={() => dispatch({ type: "LIGHT" })}></div>
-          <div className="colorOption" onClick={() => dispatch({ type: "DARK" })}></div>
+          <div
+            className="colorOption"
+            onClick={() => dispatch({ type: "LIGHT" })}
+          ></div>
+          <div
+            className="colorOption"
+            onClick={() => dispatch({ type: "DARK" })}
+          ></div>
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default AsideNavbar;
