@@ -11,6 +11,8 @@ app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(cookieParser())
 
+// Servir archivos estáticos desde /public
+app.use(express.static('public'));
 
 const corsOption = {
   origin: ['http://localhost:3000', 'https://stockmerch.vercel.app'],
