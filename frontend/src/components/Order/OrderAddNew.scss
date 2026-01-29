@@ -43,7 +43,7 @@
 		transition: color 0.4s, background-color 0.4s;
 	}
 
-	.btn:disabled{
+	.btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -121,7 +121,7 @@
 		}
 	}
 
-	.my_input{
+	.my_input {
 		padding: 8px 20px;
 		display: inline-block;
 		border: 1px solid #ccc;
@@ -129,11 +129,22 @@
 		box-sizing: border-box;
 		width: 90%;
 
-		&:focus{			
+		// SOLO títulos de esta pantalla
+		.orderaddnew h3 {
+			font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
+			font-weight: 600;
+			letter-spacing: 0.5px;
+		}
+
+
+		&:focus {
 			box-shadow: 0 0 6px 0px darkgrey;
 		}
-		&:focus-visible{
+
+		&:focus-visible {
 			outline: none;
 		}
 	}
+
+
 }

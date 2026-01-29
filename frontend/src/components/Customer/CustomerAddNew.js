@@ -12,6 +12,9 @@ function CustomerAddNew() {
 	const [name, setName] = useState('')
 	const [address, setAddress] = useState('')
 	const [email, setEmail] = useState('')
+	//nuevo campo celular
+	const [celular, setCelular] = useState("");
+
 
 	const [submitButtonState, setSubmitButtonState] = useState(false)
 
@@ -54,34 +57,34 @@ function CustomerAddNew() {
 			})
 	}, [])*/
 	useEffect(() => {
-			//moment.locale("es");
-		  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+		//moment.locale("es");
+		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
 			method: 'POST',
 			credentials: 'include'
-		  })
+		})
 			.then(res => res.json())
 			.then(body => {
-			  if (body.operation === 'success') {
-				fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-				  method: 'POST',
-				  credentials: 'include'
-				})
-				  .then(res => res.json())
-				  .then(body => {
-					const p = body.permissions?.find(x => x.page === 'customers');
-		
-					if (p?.view && p?.create) {
-					  setPermission(p);
-					} else {
-					  window.location.href = '/unauthorized';
-					}
-				  });
-			  } else {
-				window.location.href = '/login';
-			  }
+				if (body.operation === 'success') {
+					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+						method: 'POST',
+						credentials: 'include'
+					})
+						.then(res => res.json())
+						.then(body => {
+							const p = body.permissions?.find(x => x.page === 'customers');
+
+							if (p?.view && p?.create) {
+								setPermission(p);
+							} else {
+								window.location.href = '/unauthorized';
+							}
+						});
+				} else {
+					window.location.href = '/login';
+				}
 			})
 			.catch(console.log);
-		}, [])
+	}, [])
 
 	useEffect(() => {
 		if (permission !== null) {
@@ -110,11 +113,18 @@ function CustomerAddNew() {
 			swal("¡Ups!", "Por favor ingresa un correo válido", "error")
 			return;
 		}
+		//cambios para el campo celular 
+		if (celular !== "" && celular.length < 6) {
+			swal("¡Ups!", "El celular parece muy corto", "error")
+			return;
+		}
 
 		let obj = {}
 		obj.name = name;
 		obj.address = address;
 		obj.email = email;
+		//enviar celular al backend
+		obj.celular = celular;
 
 		setSubmitButtonState(true)
 
@@ -138,6 +148,8 @@ function CustomerAddNew() {
 			setName('')
 			setAddress('')
 			setEmail('')
+			//cambio para limpiar celular 
+			setCelular("");
 		} else {
 			swal("¡Ups!", body.message, "error")
 		}
@@ -175,6 +187,18 @@ function CustomerAddNew() {
 												<input className='my_input' type='text' value={address} onChange={(e) => { setAddress(e.target.value) }} />
 											</div>
 										</div>
+										{/* CAMBIO: nuevo input "Celular" */}
+										<div className="row" style={{ display: 'flex', marginTop: "0.5rem" }}>
+											<div className='col'>
+												<label>Celular</label>
+												<input className='my_input' type='text' value={celular} onChange={(e) => { setCelular(e.target.value) }} />
+											</div>
+                                          {/*CAMBIA EL TAMAÑO DE LA COLUMNA DE CLIENTES CELULAR*/}
+											<div className='col'>
+												{/* columna vacía para mantener el tamaño */}
+											</div>
+										</div>
+
 									</div>
 								</div>
 

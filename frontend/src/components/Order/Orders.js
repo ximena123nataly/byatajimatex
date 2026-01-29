@@ -172,7 +172,7 @@ function Orders() {
 		<div className='orders'>
 			<div style={{ overflow: "scroll", height: "100%" }} >
 				<div className='order-header'>
-					<div className='title'>Pedidos</div>
+					<div className='title'>Ventas</div>
 					<Link to={"/orders/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
 						Agregar nuevo
 					</Link>

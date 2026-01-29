@@ -16,9 +16,16 @@ class Customer {
 			new Promise((resolve, reject) => {
 
 				let tsa = ""
+
+
+				// CAMBIO: incluir celular en la búsqueda del listado
 				if (req.body.search_value != "") {
-					tsa = `WHERE name LIKE "%${req.body.search_value}%" OR address LIKE "%${req.body.search_value}%" OR email LIKE "%${req.body.search_value}%"`
+					tsa = `WHERE name LIKE "%${req.body.search_value}%"
+      OR address LIKE "%${req.body.search_value}%"
+      OR email LIKE "%${req.body.search_value}%"
+      OR celular LIKE "%${req.body.search_value}%"`
 				}
+
 
 				let tso = ""
 				if ((req.body.sort_column != "") && (req.body.sort_order != "")) {
@@ -75,14 +82,24 @@ class Customer {
 						resolve({ operation: "error", message: 'Duplicate customer email' });
 					}
 					else {
-						let q2 = "INSERT INTO `customers`(`customer_id`, `name`, `address`, `email`) VALUES (?, ?, ?, ?)"
-						db.query(q2, [uniqid(), req.body.name, req.body.address, req.body.email], (err2, result2) => {
-							if (err2) {
-								return reject(err2);
-							}
+						// CAMBIO: generar el id antes para devolverlo al frontend
+						const customerId = uniqid();
 
-							resolve({ operation: "success", message: 'Customer added successfully' });
-						})
+						// CAMBIO: insertar también `celular`
+						// CAMBIO: incluir celular en el INSERT
+						let q2 = "INSERT INTO `customers`(`customer_id`, `name`, `address`, `email`, `celular`) VALUES (?, ?, ?, ?, ?)"
+						db.query(
+							q2,
+							[customerId, req.body.name, req.body.address, req.body.email, req.body.celular || null],
+							(err2, result2) => {
+								if (err2) return reject(err2);
+
+								// ✅ CAMBIO (opcional pero recomendado): devolver el id para seleccionarlo en ventas si usas modal
+								resolve({ operation: "success", message: 'Customer added successfully', info: { customer_id: customerId } });
+							}
+						)
+						//------------------------------------------AQUIIIIIIIIIIIIIIIIIIIIIIIIIIII
+
 					}
 				})
 			})
@@ -116,8 +133,9 @@ class Customer {
 						resolve({ operation: "error", message: 'Duplicate customer email' });
 					}
 					else {
-						let q2 = "UPDATE `customers` SET `name`=?,`address`=?,`email`=? WHERE `customer_id`=?"
-						db.query(q2, [req.body.name, req.body.address, req.body.email, req.body.customer_id], (err2, result2) => {
+						//CAMBIO: actualizar también `celular`
+						let q2 = "UPDATE `customers` SET `name`=?,`address`=?,`email`=?,`celular`=? WHERE `customer_id`=?"
+						db.query(q2, [req.body.name, req.body.address, req.body.email, req.body.celular, req.body.customer_id], (err2, result2) => {
 							if (err2) {
 								return reject(err2);
 							}
@@ -140,33 +158,33 @@ class Customer {
 	}
 
 	getCustomersSearch = (req, res) => {
-		try {
-			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let email = d.payload.email;
-			let role = d.payload.role;
+  try {
+    let d = jwt.decode(req.cookies.accessToken, { complete: true });
 
-			new Promise((resolve, reject) => {
-				let q = `SELECT * FROM customers WHERE name LIKE '${req.body.search_value}%' LIMIT 10`
-				db.query(q, (err, result) => {
-					if (err) {
-						return reject(err);
-					}
-					// console.log(result)
-					resolve({ operation: "success", message: '10 customers got', info: { customers: result } });
-				})
-			})
-				.then((value) => {
-					res.send(value);
-				})
-				.catch((err) => {
-					console.log(err);
-					res.send({ operation: "error", message: 'Something went wrong' });
-				})
-		} catch (error) {
-			console.log(error);
-			res.send({ operation: "error", message: 'Something went wrong' });
-		}
-	}
+    new Promise((resolve, reject) => {
+      //CAMBIO: buscar por nombre o celular y usando parámetros
+      const search = (req.body.search_value || "").trim();
+      const like = `${search}%`;
+
+      let q = "SELECT * FROM customers WHERE name LIKE ? OR celular LIKE ? LIMIT 10";
+      db.query(q, [like, like], (err, result) => {
+        if (err) return reject(err);
+        resolve({ operation: "success", message: "10 customers got", info: { customers: result } });
+      });
+    })
+      .then(value => res.send(value))
+      .catch(err => {
+        console.log(err);
+        res.send({ operation: "error", message: "Something went wrong" });
+      });
+
+  } catch (error) {
+    console.log(error);
+    res.send({ operation: "error", message: "Something went wrong" });
+  }
+}
+
+			
 
 	deleteCustomer = (req, res) => {
 		try {

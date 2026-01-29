@@ -218,7 +218,7 @@ function AsideNavbar() {
         <Link to="/orders" style={{ textDecoration: "none" }}>
           <li>
             <PsychologyOutlinedIcon className="icon" />
-            <span>Pedidos</span>
+            <span>Ventas</span>
           </li>
         </Link>
       )}

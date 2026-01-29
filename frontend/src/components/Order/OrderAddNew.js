@@ -15,7 +15,17 @@ function OrderAddNew() {
 
 	const [orderRef, setOrderRef] = useState('')
 	const [selectedCustomer, setSelectedCustomer] = useState(null)
-	const [dueDate, setDueDate] = useState('')
+
+	// CAMBIO: estados para el Modal "Nuevo cliente"
+	const [showCustomerModal, setShowCustomerModal] = useState(false);
+	const [newCustomerName, setNewCustomerName] = useState("");
+	const [newCustomerEmail, setNewCustomerEmail] = useState("");
+	const [newCustomerAddress, setNewCustomerAddress] = useState("");
+	const [savingCustomer, setSavingCustomer] = useState(false);
+
+	const today = new Date().toISOString().slice(0, 10);
+	const [dueDate, setDueDate] = useState(today);
+
 	const [itemArray, setItemArray] = useState([{ product_id: null, product_name: null, quantity: 0, rate: 0, max_stock: 0 }])
 	const [tax, setTax] = useState(0)
 	const [grandTotal, setGrandTotal] = useState(0)
@@ -23,34 +33,34 @@ function OrderAddNew() {
 	const [submitButtonState, setSubmitButtonState] = useState(false)
 
 	useEffect(() => {
-				//moment.locale("es");
-			  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-				method: 'POST',
-				credentials: 'include'
-			  })
-				.then(res => res.json())
-				.then(body => {
-				  if (body.operation === 'success') {
+		//moment.locale("es");
+		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+			method: 'POST',
+			credentials: 'include'
+		})
+			.then(res => res.json())
+			.then(body => {
+				if (body.operation === 'success') {
 					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-					  method: 'POST',
-					  credentials: 'include'
+						method: 'POST',
+						credentials: 'include'
 					})
-					  .then(res => res.json())
-					  .then(body => {
-						const p = body.permissions?.find(x => x.page === 'products');
-			
-						if (p?.view && p?.create) {
-						  setPermission(p);
-						} else {
-						  window.location.href = '/unauthorized';
-						}
-					  });
-				  } else {
+						.then(res => res.json())
+						.then(body => {
+							const p = body.permissions?.find(x => x.page === 'orders'); // o 'sales'
+
+							if (p?.view && p?.create) {
+								setPermission(p);
+							} else {
+								window.location.href = '/unauthorized';
+							}
+						});
+				} else {
 					window.location.href = '/login';
-				  }
-				})
-				.catch(console.log);
-			}, [])
+				}
+			})
+			.catch(console.log);
+	}, [])
 
 	const getProducts = async (value) => {
 		let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_search`, {
@@ -165,12 +175,16 @@ function OrderAddNew() {
 
 		if (body.operation === 'success') {
 			console.log('Pedido creado exitosamente')
-			swal("Success!", "Pedido creado exitosamente", "success")
+			swal("¡Éxito!", "Venta creada exitosamente", "success")
 
 			setOrderRef('')
 			setSelectedCustomer(null)
-			setDueDate('')
-			setItemArray([{ product_id: null, product_name: null, quantity: 0, rate: 0 }])
+
+			// CAMBIO: al guardar, la fecha vuelve a HOY
+			setDueDate(today)
+
+			setItemArray([{ product_id: null, product_name: null, quantity: 0, rate: 0, max_stock: 0 }])
+
 			setTax(0)
 			setGrandTotal(0)
 		} else {
@@ -178,11 +192,55 @@ function OrderAddNew() {
 		}
 	}
 
+	// CAMBIO: función para crear cliente 
+	const createCustomer = async () => {
+		if (!newCustomerName.trim()) {
+			swal("¡Ups!", "El nombre es obligatorio", "error");
+			return;
+		}
+
+		setSavingCustomer(true);
+
+		try {
+			const res = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/add_customer`, {
+				method: "POST",
+				headers: { "Content-type": "application/json; charset=UTF-8" },
+				credentials: "include",
+				body: JSON.stringify({
+					name: newCustomerName,
+					email: newCustomerEmail,
+					address: newCustomerAddress,
+				}),
+			});
+
+			const body = await res.json();
+			setSavingCustomer(false);
+
+			if (body.operation === "success") {
+				const customerId = body.info?.customer_id ?? body.customer_id;
+
+				setSelectedCustomer({ label: newCustomerName, value: customerId });
+
+				setShowCustomerModal(false);
+				setNewCustomerName("");
+				setNewCustomerEmail("");
+				setNewCustomerAddress("");
+
+				swal("Éxito", "Cliente creado y seleccionado", "success");
+			} else {
+				swal("¡Ups!", body.message || "No se pudo crear el cliente", "error");
+			}
+		} catch (e) {
+			setSavingCustomer(false);
+			swal("¡Ups!", "Error de conexión al crear cliente", "error");
+		}
+	};
+
 	return (
 		<div className='orderaddnew'>
 			<div style={{ overflow: "scroll", height: "100%" }} >
 				<div className='order-header'>
-					<div className='title'>Añadir nuevo pedido</div>
+					<div className='title'>Añadir nueva venta</div>
 					{/* breadcrumb */}
 				</div>
 
@@ -192,22 +250,39 @@ function OrderAddNew() {
 						: pageState === 2 ?
 							<div className="card">
 								<div className="container" style={{ display: "flex", flexDirection: "column" }}>
-									<h3 style={{ marginLeft: "10px", marginTop: "5px", color: "darkseagreen" }}>Detalles básicos del pedido</h3>
+									<h3 style={{ marginLeft: "10px", marginTop: "5px", color: "darkseagreen" }}>Detalles básicos de la venta</h3>
 									<div style={{ display: "flex", marginTop: "5px" }}>
 										<div style={{ flexGrow: "1", textAlign: "center" }}>
 											<input className='my_input' type='text' value={orderRef} onChange={(e) => { setOrderRef(e.target.value) }} placeholder='Referencia del pedido' />
 										</div>
-										<div style={{ flexGrow: "1" }}>
-											<Select
-												options={customerList.map(x => { return { label: x.name, value: x.customer_id } })}
-												value={selectedCustomer}
-												placeholder='Selecciona un cliente...'
-												onChange={(val) => { setSelectedCustomer(val) }}
-												onInputChange={(val) => { val.length >= 1 && getCustomers(val) }}
-												onMenuClose={() => { setCustomerList([]) }}
-												classNamePrefix="react-dropdown-dark"
-											/>
+
+										{/*  CAMBIO: Select + botón “+ Nuevo” (abre Modal) */}
+										<div style={{ flexGrow: "1", display: "flex", gap: "10px", alignItems: "center" }}>
+											<div style={{ flexGrow: 1 }}>
+												<Select
+													options={customerList.map(x => ({ label: x.name, value: x.customer_id }))}
+													value={selectedCustomer}
+													placeholder='Selecciona un cliente...'
+													onChange={(val) => setSelectedCustomer(val)}
+													onMenuOpen={() => getCustomers("")}
+													onInputChange={(val) => {
+														getCustomers(val || "");
+														return val;
+													}}
+													classNamePrefix="react-dropdown-dark"
+												/>
+											</div>
+
+											<button
+												type="button"
+												className="btn info"
+												onClick={() => setShowCustomerModal(true)}
+												style={{ whiteSpace: "nowrap" }}
+											>
+												+ Nuevo
+											</button>
 										</div>
+
 										<div style={{ flexGrow: "1", textAlign: "center" }}>
 											<input className='my_input' type='date' value={dueDate} onChange={(e) => { setDueDate(e.target.value) }} />
 										</div>
@@ -241,8 +316,11 @@ function OrderAddNew() {
 																	t[ind].max_stock = parseInt(productList.find(x => x.product_id === val.value).product_stock)
 																	setItemArray(t)
 																}}
-																onInputChange={(val) => { val.length >= 1 && getProducts(val) }}
-																onMenuClose={() => { setProductList([]) }}
+																onMenuOpen={() => getProducts("")}
+																onInputChange={(val) => {
+																	getProducts(val || "");
+																	return val;
+																}}
 																classNamePrefix="react-dropdown-dark"
 															/>
 														</div>
@@ -333,6 +411,56 @@ function OrderAddNew() {
 							:
 							<Error />
 				}
+
+				{/*  CAMBIO: Modal “Agregar nuevo cliente” */}
+				{showCustomerModal && (
+					<div style={{
+						position: "fixed",
+						inset: 0,
+						background: "rgba(0,0,0,0.35)",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						zIndex: 9999
+					}}>
+						<div style={{ background: "#fff", borderRadius: 10, width: 520, maxWidth: "95%", padding: 20 }}>
+							<h3 style={{ marginTop: 0 }}>Agregar nuevo cliente</h3>
+
+							<div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+								<input
+									className="my_input"
+									placeholder="Nombre "
+									value={newCustomerName}
+									onChange={(e) => setNewCustomerName(e.target.value)}
+								/>
+
+								<input
+									className="my_input"
+									placeholder="Correo"
+									value={newCustomerEmail}
+									onChange={(e) => setNewCustomerEmail(e.target.value)}
+								/>
+
+								<input
+									className="my_input"
+									placeholder="Dirección"
+									value={newCustomerAddress}
+									onChange={(e) => setNewCustomerAddress(e.target.value)}
+								/>
+							</div>
+
+							<div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15 }}>
+								<button className="btn default" type="button" onClick={() => setShowCustomerModal(false)}>
+									Cancelar
+								</button>
+
+								<button className="btn success" type="button" disabled={savingCustomer} onClick={createCustomer}>
+									{savingCustomer ? "Guardando..." : "Guardar"}
+								</button>
+							</div>
+						</div>
+					</div>
+				)}
 			</div>
 		</div>
 	)
