@@ -1,0 +1,5 @@
+MODIFICACION A LA TABLA CUSTOMERS --------
+ALTER TABLE customers
+ADD COLUMN celular VARCHAR(20) NULL AFTER address;
+---por que no INT Los números de teléfono NO son números matemáticos, 
+son identificadores.
