@@ -30,6 +30,7 @@ function ExpenseAddNew() {
   const [newSupplierEmail, setNewSupplierEmail] = useState("");
   const [newSupplierAddress, setNewSupplierAddress] = useState("");
   const [savingSupplier, setSavingSupplier] = useState(false);
+  const [newSupplierCelular, setNewSupplierCelular] = useState("");
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
@@ -74,7 +75,7 @@ function ExpenseAddNew() {
 
   const getSuppliers = async (value) => {
     // revisa si tu ruta está mal escrita en backend:
-    
+
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_suppiers_search`, {
       method: 'POST',
       headers: { 'Content-type': 'application/json; charset=UTF-8' },
@@ -178,6 +179,7 @@ function ExpenseAddNew() {
           name: newSupplierName,
           email: newSupplierEmail,
           address: newSupplierAddress,
+          celular: newSupplierCelular,
         }),
       });
 
@@ -193,6 +195,7 @@ function ExpenseAddNew() {
         setNewSupplierName("");
         setNewSupplierEmail("");
         setNewSupplierAddress("");
+        setNewSupplierCelular("");
 
         swal("Éxito", "Proveedor creado y seleccionado", "success");
       } else {
@@ -435,6 +438,8 @@ function ExpenseAddNew() {
 
                 <input className="my_input" placeholder="Dirección" value={newSupplierAddress}
                   onChange={(e) => setNewSupplierAddress(e.target.value)} />
+                <input className="my_input" placeholder="Celular" value={newSupplierCelular}
+                  onChange={(e) => setNewSupplierCelular(e.target.value.replace(/[^\d]/g, ""))} />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15 }}>
