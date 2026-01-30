@@ -33,34 +33,34 @@ function Suppliers() {
   const [editModalSubmitButton, setEditModalSubmitButton] = useState(false)
 
   useEffect(() => {
-      moment.locale("es");
-      fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+    moment.locale("es");
+    fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
       method: 'POST',
       credentials: 'include'
-      })
+    })
       .then(res => res.json())
       .then(body => {
         if (body.operation === 'success') {
-        fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-          method: 'POST',
-          credentials: 'include'
-        })
-          .then(res => res.json())
-          .then(body => {
-          const p = body.permissions?.find(x => x.page === 'suppliers');
-    
-          if (p?.view && p?.create) {
-            setPermission(p);
-          } else {
-            window.location.href = '/unauthorized';
-          }
-          });
+          fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+            method: 'POST',
+            credentials: 'include'
+          })
+            .then(res => res.json())
+            .then(body => {
+              const p = body.permissions?.find(x => x.page === 'suppliers');
+
+              if (p?.view && p?.create) {
+                setPermission(p);
+              } else {
+                window.location.href = '/unauthorized';
+              }
+            });
         } else {
-        window.location.href = '/login';
+          window.location.href = '/login';
         }
       })
       .catch(console.log);
-    }, [])
+  }, [])
 
 
   const getSuppliers = async (sv, sc, so, scv) => {
@@ -125,6 +125,7 @@ function Suppliers() {
         tObj.sl = i + 1;
         tObj.name = obj.name;
         tObj.address = obj.address;
+        tObj.celular = obj.celular;
         tObj.email = obj.email;
         tObj.addedon = moment(obj.timeStamp).format('MMMM Do, YYYY');
         tObj.action =
@@ -245,8 +246,8 @@ function Suppliers() {
               <div className="card">
                 <div className="container">
                   <Table
-                    headers={['N°', 'Nombre', 'Dirección', 'Correo', 'Fecha', 'Acción']}
-                    columnOriginalNames={["name", "address", "email", "timeStamp"]}
+                    headers={['N°', 'Nombre', 'Dirección', 'Celular', 'Correo', 'Fecha', 'Acción']}
+                    columnOriginalNames={["name", "address", "celular", "email", "timeStamp"]}
                     sortColumn={sortColumn}
                     setSortColumn={setSortColumn}
                     sortOrder={sortOrder}
@@ -255,7 +256,7 @@ function Suppliers() {
                     data_count={supplierCount}
                     searchInput={searchInput}
                     setSearchInput={setSearchInput}
-                    custom_styles={["3rem", "5rem", "8rem", "5rem", "8rem", "10rem"]}
+                    custom_styles={["3rem", "5rem", "8rem", "6rem", "5rem", "6rem", "10rem"]}
                     current_page={tablePage}
                     tablePageChangeFunc={setTablePage}
                   />

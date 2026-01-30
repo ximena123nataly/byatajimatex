@@ -193,10 +193,7 @@ function CustomerAddNew() {
 												<label>Celular</label>
 												<input className='my_input' type='text' value={celular} onChange={(e) => { setCelular(e.target.value) }} />
 											</div>
-                                          {/*CAMBIA EL TAMAÑO DE LA COLUMNA DE CLIENTES CELULAR*/}
-											<div className='col'>
-												{/* columna vacía para mantener el tamaño */}
-											</div>
+                                          
 										</div>
 
 									</div>

@@ -32,72 +32,72 @@ function Customer() {
 	const [editEmail, setEditEmail] = useState('')
 
 	const [editModalSubmitButton, setEditModalSubmitButton] = useState(false)
-/*
+	/*
+		useEffect(() => {
+			moment.locale("es");
+	
+			fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+				method: 'POST',
+				credentials: 'include'
+			})
+				.then(async (response) => {
+					let body = await response.json()
+					if (body.operation === 'success') {
+	
+						fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+							method: 'POST',
+							credentials: 'include'
+						})
+							.then(async (response) => {
+								let body = await response.json()
+	
+								let p = JSON.parse(body.info).find(x => x.page === 'customers')
+								if (p.view !== true) {
+									window.location.href = '/unauthorized';
+								} else {
+									setPermission(p)
+								}
+							})
+							.catch((error) => {
+								console.log(error)
+							})
+					} else {
+						window.location.href = '/login'
+					}
+				})
+				.catch((error) => {
+					console.log(error)
+				})
+		}, [])*/
+
 	useEffect(() => {
 		moment.locale("es");
-
 		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
 			method: 'POST',
 			credentials: 'include'
 		})
-			.then(async (response) => {
-				let body = await response.json()
+			.then(res => res.json())
+			.then(body => {
 				if (body.operation === 'success') {
-
 					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
 						method: 'POST',
 						credentials: 'include'
 					})
-						.then(async (response) => {
-							let body = await response.json()
+						.then(res => res.json())
+						.then(body => {
+							const p = body.permissions?.find(x => x.page === 'customers');
 
-							let p = JSON.parse(body.info).find(x => x.page === 'customers')
-							if (p.view !== true) {
-								window.location.href = '/unauthorized';
+							if (p?.view && p?.create) {
+								setPermission(p);
 							} else {
-								setPermission(p)
+								window.location.href = '/unauthorized';
 							}
-						})
-						.catch((error) => {
-							console.log(error)
-						})
+						});
 				} else {
-					window.location.href = '/login'
+					window.location.href = '/login';
 				}
 			})
-			.catch((error) => {
-				console.log(error)
-			})
-	}, [])*/
-
-	useEffect(() => {
-		moment.locale("es");
-	  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-		method: 'POST',
-		credentials: 'include'
-	  })
-		.then(res => res.json())
-		.then(body => {
-		  if (body.operation === 'success') {
-			fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-			  method: 'POST',
-			  credentials: 'include'
-			})
-			  .then(res => res.json())
-			  .then(body => {
-				const p = body.permissions?.find(x => x.page === 'customers');
-	
-				if (p?.view && p?.create) {
-				  setPermission(p);
-				} else {
-				  window.location.href = '/unauthorized';
-				}
-			  });
-		  } else {
-			window.location.href = '/login';
-		  }
-		})
-		.catch(console.log);
+			.catch(console.log);
 	}, []);
 
 
@@ -163,6 +163,7 @@ function Customer() {
 				tObj.sl = i + 1;
 				tObj.name = obj.name;
 				tObj.address = obj.address;
+				tObj.celular = obj.celular;
 				tObj.email = obj.email;
 				tObj.addedon = moment(obj.timeStamp).format('MMMM Do, YYYY');
 				tObj.action =
@@ -282,8 +283,8 @@ function Customer() {
 							<div className="card">
 								<div className="container">
 									<Table
-										headers={['N°', 'Nombre', 'Dirección', 'Email', 'Registrado el', 'Acción']}
-										columnOriginalNames={["name", "address", "email", "timeStamp"]}
+										headers={['N°', 'Nombre', 'Dirección', 'Celular', 'Email', 'Registrado el', 'Acción']}
+										columnOriginalNames={["name", "address", "celular", "email", "timeStamp"]}
 										sortColumn={sortColumn}
 										setSortColumn={setSortColumn}
 										sortOrder={sortOrder}
@@ -292,7 +293,7 @@ function Customer() {
 										data_count={customerCount}
 										searchInput={searchInput}
 										setSearchInput={setSearchInput}
-										custom_styles={["3rem", "5rem", "8rem", "5rem", "8rem", "10rem"]}
+										custom_styles={["3rem", "5rem", "8rem", "6rem", "5rem", "8rem", "10rem"]}
 										current_page={tablePage}
 										tablePageChangeFunc={setTablePage}
 									/>

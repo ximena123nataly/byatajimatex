@@ -22,6 +22,7 @@ function OrderAddNew() {
 	const [newCustomerEmail, setNewCustomerEmail] = useState("");
 	const [newCustomerAddress, setNewCustomerAddress] = useState("");
 	const [savingCustomer, setSavingCustomer] = useState(false);
+	const [newCustomerCelular, setNewCustomerCelular] = useState("");
 
 	const today = new Date().toISOString().slice(0, 10);
 	const [dueDate, setDueDate] = useState(today);
@@ -210,6 +211,7 @@ function OrderAddNew() {
 					name: newCustomerName,
 					email: newCustomerEmail,
 					address: newCustomerAddress,
+					celular: newCustomerCelular,
 				}),
 			});
 
@@ -225,6 +227,8 @@ function OrderAddNew() {
 				setNewCustomerName("");
 				setNewCustomerEmail("");
 				setNewCustomerAddress("");
+				setNewCustomerCelular("");
+
 
 				swal("Éxito", "Cliente creado y seleccionado", "success");
 			} else {
@@ -447,6 +451,13 @@ function OrderAddNew() {
 									value={newCustomerAddress}
 									onChange={(e) => setNewCustomerAddress(e.target.value)}
 								/>
+								<input
+									className="my_input"
+									placeholder="Celular"
+									value={newCustomerCelular}
+									onChange={(e) => setNewCustomerCelular(e.target.value.replace(/[^\d]/g, ""))}
+								/>
+
 							</div>
 
 							<div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15 }}>
