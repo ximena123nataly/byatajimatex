@@ -9,11 +9,14 @@ const proforma = new Proforma();
 // Crear
 router.post("/add_proforma", verifyJwt, proforma.addProforma);
 
-// Eliminar 
+// Eliminar
 router.post("/delete_proforma", verifyJwt, proforma.deleteProforma);
 
 // Listado
 router.post("/get_proformas", verifyJwt, proforma.getProformas);
+
+//  NUEVO: Entregar (cambiar entregado=1)
+router.post("/entregar_proforma", verifyJwt, proforma.entregarProforma);
 
 module.exports = router;
 

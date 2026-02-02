@@ -6,7 +6,6 @@ class Proforma {
   constructor() { }
 
   // GET PROFORMAS (tabla)
-
   getProformas = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
@@ -29,31 +28,30 @@ class Proforma {
         } else {
           tso = "ORDER BY id DESC";
         }
-        //----------------------------------------------------
-        const q = `
-  SELECT
-    id,
-    proforma_id,
-    fecha,
-    hora,
-    fecha_entrega,
-    hora_entrega,
-    customer_id,
-    cliente,
-    celular,
-    detalle,
-    total_general,
-    anticipo,
-    saldo,
-    estado,
-    entregado
-  FROM proformas
-  ${tsa}
-  ${tso}
-  LIMIT ?, 10
-`;
 
-        //.....................................................
+        const q = `
+          SELECT
+            id,
+            proforma_id,
+            fecha,
+            hora,
+            fecha_entrega,
+            hora_entrega,
+            customer_id,
+            cliente,
+            celular,
+            detalle,
+            total_general,
+            anticipo,
+            saldo,
+            estado,
+            entregado
+          FROM proformas
+          ${tsa}
+          ${tso}
+          LIMIT ?, 10
+        `;
+
         db.query(q, [req.body.start_value], (err, result) => {
           if (err) return reject(err);
 
@@ -88,9 +86,7 @@ class Proforma {
     }
   };
 
-
   // ADD PROFORMA
-
   addProforma = (req, res) => {
     try {
       let d = jwt.decode(req.cookies.accessToken, { complete: true });
@@ -166,10 +162,51 @@ class Proforma {
     }
   };
 
+  // ✅ NUEVO: ENTREGAR PROFORMA (entregado = 1)
+  entregarProforma = (req, res) => {
+    try {
+      jwt.decode(req.cookies.accessToken, { complete: true });
 
+      new Promise((resolve, reject) => {
+        const { id } = req.body;
+
+        if (!id) {
+          return resolve({
+            operation: "failed",
+            message: "ID de proforma requerido",
+          });
+        }
+
+        const q = "UPDATE proformas SET entregado = 1 WHERE id = ?";
+        db.query(q, [id], (err, result) => {
+          if (err) return reject(err);
+
+          // Si no encontró fila
+          if (result.affectedRows === 0) {
+            return resolve({
+              operation: "failed",
+              message: "No se encontró la proforma",
+            });
+          }
+
+          resolve({
+            operation: "success",
+            message: "Proforma marcada como entregada",
+          });
+        });
+      })
+        .then((value) => res.send(value))
+        .catch((err) => {
+          console.log(err);
+          res.send({ operation: "error", message: "Something went wrong" });
+        });
+    } catch (error) {
+      console.log(error);
+      res.send({ operation: "error", message: "Something went wrong" });
+    }
+  };
 
   // DELETE PROFORMA (por id)
-
   deleteProforma = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
@@ -197,3 +234,4 @@ class Proforma {
 }
 
 module.exports = Proforma;
+

@@ -5,29 +5,46 @@ import swal from "sweetalert";
 import Error from "../PageStates/Error";
 import Loader from "../PageStates/Loader";
 
+// Fecha local (YYYY-MM-DD)
+const getLocalISODate = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+// Hora local (HH:MM en formato 24h)
+const getLocalTimeHHMM = () => {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+};
+
 function ProformasAddNew() {
   const [pageState, setPageState] = useState(1);
   const [permission, setPermission] = useState(null);
 
+  // ✅ CAMBIO: usar fecha/hora LOCAL (no UTC)
+  const todayISO = getLocalISODate();
+  const nowHHMM = getLocalTimeHHMM();
+
   // Cabecera
-  const todayISO = new Date().toISOString().slice(0, 10);
-
   const [fecha, setFecha] = useState(todayISO);
-  const [hora, setHora] = useState(new Date().toTimeString().slice(0, 5)); // HH:MM
+  const [hora, setHora] = useState(nowHHMM); // HH:MM
 
-  const [fechaEntrega, setFechaEntrega] = useState("");
-  const [horaEntrega, setHoraEntrega] = useState("");
+  const [fechaEntrega, setFechaEntrega] = useState(todayISO);
+  const [horaEntrega, setHoraEntrega] = useState(nowHHMM); // HH:MM
 
-  const [entregado, setEntregado] = useState(false);
-  const [estado, setEstado] = useState("ACTIVA");
-
+  // Cliente
   const [cliente, setCliente] = useState("");
   const [celular, setCelular] = useState("");
 
   // Montos
   const [anticipo, setAnticipo] = useState("0");
 
-  // ✅ Ofertas (combo)
+  // Ofertas (combo)
   const OFERTAS = [
     { label: "Sin oferta", cantidad: null, precio_total: null },
     { label: "2 x 20", cantidad: 2, precio_total: 20 },
@@ -118,7 +135,7 @@ function ProformasAddNew() {
     return totalGeneral - Math.max(0, toNumber(anticipo));
   }, [totalGeneral, anticipo]);
 
-  // ✅ IMPRESION (Media hoja carta)
+  // ✅ IMPRESION: MITAD HOJA CARTA + DISEÑO TAJIMA (como tu captura)
   const imprimirProforma = (p) => {
     const items = Array.isArray(p.items) ? p.items : [];
 
@@ -127,14 +144,19 @@ function ProformasAddNew() {
         const cant = toNumber(it.cantidad);
         const pu = toNumber(it.precio_unitario);
         const tot = toNumber(it.total);
-        const oferta = (it.oferta && it.oferta !== "Sin oferta") ? ` (${it.oferta})` : "";
+
+        const ofertaTxt =
+          it.oferta && it.oferta !== "Sin oferta" ? `(${it.oferta})` : "";
+
         const det = String(it.detalle || "").replace(/\n/g, "<br/>");
+
         return `
           <tr>
-            <td style="width:40px; text-align:right; padding:4px 6px;">${cant}</td>
-            <td style="padding:4px 6px;">${det}${oferta}</td>
-            <td style="width:70px; text-align:right; padding:4px 6px;">${money(pu)}</td>
-            <td style="width:80px; text-align:right; padding:4px 6px;">${money(tot)}</td>
+            <td class="td-right" style="width:55px;">${cant}</td>
+            <td class="td-left wrap">${det}</td>
+            <td class="td-center" style="width:120px;">${ofertaTxt}</td>
+            <td class="td-right" style="width:80px;">${money(pu)}</td>
+            <td class="td-right" style="width:90px;">${money(tot)}</td>
           </tr>
         `;
       })
@@ -147,107 +169,157 @@ function ProformasAddNew() {
   <meta charset="utf-8"/>
   <title>Proforma ${p.proforma_id || ""}</title>
   <style>
-    @page { size: letter; margin: 0; }
+    /* ✅ Mitad de hoja carta VERTICAL */
+    @page { size: letter portrait; margin: 0; }
     body { margin: 0; font-family: Arial, sans-serif; color: #111; }
 
-    /* Media hoja (mitad de carta) centrada */
+    /* ✅ “media hoja” */
     .ticket {
       width: 8.5in;
       height: 5.5in;
       box-sizing: border-box;
       padding: 0.35in 0.45in;
+      margin: 0 auto;
+      overflow: hidden;
     }
 
-    .row { display:flex; justify-content: space-between; gap: 12px; }
-    .title { font-size: 16px; font-weight: 700; }
-    .small { font-size: 12px; }
-    .muted { color: #555; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
 
-    .box {
-      border-top: 1px solid #ddd;
-      margin-top: 10px;
-      padding-top: 10px;
+    .small { font-size: 11px; line-height: 1.25; }
+    .muted { color: #444; }
+    .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
     }
 
-    table { width: 100%; border-collapse: collapse; }
+    .col-left  { width: 33%; }
+    .col-center{ width: 34%; text-align: center; }
+    .col-right { width: 33%; text-align: right; }
+
+    .logo {
+      width: 170px;
+      height: auto;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
+
+    .mid {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .mid-left { width: 55%; }
+    .mid-right{ width: 45%; text-align: right; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
     thead th {
       font-size: 12px;
       text-align: left;
       border-bottom: 1px solid #ddd;
-      padding: 6px;
+      padding: 7px 6px;
     }
-    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; vertical-align: top; }
-    .totals { margin-top: 10px; display:flex; justify-content: flex-end; }
-    .totals table { width: 260px; }
-    .totals td { font-size: 12px; padding: 4px 6px; }
+    tbody td {
+      font-size: 12px;
+      border-bottom: 1px dashed #eee;
+      padding: 7px 6px;
+      vertical-align: top;
+    }
+
+    .td-right { text-align: right; }
+    .td-center { text-align: center; }
+    .td-left { text-align: left; }
+
+    .totals {
+      width: 260px;
+      margin-left: auto;
+      margin-top: 10px;
+    }
+    .totals table { width: 100%; }
+    .totals td {
+      font-size: 12px;
+      padding: 4px 6px;
+    }
     .totals tr td:first-child { text-align: left; }
     .totals tr td:last-child { text-align: right; font-weight: 700; }
-
-    .footer { margin-top: 10px; font-size: 11px; color: #555; }
-    .badge { font-weight: 700; }
   </style>
 </head>
+
 <body>
   <div class="ticket">
-    <div class="row">
-      <div>
-        <div class="title">PROFORMA</div>
-        <div class="small muted">N°: <span class="badge">${p.proforma_id || "--"}</span></div>
+
+    <div class="header">
+      <div class="col-left">
+        <img class="logo" src="/tajima.png" alt="TAJIMA" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
       </div>
-      <div class="small" style="text-align:right;">
+
+      <div class="col-center">
+        <div class="title">PROFORMA</div>
+        <div class="small" style="margin-top:10px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia</div>
+          <div>Cel.: 75866135/75274747-77221750</div>
+        </div>
+      </div>
+
+      <div class="col-right small" style="margin-top:14px;">
+        <div>N°: <b>${p.proforma_id || "--"}</b></div>
         <div>Fecha: <b>${p.fecha || ""}</b></div>
         <div>Hora: <b>${p.hora || ""}</b></div>
       </div>
     </div>
 
-    <div class="box">
-      <div class="row small">
-        <div>
-          <div><b>Cliente:</b> ${p.cliente || ""}</div>
-          <div><b>Celular:</b> ${p.celular || ""}</div>
-        </div>
-        <div style="text-align:right;">
-          <div><b>Estado:</b> ${p.estado || ""}</div>
-          <div><b>Entregado:</b> ${p.entregado ? "SI" : "NO"}</div>
-        </div>
+    <hr />
+
+    <div class="mid small">
+      <div class="mid-left wrap">
+        <div><b>Cliente:</b> ${p.cliente || ""}</div>
+        <div><b>Celular:</b> ${p.celular || ""}</div>
       </div>
 
-      ${
-        p.fecha_entrega || p.hora_entrega
-          ? `<div class="small muted" style="margin-top:6px;">
-               Entrega: <b>${p.fecha_entrega || ""}</b> <b>${p.hora_entrega || ""}</b>
-             </div>`
-          : ""
-      }
+      <div class="mid-right">
+        <div><b>Entregado:</b> ${p.entregado ? "SI" : "NO"}</div>
+        <div class="muted"><b>Entrega:</b> ${p.fecha_entrega || ""} ${p.hora_entrega || ""}</div>
+      </div>
     </div>
 
-    <div class="box">
+    <hr />
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:55px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:120px;" class="td-center"></th>
+          <th style="width:80px;" class="td-right">P/U</th>
+          <th style="width:90px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="5" style="padding:10px; font-size:12px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
       <table>
-        <thead>
-          <tr>
-            <th style="width:40px; text-align:right;">Cant</th>
-            <th>Detalle</th>
-            <th style="width:70px; text-align:right;">P/U</th>
-            <th style="width:80px; text-align:right;">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filas || `<tr><td colspan="4" style="padding:8px; font-size:12px;">(Sin ítems)</td></tr>`}
-        </tbody>
+        <tr><td>Anticipo</td><td>${money(p.anticipo)}</td></tr>
+        <tr><td>Total</td><td>${money(p.total_general)}</td></tr>
+        <tr><td>Saldo</td><td>${money(p.saldo)}</td></tr>
       </table>
-
-      <div class="totals">
-        <table>
-          <tr><td>Anticipo</td><td>${money(p.anticipo)}</td></tr>
-          <tr><td>Total</td><td>${money(p.total_general)}</td></tr>
-          <tr><td>Saldo</td><td>${money(p.saldo)}</td></tr>
-        </table>
-      </div>
-
-      <div class="footer">
-       
-      </div>
     </div>
+
   </div>
 
   <script>
@@ -312,7 +384,6 @@ function ProformasAddNew() {
       fecha_entrega: fechaEntrega || null,
       hora_entrega: horaEntregaDB,
 
-      // customer_id interno (por ahora null)
       customer_id: null,
 
       cliente: cliente.trim(),
@@ -320,7 +391,6 @@ function ProformasAddNew() {
 
       anticipo: toNumber(anticipo),
 
-      // guardamos también oferta
       detalle: validItems.map((r) => ({
         cantidad: String(r.cantidad),
         detalle: String(r.detalle),
@@ -332,20 +402,17 @@ function ProformasAddNew() {
       total_general: totalGeneral,
       saldo,
 
-      estado,
-      entregado: entregado ? 1 : 0,
+      estado: "ACTIVA",
+      entregado: 0,
     };
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_ORIGIN}/add_proforma`,
-        {
-          method: "POST",
-          headers: { "Content-type": "application/json; charset=UTF-8" },
-          body: JSON.stringify(payload),
-          credentials: "include",
-        }
-      );
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/add_proforma`, {
+        method: "POST",
+        headers: { "Content-type": "application/json; charset=UTF-8" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
 
       const body = await response.json();
       setSubmitButtonState(false);
@@ -354,24 +421,13 @@ function ProformasAddNew() {
         const proformaId = body?.info?.proforma_id || "";
         setProformaCreada(proformaId);
 
-        // ✅ SWEETALERT con boton IMPRIMIR
         swal({
           title: "¡Éxito!",
           text: `Proforma creada (${proformaId})`,
           icon: "success",
           buttons: {
-            cancel: {
-              text: "OK",
-              value: "ok",
-              visible: true,
-              closeModal: true,
-            },
-            imprimir: {
-              text: "Imprimir",
-              value: "print",
-              visible: true,
-              closeModal: true,
-            },
+            cancel: { text: "OK", value: "ok", visible: true, closeModal: true },
+            imprimir: { text: "Imprimir", value: "print", visible: true, closeModal: true },
           },
         }).then((value) => {
           if (value === "print") {
@@ -381,8 +437,8 @@ function ProformasAddNew() {
               hora: horaDB,
               cliente,
               celular,
-              estado,
-              entregado,
+              estado: "ACTIVA",
+              entregado: 0,
               fecha_entrega: fechaEntrega,
               hora_entrega: horaEntregaDB || "",
               anticipo: toNumber(anticipo),
@@ -399,20 +455,16 @@ function ProformasAddNew() {
           }
         });
 
-        // Reset formulario (no borramos proformaCreada)
-        setFecha(todayISO);
-        setHora(new Date().toTimeString().slice(0, 5));
+        // ✅ reset usando fecha/hora LOCAL
+        setFecha(getLocalISODate());
+        setHora(getLocalTimeHHMM());
         setFechaEntrega("");
         setHoraEntrega("");
-        setEntregado(false);
-        setEstado("ACTIVA");
 
         setCliente("");
         setCelular("");
         setAnticipo("0");
-        setRows([
-          { cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" },
-        ]);
+        setRows([{ cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" }]);
       } else {
         swal("¡Ups!", body.message || "No se pudo crear la proforma", "error");
       }
@@ -423,14 +475,20 @@ function ProformasAddNew() {
     }
   };
 
+  // estilos de layout
+  const topRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap" };
+  const topBox = { flex: "1 1 0", minWidth: 240 };
+
+  const secondRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap" };
+  const secondBox = { flex: "1 1 0", minWidth: 240 };
+
   return (
     <div className="productaddnew" style={{ overflowY: "auto", paddingBottom: "2rem" }}>
       <div className="product-header">
         <div className="title">Agregar nueva proforma</div>
 
         <div style={{ marginTop: "0.25rem", fontSize: "0.9rem", color: "#666" }}>
-          Proforma N°:{" "}
-          <b>{proformaCreada ? proformaCreada : "Se asignará automáticamente"}</b>
+          Proforma N°: <b>{proformaCreada ? proformaCreada : "Se asignará automáticamente"}</b>
         </div>
       </div>
 
@@ -439,121 +497,49 @@ function ProformasAddNew() {
       ) : pageState === 2 ? (
         <div className="card" style={{ maxHeight: "75vh", overflowY: "auto" }}>
           <div className="container" style={{ paddingBottom: "3rem" }}>
-            {/* Fecha + Hora */}
-            <div className="row" style={{ display: "flex", marginTop: "0.5rem" }}>
-              <div className="col">
-                <label className="fw-bold">Fecha</label>
-                <input
-                  className="my_input"
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                />
-              </div>
-
-              <div className="col">
-                <label className="fw-bold">Hora</label>
-                <input
-                  className="my_input"
-                  type="time"
-                  value={hora}
-                  onChange={(e) => setHora(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Cliente + Celular */}
-            <div className="row" style={{ display: "flex", marginTop: "0.5rem" }}>
-              <div className="col">
+            <div style={topRow}>
+              <div style={topBox}>
                 <label className="fw-bold">Cliente</label>
-                <input
-                  className="my_input"
-                  type="text"
-                  value={cliente}
-                  onChange={(e) => setCliente(e.target.value)}
-                />
+                <input className="my_input" type="text" value={cliente} onChange={(e) => setCliente(e.target.value)} />
               </div>
-              <div className="col">
+
+              <div style={topBox}>
+                <label className="fw-bold">Fecha</label>
+                <input className="my_input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              </div>
+
+              <div style={topBox}>
+                <label className="fw-bold">Hora</label>
+                <input className="my_input" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+              </div>
+            </div>
+
+            <div style={secondRow}>
+              <div style={secondBox}>
                 <label className="fw-bold">Celular</label>
-                <input
-                  className="my_input"
-                  type="text"
-                  value={celular}
-                  onChange={(e) => setCelular(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Estado + Entregado */}
-            <div className="row" style={{ display: "flex", marginTop: "0.5rem" }}>
-              <div className="col">
-                <label className="fw-bold">Estado</label>
-                <select
-                  className="my_input"
-                  value={estado}
-                  onChange={(e) => setEstado(e.target.value)}
-                >
-                  <option value="ACTIVA">ACTIVA</option>
-                  <option value="ANULADA">ANULADA</option>
-                </select>
+                <input className="my_input" type="text" value={celular} onChange={(e) => setCelular(e.target.value)} />
               </div>
 
-              <div className="col d-flex align-items-end" style={{ gap: "0.5rem" }}>
-                <input
-                  type="checkbox"
-                  checked={entregado}
-                  onChange={(e) => setEntregado(e.target.checked)}
-                />
-                <label className="fw-bold" style={{ margin: 0 }}>
-                  Entregado
-                </label>
-              </div>
-            </div>
-
-            {/* Entrega */}
-            <div className="row" style={{ display: "flex", marginTop: "0.5rem" }}>
-              <div className="col">
-                <label className="fw-bold">Fecha entrega</label>
-                <input
-                  className="my_input"
-                  type="date"
-                  value={fechaEntrega}
-                  onChange={(e) => setFechaEntrega(e.target.value)}
-                />
+              <div style={secondBox}>
+                <label className="fw-bold">Fecha de entrega</label>
+                <input className="my_input" type="date" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
               </div>
 
-              <div className="col">
-                <label className="fw-bold">Hora entrega</label>
-                <input
-                  className="my_input"
-                  type="time"
-                  value={horaEntrega}
-                  onChange={(e) => setHoraEntrega(e.target.value)}
-                />
+              <div style={secondBox}>
+                <label className="fw-bold">Hora de entrega</label>
+                <input className="my_input" type="time" value={horaEntrega} onChange={(e) => setHoraEntrega(e.target.value)} />
               </div>
             </div>
 
             <hr />
 
-            {/* DETALLE (Detalle más ancho) */}
             {rowsWithTotals.map((r, idx) => (
-              <div
-                key={idx}
-                className="row"
-                style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}
-              >
-                {/* Cantidad */}
+              <div key={idx} className="row" style={{ display: "flex", gap: "0.5rem", alignItems: "flex-start" }}>
                 <div style={{ flex: "0 0 140px" }}>
                   <label>Cantidad</label>
-                  <input
-                    className="my_input"
-                    type="number"
-                    value={r.cantidad}
-                    onChange={(e) => updateRow(idx, "cantidad", e.target.value)}
-                  />
+                  <input className="my_input" type="number" value={r.cantidad} onChange={(e) => updateRow(idx, "cantidad", e.target.value)} />
                 </div>
 
-                {/* Detalle (GRANDE) */}
                 <div style={{ flex: "1 1 420px", minWidth: "240px" }}>
                   <label>Detalle</label>
                   <textarea
@@ -577,18 +563,11 @@ function ProformasAddNew() {
                   />
                 </div>
 
-                {/* Precio */}
                 <div style={{ flex: "0 0 140px" }}>
                   <label>Precio</label>
-                  <input
-                    className="my_input"
-                    type="number"
-                    value={r.precio_unitario}
-                    onChange={(e) => updateRow(idx, "precio_unitario", e.target.value)}
-                  />
+                  <input className="my_input" type="number" value={r.precio_unitario} onChange={(e) => updateRow(idx, "precio_unitario", e.target.value)} />
                 </div>
 
-                {/* Oferta */}
                 <div style={{ flex: "0 0 150px" }}>
                   <label>Oferta</label>
                   <select
@@ -596,19 +575,13 @@ function ProformasAddNew() {
                     value={r.oferta || "Sin oferta"}
                     onChange={(e) => {
                       const ofertaSel = OFERTAS.find((o) => o.label === e.target.value);
-
                       if (!ofertaSel || ofertaSel.cantidad === null) {
                         updateRow(idx, "oferta", "Sin oferta");
                         return;
                       }
-
                       updateRow(idx, "oferta", ofertaSel.label);
                       updateRow(idx, "cantidad", String(ofertaSel.cantidad));
-                      updateRow(
-                        idx,
-                        "precio_unitario",
-                        String(ofertaSel.precio_total / ofertaSel.cantidad)
-                      );
+                      updateRow(idx, "precio_unitario", String(ofertaSel.precio_total / ofertaSel.cantidad));
                     }}
                   >
                     {OFERTAS.map((o, i) => (
@@ -619,13 +592,11 @@ function ProformasAddNew() {
                   </select>
                 </div>
 
-                {/* Total */}
                 <div style={{ flex: "0 0 140px" }}>
                   <label>Total</label>
                   <input className="my_input" value={r.total} readOnly />
                 </div>
 
-                {/* X */}
                 <div style={{ flex: "0 0 60px", paddingTop: "22px" }}>
                   {rowsWithTotals.length > 1 && (
                     <button className="btn danger" onClick={() => removeRow(idx)}>
@@ -645,12 +616,7 @@ function ProformasAddNew() {
             <div className="row">
               <div className="col">
                 <label>Anticipo</label>
-                <input
-                  className="my_input"
-                  type="number"
-                  value={anticipo}
-                  onChange={(e) => setAnticipo(e.target.value)}
-                />
+                <input className="my_input" type="number" value={anticipo} onChange={(e) => setAnticipo(e.target.value)} />
               </div>
               <div className="col">
                 <label>Total</label>

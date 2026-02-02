@@ -100,7 +100,40 @@ function Proformas() {
     }
   };
 
-  // ✅ MODIFICADO: parsea detalle + asegura array
+  // ✅ marcar como entregado
+  const entregarProforma = async (id) => {
+    const ok = await swal({
+      title: "¿Entregar proforma?",
+      text: "Esto marcará la proforma como ENTREGADA.",
+      icon: "warning",
+      buttons: ["Cancelar", "Sí, entregar"],
+      dangerMode: true,
+    });
+
+    if (!ok) return;
+
+    try {
+      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/entregar_proforma`, {
+        method: "POST",
+        headers: { "Content-type": "application/json; charset=UTF-8" },
+        body: JSON.stringify({ id }),
+        credentials: "include",
+      });
+
+      const body = await result.json();
+
+      if (body.operation === "success") {
+        swal("Éxito", body.message || "Proforma marcada como entregada", "success");
+        getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+      } else {
+        swal("¡Ups!", body.message || "No se pudo entregar", "error");
+      }
+    } catch (err) {
+      console.log(err);
+      swal("¡Ups!", "Error de conexión con el servidor", "error");
+    }
+  };
+
   const openViewModal = (obj) => {
     let parsed = obj;
 
@@ -127,6 +160,12 @@ function Proformas() {
 
   const estadoES = (e) => e || "";
 
+  // ✅ clase según entregado (0 rojo, 1 verde)
+  const rowClassByEntregado = (obj) => {
+    const entregado = Number(obj?.entregado) === 1;
+    return entregado ? "row-entregado" : "row-no-entregado";
+  };
+
   useEffect(() => {
     if (proformas.length !== 0) {
       const tArray = proformas.map((obj, i) => ({
@@ -134,13 +173,30 @@ function Proformas() {
         ref: formatProforma(obj.id),
         cliente: obj.cliente || "",
         total: obj.total_general ?? 0,
+
         fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
+
+        // ✅ NUEVO: fecha/hora de entrega
+        fecha_entrega: obj.fecha_entrega
+          ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
+          : "",
+        hora_entrega: obj.hora_entrega ? String(obj.hora_entrega).slice(0, 5) : "",
+
         estado: estadoES(obj.estado),
+
         action: (
           <>
             <button className="btn warning" onClick={() => openViewModal(obj)}>
               Ver
             </button>
+
+            {/* ✅ Entregar solo si NO entregado */}
+            {Number(obj?.entregado) !== 1 && (
+              <button className="btn success" onClick={() => entregarProforma(obj.id)}>
+                Entregar
+              </button>
+            )}
+
             {permission?.delete && (
               <button className="btn danger" onClick={() => deleteProforma(obj.id)}>
                 Eliminar
@@ -148,6 +204,8 @@ function Proformas() {
             )}
           </>
         ),
+
+        _rowClass: rowClassByEntregado(obj),
       }));
 
       setData(tArray);
@@ -170,13 +228,25 @@ function Proformas() {
           <Loader />
         ) : pageState === 2 ? (
           <Table
-            headers={["N°", "Proforma", "Cliente", "Total", "Fecha", "Estado", "Acción"]}
+            headers={[
+              "N°",
+              "Proforma",
+              "Cliente",
+              "Total",
+              "Fecha",
+              "Fecha entrega",
+              "Hora entrega",
+              "Estado",
+              "Acción",
+            ]}
             columnOriginalNames={[
               ["sl", ""],
               ["id", ""],
               ["cliente", ""],
               ["total_general", ""],
               ["fecha", ""],
+              ["fecha_entrega", ""],
+              ["hora_entrega", ""],
               ["estado", ""],
               ["action", ""],
             ]}
@@ -186,12 +256,16 @@ function Proformas() {
             setSearchInput={setSearchInput}
             current_page={tablePage}
             tablePageChangeFunc={setTablePage}
+            rowClassNameKey="_rowClass"
+            setSortColumn={setSortColumn}
+            setSortOrder={setSortOrder}
+            sortColumn={sortColumn}
+            sortOrder={sortOrder}
           />
         ) : (
           <Error />
         )}
 
-        {/* ✅ MODAL VER: COMPLETO */}
         <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
           <Modal.Header closeButton>
             <Modal.Title>Detalle de Proforma</Modal.Title>
@@ -200,7 +274,6 @@ function Proformas() {
           <Modal.Body>
             {selected && (
               <>
-                {/* CABECERA */}
                 <div
                   style={{
                     display: "flex",
@@ -231,6 +304,17 @@ function Proformas() {
                     <div>
                       <b>Hora:</b> {selected.hora || "-"}
                     </div>
+
+                    <div>
+                      <b>Fecha entrega:</b>{" "}
+                      {selected.fecha_entrega
+                        ? moment.utc(selected.fecha_entrega).format("D [de] MMMM, YYYY")
+                        : "-"}
+                    </div>
+                    <div>
+                      <b>Hora entrega:</b> {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
+                    </div>
+
                     <div>
                       <b>Estado:</b> {selected.estado || "-"}
                     </div>
@@ -242,7 +326,6 @@ function Proformas() {
 
                 <hr />
 
-                {/* TABLA ITEMS */}
                 <div style={{ overflowX: "auto" }}>
                   <table className="table table-bordered" style={{ width: "100%", minWidth: "650px" }}>
                     <thead>
@@ -279,27 +362,20 @@ function Proformas() {
                   </table>
                 </div>
 
-                {/* TOTALES */}
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
                   <div style={{ minWidth: "280px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        <b>Total:</b>
-                      </span>
+                      <span><b>Total:</b></span>
                       <span>{selected.total_general ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        <b>Anticipo:</b>
-                      </span>
+                      <span><b>Anticipo:</b></span>
                       <span>{selected.anticipo ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        <b>Saldo:</b>
-                      </span>
+                      <span><b>Saldo:</b></span>
                       <span>{selected.saldo ?? 0}</span>
                     </div>
                   </div>
