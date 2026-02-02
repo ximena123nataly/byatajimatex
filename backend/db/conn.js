@@ -11,10 +11,10 @@ const conn = mysql.createConnection({
 
 conn.connect((err) => {
   if (err) {
-    console.error("❌ Error conectando a MySQL:", err);
+    console.error(" Error conectando a MySQL:", err);
     return;
   }
-  console.log("✅ MySQL conectado correctamente");
+  console.log(" MySQL conectado correctamente");
 });
 
 let q = "SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))";
