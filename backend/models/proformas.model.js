@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
 class Proforma {
-  constructor() { }
+  constructor() {}
 
   // GET PROFORMAS (tabla)
   getProformas = (req, res) => {
@@ -103,13 +103,12 @@ class Proforma {
         const anticipo = req.body.anticipo ?? 0;
         const saldo = req.body.saldo ?? (Number(total) - Number(anticipo));
 
-        // 1) Insert sin proforma_id (temporal) o en blanco
         const qInsert = `
-        INSERT INTO proformas
-        (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
-         cliente, celular, detalle, total_general, anticipo, saldo, estado, entregado, user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-      `;
+          INSERT INTO proformas
+          (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
+           cliente, celular, detalle, total_general, anticipo, saldo, estado, entregado, user_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        `;
 
         db.query(
           qInsert,
@@ -128,16 +127,14 @@ class Proforma {
             saldo,
             req.body.estado || "ACTIVA",
             req.body.entregado ?? 0,
-            user_id, // ✅ interno, no se muestra
+            user_id,
           ],
           (err, result) => {
             if (err) return reject(err);
 
-            // 2) Generar proforma_id desde id autoincrement
             const newId = result.insertId; // 1,2,3...
             const proforma_id = String(newId).padStart(7, "0"); // "0000001"
 
-            // 3) Update con el proforma_id final
             const qUpdate = "UPDATE proformas SET proforma_id = ? WHERE id = ?";
             db.query(qUpdate, [proforma_id, newId], (err2) => {
               if (err2) return reject(err2);
@@ -162,7 +159,7 @@ class Proforma {
     }
   };
 
-  // ✅ NUEVO: ENTREGAR PROFORMA (entregado = 1)
+  // ENTREGAR PROFORMA (entregado = 1)
   entregarProforma = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
@@ -181,7 +178,6 @@ class Proforma {
         db.query(q, [id], (err, result) => {
           if (err) return reject(err);
 
-          // Si no encontró fila
           if (result.affectedRows === 0) {
             return resolve({
               operation: "failed",
@@ -192,6 +188,84 @@ class Proforma {
           resolve({
             operation: "success",
             message: "Proforma marcada como entregada",
+          });
+        });
+      })
+        .then((value) => res.send(value))
+        .catch((err) => {
+          console.log(err);
+          res.send({ operation: "error", message: "Something went wrong" });
+        });
+    } catch (error) {
+      console.log(error);
+      res.send({ operation: "error", message: "Something went wrong" });
+    }
+  };
+
+  // COBRAR PROFORMA: suma monto al anticipo y recalcula saldo
+  cobrarProforma = (req, res) => {
+    try {
+      jwt.decode(req.cookies.accessToken, { complete: true });
+
+      const id = req.body?.id;
+      const monto = Number(req.body?.monto);
+
+      if (!id) {
+        return res.send({ operation: "error", message: "Falta id" });
+      }
+
+      if (!Number.isFinite(monto) || monto <= 0) {
+        return res.send({ operation: "error", message: "Monto inválido" });
+      }
+
+      new Promise((resolve, reject) => {
+        const qGet = `
+          SELECT total_general, anticipo, saldo
+          FROM proformas
+          WHERE id = ?
+          LIMIT 1
+        `;
+
+        db.query(qGet, [id], (err, rows) => {
+          if (err) return reject(err);
+          if (!rows || rows.length === 0) {
+            return resolve({ operation: "error", message: "Proforma no encontrada" });
+          }
+
+          const p = rows[0];
+          const total = Number(p.total_general) || 0;
+          const anticipoActual = Number(p.anticipo) || 0;
+          const saldoActual = Number(p.saldo) || 0;
+
+          if (saldoActual <= 0) {
+            return resolve({ operation: "error", message: "Esta proforma ya está pagada" });
+          }
+
+          if (monto > saldoActual) {
+            return resolve({
+              operation: "error",
+              message: `El monto excede el saldo. Saldo actual: ${saldoActual}`,
+            });
+          }
+
+          const nuevoAnticipo = anticipoActual + monto;
+          let nuevoSaldo = total - nuevoAnticipo;
+          if (nuevoSaldo < 0) nuevoSaldo = 0;
+
+          const qUpd = `
+            UPDATE proformas
+            SET anticipo = ?, saldo = ?
+            WHERE id = ?
+          `;
+
+          db.query(qUpd, [nuevoAnticipo, nuevoSaldo, id], (err2) => {
+            if (err2) return reject(err2);
+
+            resolve({
+              operation: "success",
+              message: "Pago registrado",
+              info: { anticipo: nuevoAnticipo, saldo: nuevoSaldo },
+            });
           });
         });
       })
@@ -234,4 +308,3 @@ class Proforma {
 }
 
 module.exports = Proforma;
-

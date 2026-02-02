@@ -103,7 +103,7 @@ function Proformas() {
   // ✅ marcar como entregado
   const entregarProforma = async (id) => {
     const ok = await swal({
-      title: "¿Entregar proforma?",
+      title: "¿Entregar pedido?",
       text: "Esto marcará la proforma como ENTREGADA.",
       icon: "warning",
       buttons: ["Cancelar", "Sí, entregar"],
@@ -127,6 +127,57 @@ function Proformas() {
         getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
       } else {
         swal("¡Ups!", body.message || "No se pudo entregar", "error");
+      }
+    } catch (err) {
+      console.log(err);
+      swal("¡Ups!", "Error de conexión con el servidor", "error");
+    }
+  };
+
+  // ✅ NUEVO: COBRAR (suma al anticipo y baja el saldo)
+  const cobrarProforma = async (id, saldoActual) => {
+    const input = await swal({
+      title: "Cobrar saldo",
+      text: `Saldo actual: ${saldoActual}`,
+      content: {
+        element: "input",
+        attributes: {
+          placeholder: "Monto a cobrar",
+          type: "number",
+          min: "0",
+          step: "0.01",
+        },
+      },
+      buttons: ["Cancelar", "Cobrar"],
+    });
+
+    if (input === null) return;
+
+    const monto = Number(input);
+    if (!Number.isFinite(monto) || monto <= 0) {
+      swal("¡Ups!", "Monto inválido", "error");
+      return;
+    }
+    if (monto > Number(saldoActual)) {
+      swal("¡Ups!", "No puedes cobrar más que el saldo", "error");
+      return;
+    }
+
+    try {
+      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/cobrar_proforma`, {
+        method: "POST",
+        headers: { "Content-type": "application/json; charset=UTF-8" },
+        body: JSON.stringify({ id, monto }),
+        credentials: "include",
+      });
+
+      const body = await result.json();
+
+      if (body.operation === "success") {
+        swal("Éxito", body.message || "Cobro registrado", "success");
+        getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+      } else {
+        swal("¡Ups!", body.message || "No se pudo cobrar", "error");
       }
     } catch (err) {
       console.log(err);
@@ -176,7 +227,6 @@ function Proformas() {
 
         fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
 
-        // ✅ NUEVO: fecha/hora de entrega
         fecha_entrega: obj.fecha_entrega
           ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
           : "",
@@ -189,6 +239,13 @@ function Proformas() {
             <button className="btn warning" onClick={() => openViewModal(obj)}>
               Ver
             </button>
+
+            {/* ✅ NUEVO: Cobrar solo si debe saldo */}
+            {Number(obj?.saldo) > 0 && (
+              <button className="btn primary" onClick={() => cobrarProforma(obj.id, obj.saldo)}>
+                Cobrar
+              </button>
+            )}
 
             {/* ✅ Entregar solo si NO entregado */}
             {Number(obj?.entregado) !== 1 && (
@@ -297,9 +354,7 @@ function Proformas() {
                   <div>
                     <div>
                       <b>Fecha:</b>{" "}
-                      {selected.fecha
-                        ? moment.utc(selected.fecha).format("D [de] MMMM, YYYY")
-                        : "-"}
+                      {selected.fecha ? moment.utc(selected.fecha).format("D [de] MMMM, YYYY") : "-"}
                     </div>
                     <div>
                       <b>Hora:</b> {selected.hora || "-"}
@@ -312,7 +367,8 @@ function Proformas() {
                         : "-"}
                     </div>
                     <div>
-                      <b>Hora entrega:</b> {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
+                      <b>Hora entrega:</b>{" "}
+                      {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
                     </div>
 
                     <div>
@@ -365,17 +421,23 @@ function Proformas() {
                 <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
                   <div style={{ minWidth: "280px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span><b>Total:</b></span>
+                      <span>
+                        <b>Total:</b>
+                      </span>
                       <span>{selected.total_general ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span><b>Anticipo:</b></span>
+                      <span>
+                        <b>Anticipo / Monto pagado:</b>
+                      </span>
                       <span>{selected.anticipo ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span><b>Saldo:</b></span>
+                      <span>
+                        <b>Saldo:</b>
+                      </span>
                       <span>{selected.saldo ?? 0}</span>
                     </div>
                   </div>

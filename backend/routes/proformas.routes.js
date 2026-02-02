@@ -17,6 +17,9 @@ router.post("/get_proformas", verifyJwt, proforma.getProformas);
 
 //  NUEVO: Entregar (cambiar entregado=1)
 router.post("/entregar_proforma", verifyJwt, proforma.entregarProforma);
+// NUEVO: Cobrar (sumar al anticipo y recalcular saldo)
+router.post("/cobrar_proforma", verifyJwt, proforma.cobrarProforma);
+
 
 module.exports = router;
 

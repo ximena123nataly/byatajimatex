@@ -8,7 +8,7 @@ const upload = require("../middlewares/upload.js");
 const product = new Product();
 
 /*router.post('/add_product', verifyJwt, upload("/uploads").single("image"), product.addProduct)*/
-// ✅ AGREGAR PRODUCTO CON IMAGEN
+//  AGREGAR PRODUCTO CON IMAGEN
 router.post('/add_product', 
     verifyJwt,                          // 1. Verificar token
     upload('/uploads').single('image'), // 2. Procesar imagen ← ESTO FALTABA
