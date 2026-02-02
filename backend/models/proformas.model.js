@@ -3,36 +3,61 @@ const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
 class Proforma {
-  constructor() {}
+  constructor() { }
 
-  //GET PROFORMAS (tabla)
- 
+  // GET PROFORMAS (tabla)
+
   getProformas = (req, res) => {
     try {
-      let d = jwt.decode(req.cookies.accessToken, { complete: true });
-      let email = d.payload.email;
-      let role = d.payload.role;
+      jwt.decode(req.cookies.accessToken, { complete: true });
 
       new Promise((resolve, reject) => {
         let tsa = "";
-        if (req.body.search_value != "") {
-          tsa = `WHERE proforma_ref LIKE "%${req.body.search_value}%" OR cliente LIKE "%${req.body.search_value}%"`;
+
+        if (req.body.search_value && req.body.search_value !== "") {
+          const sv = req.body.search_value;
+          tsa = `
+            WHERE CAST(id AS CHAR) LIKE "%${sv}%"
+               OR cliente LIKE "%${sv}%"
+               OR celular LIKE "%${sv}%"
+          `;
         }
 
         let tso = "";
-        if (req.body.sort_column != "" && req.body.sort_order != "") {
+        if (req.body.sort_column && req.body.sort_order) {
           tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
         } else {
-          // orden por defecto (opcional)
-          tso = "ORDER BY timeStamp DESC";
+          tso = "ORDER BY id DESC";
         }
+        //----------------------------------------------------
+        const q = `
+  SELECT
+    id,
+    proforma_id,
+    fecha,
+    hora,
+    fecha_entrega,
+    hora_entrega,
+    customer_id,
+    cliente,
+    celular,
+    detalle,
+    total_general,
+    anticipo,
+    saldo,
+    estado,
+    entregado
+  FROM proformas
+  ${tsa}
+  ${tso}
+  LIMIT ?, 10
+`;
 
-        let q = "SELECT * FROM `proformas` " + tsa + " " + tso + " LIMIT ?, 10";
+        //.....................................................
         db.query(q, [req.body.start_value], (err, result) => {
           if (err) return reject(err);
 
-          // si es búsqueda, count = largo del resultado (igual que products)
-          if (req.body.search_value != "") {
+          if (req.body.search_value && req.body.search_value !== "") {
             return resolve({
               operation: "success",
               message: "search proformas got",
@@ -40,7 +65,7 @@ class Proforma {
             });
           }
 
-          let q2 = "SELECT COUNT(*) AS val FROM `proformas`";
+          const q2 = "SELECT COUNT(*) AS val FROM proformas";
           db.query(q2, (err2, result2) => {
             if (err2) return reject(err2);
 
@@ -63,38 +88,70 @@ class Proforma {
     }
   };
 
+
   // ADD PROFORMA
+
   addProforma = (req, res) => {
     try {
       let d = jwt.decode(req.cookies.accessToken, { complete: true });
-      let email = d.payload.email;
-      let role = d.payload.role;
+
+      // 👇 aquí el user_id interno (depende de tu token)
+      const user_id = d?.payload?.user_id || d?.payload?.id || null;
 
       new Promise((resolve, reject) => {
-        // OJO: items puede venir como array (frontend) => lo guardamos como JSON string
-        const itemsStr =
-          typeof req.body.items === "string" ? req.body.items : JSON.stringify(req.body.items || []);
+        const rawDetalle = req.body.detalle ?? req.body.items ?? [];
+        const detalleStr =
+          typeof rawDetalle === "string" ? rawDetalle : JSON.stringify(rawDetalle || []);
 
-        let q =
-          "INSERT INTO `proformas`(`proforma_id`, `proforma_ref`, `fecha`, `cliente`, `celular`, `items`, `anticipo`, `saldo`, `total_general`, `estado`) VALUES (?,?,?,?,?,?,?,?,?,?)";
+        const total = req.body.total_general ?? 0;
+        const anticipo = req.body.anticipo ?? 0;
+        const saldo = req.body.saldo ?? (Number(total) - Number(anticipo));
+
+        // 1) Insert sin proforma_id (temporal) o en blanco
+        const qInsert = `
+        INSERT INTO proformas
+        (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
+         cliente, celular, detalle, total_general, anticipo, saldo, estado, entregado, user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `;
 
         db.query(
-          q,
+          qInsert,
           [
-            uniqid(),
-            req.body.proforma_ref,
-            req.body.fecha,
+            "", // <-- se llena luego con 0000001
+            req.body.fecha || null,
+            req.body.hora || null,
+            req.body.fecha_entrega || null,
+            req.body.hora_entrega || null,
+            req.body.customer_id || null,
             req.body.cliente,
             req.body.celular || null,
-            itemsStr,
-            req.body.anticipo ?? 0,
-            req.body.saldo ?? 0,
-            req.body.total_general ?? 0,
+            detalleStr,
+            total,
+            anticipo,
+            saldo,
             req.body.estado || "ACTIVA",
+            req.body.entregado ?? 0,
+            user_id, // ✅ interno, no se muestra
           ],
           (err, result) => {
             if (err) return reject(err);
-            resolve({ operation: "success", message: "Proforma added successfully" });
+
+            // 2) Generar proforma_id desde id autoincrement
+            const newId = result.insertId; // 1,2,3...
+            const proforma_id = String(newId).padStart(7, "0"); // "0000001"
+
+            // 3) Update con el proforma_id final
+            const qUpdate = "UPDATE proformas SET proforma_id = ? WHERE id = ?";
+            db.query(qUpdate, [proforma_id, newId], (err2) => {
+              if (err2) return reject(err2);
+
+              resolve({
+                operation: "success",
+                message: "Proforma added successfully",
+                info: { id: newId, proforma_id },
+              });
+            });
           }
         );
       })
@@ -108,18 +165,23 @@ class Proforma {
       res.send({ operation: "error", message: "Something went wrong" });
     }
   };
-  // DELETE PROFORMA
+
+
+
+  // DELETE PROFORMA (por id)
+
   deleteProforma = (req, res) => {
     try {
-      let d = jwt.decode(req.cookies.accessToken, { complete: true });
-      let email = d.payload.email;
-      let role = d.payload.role;
+      jwt.decode(req.cookies.accessToken, { complete: true });
 
       new Promise((resolve, reject) => {
-        let q = "DELETE FROM `proformas` WHERE proforma_id = ?";
-        db.query(q, [req.body.proforma_id], (err, result) => {
+        const q = "DELETE FROM proformas WHERE id = ?";
+        db.query(q, [req.body.id], (err) => {
           if (err) return reject(err);
-          resolve({ operation: "success", message: "Proforma deleted successfully" });
+          resolve({
+            operation: "success",
+            message: "Proforma deleted successfully",
+          });
         });
       })
         .then((value) => res.send(value))

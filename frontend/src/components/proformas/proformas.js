@@ -24,9 +24,10 @@ function Proformas() {
   const [tablePage, setTablePage] = useState(1);
   const [data, setData] = useState([]);
 
-  // Modal Ver detalle
   const [viewModalShow, setViewModalShow] = useState(false);
   const [selected, setSelected] = useState(null);
+
+  const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
   useEffect(() => {
     moment.locale("es");
@@ -45,284 +46,271 @@ function Proformas() {
             .then((res) => res.json())
             .then((body) => {
               const p = body.permissions?.find((x) => x.page === "proformas");
-
-              if (p?.view && p?.create) {
-                setPermission(p);
-              } else {
-                window.location.href = "/unauthorized";
-              }
-
+              if (p?.view && p?.create) setPermission(p);
+              else window.location.href = "/unauthorized";
             });
-  } else {
-    window.location.href = "/login";
-  }
+        } else {
+          window.location.href = "/login";
+        }
       })
-      .catch (console.log);
+      .catch(console.log);
   }, []);
 
-const getProformas = async (sv, sc, so, scv) => {
-  const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_proformas`, {
-    method: "POST",
-    headers: {
-      "Content-type": "application/json; charset=UTF-8"
-    },
-    body: JSON.stringify({ start_value: sv, sort_column: sc, sort_order: so, search_value: scv, }),
-    credentials: "include",
-  });
-  //const es igual a let : la unica diferencia es que const no puede reasignarse
-  const body = await result.json();
-  setProformas(body.info?.proformas || []);
-  setCount(body.info?.count || 0);
-};
-
-useEffect(() => {
-  if (permission !== null) {
-    let p1 = getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-    Promise.all([p1])
-      .then(() => {
-        setPageState(2);
-      })
-      .catch((err) => {
-        console.log(err)
-        setPageState(3)
-      });
-  }
-}, [permission]);
-
-useEffect(() => {
-  if (permission !== null) {
-    getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-  }
-}, [permission, tablePage, sortColumn, sortOrder, searchInput]);
-
-const deleteProforma = async (id) => {
-  const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_proforma`, {
-    method: "POST",
-    headers: {
-      "Content-type": "application/json; charset=UTF-8"
-    },
-    body: JSON.stringify({ proforma_id: id }),
-    credentials: "include",
-  }
-  );
-  //const es igual a let: la unica diferencia es que const no puede reasignarse
-  const body = await result.json();
-  if (body.operation === "success") {
-    getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-    swal("Éxito", body.message || "Proforma eliminada", "success");
-  } else {
-    swal("¡Ups!", body.message || "Algo salió mal", "error");
-  }
-};
-//---------------------------------------------------------------------
-const openViewModal = (obj) => {
-  let parsed = obj;
-
-  // si items viene como string JSON, convertirlo a array
-  if (parsed?.items && typeof parsed.items === "string") {
-    try {
-      parsed = { ...parsed, items: JSON.parse(parsed.items) };
-    } catch {
-      parsed = { ...parsed, items: [] };
-    }
-  }
-
-  setSelected(parsed);
-  setViewModalShow(true);
-};
-
-const closeViewModal = () => {
-  setSelected(null);
-  setViewModalShow(false);
-};
-
-
-//---------------------------------------------------------------------
-const estadoES = (e) => {
-  if (!e) return "";
-  const v = String(e).toUpperCase();
-  if (v === "ACTIVA") return "ACTIVA";
-  if (v === "ANULADA") return "ANULADA";
-  if (v === "PAGADA") return "PAGADA";
-  return e;
-};
-//const es igual a let: la unica diferencia es que const no puede reasignarse
-useEffect(() => {
-  if (proformas.length !== 0) {
-    const tArray = proformas.map((obj, i) => {
-      const tObj = {};
-      tObj.sl = i + 1;
-      tObj.ref = obj.proforma_ref || "";
-      tObj.cliente = obj.cliente || "";
-      tObj.total = obj.total_general ?? obj.total ?? 0;
-      tObj.fecha = obj.fecha
-        ? moment(obj.fecha).format("D [de] MMMM, YYYY")
-        : "";
-      tObj.estado = estadoES(obj.estado);
-
-      tObj.action = (
-        <>
-          <button
-            className="btn warning"
-            style={{ marginRight: "0.5rem" }}
-            onClick={() => openViewModal(obj)}
-          >
-            Ver
-          </button>
-
-          {permission?.delete && (
-            <button
-              className="btn danger"
-              style={{ marginLeft: "0.5rem" }}
-              onClick={() => {
-                swal({
-                  title: "¿Estás seguro?",
-                  text: "Si la eliminas, no podrás recuperar este registro.",
-                  icon: "warning",
-                  buttons: ["Cancelar", "Sí, eliminar"],
-                  dangerMode: true,
-                }).then((willDelete) => {
-                  if (willDelete) deleteProforma(obj.proforma_id);
-                });
-              }}
-            >
-              Eliminar
-            </button>
-          )}
-        </>
-      );
-
-      return tObj;
+  const getProformas = async (sv, sc, so, scv) => {
+    const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_proformas`, {
+      method: "POST",
+      headers: { "Content-type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({
+        start_value: sv,
+        sort_column: sc,
+        sort_order: so,
+        search_value: scv,
+      }),
+      credentials: "include",
     });
 
-    setData(tArray);
-  } else {
-    setData([]);
-  }
-}, [proformas, permission]);
+    const body = await result.json();
+    setProformas(body.info?.proformas || []);
+    setCount(body.info?.count || 0);
+  };
 
-return (
-  <div className="products">
-    <div className="products-scroll">
-      <div className="product-header">
-        <div className="title">Proformas</div>
+  useEffect(() => {
+    if (permission !== null) {
+      getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput)
+        .then(() => setPageState(2))
+        .catch(() => setPageState(3));
+    }
+  }, [permission, tablePage, sortColumn, sortOrder, searchInput]);
 
-        {permission !== null && permission.create && (
-          <Link
-            to={"/proformas/addnew"}
-            className="btn success"
-            style={{ margin: "0 0.5rem", textDecoration: "none" }}
-          >
-            Agregar nueva
-          </Link>
-        )}
-      </div>
+  const deleteProforma = async (id) => {
+    const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_proforma`, {
+      method: "POST",
+      headers: { "Content-type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ id }),
+      credentials: "include",
+    });
 
-      {pageState === 1 ? (
-        <Loader />
-      ) : pageState === 2 ? (
-        <div className="card">
-          <div className="container">
-            <Table
-              headers={["N°", "Ref", "Cliente", "Total", "Fecha", "Estado", "Acción"]}
-              columnOriginalNames={["proforma_ref", "cliente", "total_general", "fecha", "estado"]}
-              sortColumn={sortColumn}
-              setSortColumn={setSortColumn}
-              sortOrder={sortOrder}
-              setSortOrder={setSortOrder}
-              data={data}
-              data_count={count}
-              searchInput={searchInput}
-              setSearchInput={setSearchInput}
-              custom_styles={["3rem", "6rem", "10rem", "6rem", "8rem", "6rem", "10rem"]}
-              current_page={tablePage}
-              tablePageChangeFunc={setTablePage}
-            />
-          </div>
+    const body = await result.json();
+
+    if (body.operation === "success") {
+      getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+      swal("Éxito", body.message || "Proforma eliminada", "success");
+    } else {
+      swal("¡Ups!", body.message || "Algo salió mal", "error");
+    }
+  };
+
+  // ✅ MODIFICADO: parsea detalle + asegura array
+  const openViewModal = (obj) => {
+    let parsed = obj;
+
+    if (parsed?.detalle && typeof parsed.detalle === "string") {
+      try {
+        parsed = { ...parsed, detalle: JSON.parse(parsed.detalle) };
+      } catch {
+        parsed = { ...parsed, detalle: [] };
+      }
+    }
+
+    if (!Array.isArray(parsed?.detalle)) {
+      parsed = { ...parsed, detalle: [] };
+    }
+
+    setSelected(parsed);
+    setViewModalShow(true);
+  };
+
+  const closeViewModal = () => {
+    setSelected(null);
+    setViewModalShow(false);
+  };
+
+  const estadoES = (e) => e || "";
+
+  useEffect(() => {
+    if (proformas.length !== 0) {
+      const tArray = proformas.map((obj, i) => ({
+        sl: i + 1,
+        ref: formatProforma(obj.id),
+        cliente: obj.cliente || "",
+        total: obj.total_general ?? 0,
+        fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
+        estado: estadoES(obj.estado),
+        action: (
+          <>
+            <button className="btn warning" onClick={() => openViewModal(obj)}>
+              Ver
+            </button>
+            {permission?.delete && (
+              <button className="btn danger" onClick={() => deleteProforma(obj.id)}>
+                Eliminar
+              </button>
+            )}
+          </>
+        ),
+      }));
+
+      setData(tArray);
+    } else setData([]);
+  }, [proformas, permission]);
+
+  return (
+    <div className="products">
+      <div className="products-scroll">
+        <div className="product-header">
+          <div className="title">Proformas</div>
+          {permission?.create && (
+            <Link to="/proformas/addnew" className="btn success">
+              Agregar nueva
+            </Link>
+          )}
         </div>
-      ) : (
-        <Error />
-      )}
 
-      {/* MODAL VER */}
-      <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
-        <Modal.Header closeButton>
-          <Modal.Title className="fs-4 fw-bold" style={{ color: "#2cd498" }}>
-            Detalle de Proforma
-          </Modal.Title>
-        </Modal.Header>
+        {pageState === 1 ? (
+          <Loader />
+        ) : pageState === 2 ? (
+          <Table
+            headers={["N°", "Proforma", "Cliente", "Total", "Fecha", "Estado", "Acción"]}
+            columnOriginalNames={[
+              ["sl", ""],
+              ["id", ""],
+              ["cliente", ""],
+              ["total_general", ""],
+              ["fecha", ""],
+              ["estado", ""],
+              ["action", ""],
+            ]}
+            data={data}
+            data_count={count}
+            searchInput={searchInput}
+            setSearchInput={setSearchInput}
+            current_page={tablePage}
+            tablePageChangeFunc={setTablePage}
+          />
+        ) : (
+          <Error />
+        )}
 
-        <Modal.Body style={{ backgroundColor: "#fafafa" }}>
-          {!selected ? (
-            <div>Cargando...</div>
-          ) : (
-            <div className="container">
-              <div className="card">
-                <div className="card-body">
-                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                    <div><b>Ref:</b> {selected.proforma_ref}</div>
-                    <div><b>Fecha:</b> {selected.fecha ? moment(selected.fecha).format("D [de] MMMM, YYYY") : "-"}</div>
-                    <div><b>Cliente:</b> {selected.cliente}</div>
-                    <div><b>Celular:</b> {selected.celular || "-"}</div>
-                    <div><b>Estado:</b> {estadoES(selected.estado)}</div>
-                  </div>
+        {/* ✅ MODAL VER: COMPLETO */}
+        <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
+          <Modal.Header closeButton>
+            <Modal.Title>Detalle de Proforma</Modal.Title>
+          </Modal.Header>
 
-                  <hr />
-
+          <Modal.Body>
+            {selected && (
+              <>
+                {/* CABECERA */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: "1rem",
+                    flexWrap: "wrap",
+                  }}
+                >
                   <div>
-                    <b>Ítems</b>
-                    <div style={{ marginTop: "0.5rem" }}>
-                      {(selected.items && Array.isArray(selected.items) ? selected.items : []).length === 0 ? (
-                        <div style={{ opacity: 0.7 }}>Sin ítems</div>
-                      ) : (
-                        <table className="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>#</th>
-                              <th>Cant.</th>
-                              <th>Detalle</th>
-                              <th>P.Unit</th>
-                              <th>Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {selected.items.map((it, idx) => (
-                              <tr key={idx}>
-                                <td>{idx + 1}</td>
-                                <td>{it.cantidad}</td>
-                                <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle}</td>
-                                <td>{it.precio_unitario}</td>
-                                <td>{it.total}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
+                    <div>
+                      <b>Proforma:</b> {formatProforma(selected.id)}
+                    </div>
+                    <div>
+                      <b>Cliente:</b> {selected.cliente || "-"}
+                    </div>
+                    <div>
+                      <b>Celular:</b> {selected.celular || "-"}
                     </div>
                   </div>
 
-                  <hr />
-
-                  <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                    <div><b>Total:</b> {selected.total_general ?? selected.total ?? 0}</div>
-                    <div><b>Anticipo:</b> {selected.anticipo ?? 0}</div>
-                    <div><b>Saldo:</b> {selected.saldo ?? 0}</div>
+                  <div>
+                    <div>
+                      <b>Fecha:</b>{" "}
+                      {selected.fecha
+                        ? moment.utc(selected.fecha).format("D [de] MMMM, YYYY")
+                        : "-"}
+                    </div>
+                    <div>
+                      <b>Hora:</b> {selected.hora || "-"}
+                    </div>
+                    <div>
+                      <b>Estado:</b> {selected.estado || "-"}
+                    </div>
+                    <div>
+                      <b>Entregado:</b> {selected.entregado ? "Sí" : "No"}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-        </Modal.Body>
 
-        <Modal.Footer>
-          <button className="btn btn-outline-danger" onClick={closeViewModal}>
-            Cerrar
-          </button>
-        </Modal.Footer>
-      </Modal>
+                <hr />
+
+                {/* TABLA ITEMS */}
+                <div style={{ overflowX: "auto" }}>
+                  <table className="table table-bordered" style={{ width: "100%", minWidth: "650px" }}>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Cant.</th>
+                        <th>Detalle</th>
+                        <th>Oferta</th>
+                        <th>Precio</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {(selected.detalle || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ textAlign: "center" }}>
+                            Sin ítems
+                          </td>
+                        </tr>
+                      ) : (
+                        (selected.detalle || []).map((it, idx) => (
+                          <tr key={idx}>
+                            <td>{idx + 1}</td>
+                            <td>{it.cantidad ?? "-"}</td>
+                            <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
+                            <td>{it.oferta ?? "Sin oferta"}</td>
+                            <td>{it.precio_unitario ?? "-"}</td>
+                            <td>{it.total ?? "-"}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* TOTALES */}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+                  <div style={{ minWidth: "280px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>
+                        <b>Total:</b>
+                      </span>
+                      <span>{selected.total_general ?? 0}</span>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>
+                        <b>Anticipo:</b>
+                      </span>
+                      <span>{selected.anticipo ?? 0}</span>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>
+                        <b>Saldo:</b>
+                      </span>
+                      <span>{selected.saldo ?? 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </Modal.Body>
+        </Modal>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 export default Proformas;

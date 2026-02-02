@@ -90,14 +90,17 @@ function Table(props) {
               props.headers
                 .filter(h => !unsetColumns.includes(h))
                 .map((col, i) => (
-                  <th key={i} style={{ width: props.custom_styles[i] }}>
+                  <th key={i} style={{ width: (props.custom_styles?.[i] || "auto") }}>
                     <div className='d-flex justify-content-center align-items-center gap-1'>
                       <span
                         style={{ cursor: "pointer" }}
                         onClick={() => {
                           if (i !== 0 && i !== props.headers.length - 1) {
-                            props.setSortColumn(props.columnOriginalNames[i - 1])
-                            props.setSortOrder("ASC")
+                            const realCol = props.columnOriginalNames?.[i - 1];
+                            if (realCol) {
+                              props.setSortColumn(realCol);
+                              props.setSortOrder("ASC");
+                            }
                           }
                         }}
                       >
@@ -106,7 +109,7 @@ function Table(props) {
 
                       {
                         props.sortColumn &&
-                        props.columnOriginalNames[props.headers.indexOf(col) - 1] === props.sortColumn &&
+                        props.columnOriginalNames?.[props.headers.indexOf(col) - 1] === props.sortColumn &&
                         <>
                           {
                             props.sortOrder === "ASC"
