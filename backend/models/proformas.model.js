@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
 class Proforma {
-  constructor() {}
+  constructor() { }
 
   // GET PROFORMAS (tabla)
   getProformas = (req, res) => {
@@ -40,7 +40,7 @@ class Proforma {
             customer_id,
             cliente,
             celular,
-            notas,          -- ✅ AÑADIDO
+            notas,          -- AÑADIDO
             detalle,
             total_general,
             anticipo,
@@ -245,6 +245,14 @@ class Proforma {
             return resolve({
               operation: "error",
               message: `El monto excede el saldo. Saldo actual: ${saldoActual}`,
+            });
+          }
+          //  NUEVO: obligar pago completo
+          // si monto es menor al saldo => no permitido
+          if (monto < saldoActual) {
+            return resolve({
+              operation: "error",
+              message: "Debes pagar el saldo completo",
             });
           }
 

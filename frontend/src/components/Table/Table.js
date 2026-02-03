@@ -136,13 +136,13 @@ function Table(props) {
               </tr>
             ) : (
               props.data.map((row, i) => {
-                // ✅ NUEVO: clase de fila (si te mandan _rowClass)
+                //  NUEVO: clase de fila (si te mandan _rowClass)
                 const rowClass = props.rowClassNameKey ? (row?.[props.rowClassNameKey] || "") : "";
 
                 return (
                   <tr key={i} className={rowClass}>
                     {
-                      // ✅ NUEVO: en vez de Object.values, usamos entries para poder EXCLUIR la key de clase
+                      //  NUEVO: en vez de Object.values, usamos entries para poder EXCLUIR la key de clase
                       Object.entries(row)
                         .filter(([key]) => key !== props.rowClassNameKey) // no mostrar _rowClass como columna
                         .map(([, val]) => val) // quedarnos solo con los valores

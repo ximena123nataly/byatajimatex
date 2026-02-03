@@ -29,7 +29,7 @@ function Proformas() {
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
-  // ✅ Evita que los botones queden con foco (SweetAlert devuelve foco al cerrar)
+  //  Evita que los botones queden con foco (SweetAlert devuelve foco al cerrar)
   const clickNoFocusAsync = (fn) => async (e) => {
     const el = e?.currentTarget;
 
@@ -120,7 +120,7 @@ function Proformas() {
     }
   };
 
-  // ✅ ENTREGAR con cobro obligatorio si hay saldo (sin tocar el botón Cobrar)
+  //  ENTREGAR con cobro obligatorio si hay saldo (sin tocar el botón Cobrar)
   const entregarProforma = async (id, saldoActual = 0) => {
     try {
       // 1) Si hay saldo, cobrar primero (obligatorio)
@@ -202,11 +202,20 @@ function Proformas() {
     }
   };
 
-  // ✅ COBRAR (suma al anticipo y baja el saldo)
+
+
+  // COBRAR: SOLO permite pagar el saldo COMPLETO
   const cobrarProforma = async (id, saldoActual) => {
+    const saldoNum = Number(saldoActual);
+
+    if (!Number.isFinite(saldoNum) || saldoNum <= 0) {
+      swal("Info", "Esta proforma no tiene saldo pendiente", "info");
+      return;
+    }
+
     const input = await swal({
       title: "Cobrar saldo",
-      text: `Saldo actual: ${saldoActual}`,
+      text: `Saldo actual: ${saldoNum.toFixed(2)}`,
       content: {
         element: "input",
         attributes: {
@@ -222,12 +231,23 @@ function Proformas() {
     if (input === null) return;
 
     const monto = Number(input);
+
     if (!Number.isFinite(monto) || monto <= 0) {
       swal("¡Ups!", "Monto inválido", "error");
       return;
     }
-    if (monto > Number(saldoActual)) {
+
+    //  Si excede el saldo
+    if (monto > saldoNum) {
       swal("¡Ups!", "No puedes cobrar más que el saldo", "error");
+      return;
+    }
+
+    //  Si es menor al saldo (NO PERMITIDO)
+    // comparación con tolerancia por decimales
+    const diff = Math.abs(monto - saldoNum);
+    if (diff > 0.009) {
+      swal("¡Ups!", "Debes pagar el saldo completo", "warning");
       return;
     }
 
@@ -235,14 +255,14 @@ function Proformas() {
       const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/cobrar_proforma`, {
         method: "POST",
         headers: { "Content-type": "application/json; charset=UTF-8" },
-        body: JSON.stringify({ id, monto }),
+        body: JSON.stringify({ id, monto: saldoNum }), // ✅ mandamos el saldo exacto
         credentials: "include",
       });
 
       const body = await result.json();
 
       if (body.operation === "success") {
-        swal("Éxito", body.message || "Cobro registrado", "success");
+        swal("Éxito", body.message || "Pago registrado", "success");
         getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
       } else {
         swal("¡Ups!", body.message || "No se pudo cobrar", "error");
@@ -252,6 +272,7 @@ function Proformas() {
       swal("¡Ups!", "Error de conexión con el servidor", "error");
     }
   };
+
 
   const openViewModal = (obj) => {
     let parsed = obj;

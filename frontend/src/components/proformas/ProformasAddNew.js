@@ -138,7 +138,7 @@ function ProformasAddNew() {
     return totalGeneral - Math.max(0, toNumber(anticipo));
   }, [totalGeneral, anticipo]);
 
-  // ✅ IMPRESION
+  //  IMPRESION
   const imprimirProforma = (p) => {
     const items = Array.isArray(p.items) ? p.items : [];
 
@@ -221,8 +221,8 @@ function ProformasAddNew() {
         <div class="title">PROFORMA</div>
         <div class="small" style="margin-top:10px;">
           <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
-          <div>(El Alto lado Transito - Bolivia</div>
-          <div>Cel.: 75866135/75274747-77221750</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135-75274747-77221750</div>
         </div>
       </div>
       <div class="col-right small" style="margin-top:14px;">
@@ -329,7 +329,7 @@ function ProformasAddNew() {
       cliente: cliente.trim(),
       celular: celular.trim(),
 
-      // ✅ ENVIAR NOTAS
+      //  ENVIAR NOTAS
       notas: notas.trim() === "" ? null : notas.trim(),
 
       anticipo: toNumber(anticipo),
@@ -407,7 +407,7 @@ function ProformasAddNew() {
 
         setCliente("");
         setCelular("");
-        setNotas(""); // ✅ reset notas
+        setNotas(""); //  reset notas
         setAnticipo("0");
         setRows([{ cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" }]);
       } else {
@@ -423,7 +423,7 @@ function ProformasAddNew() {
   // layout
   const topRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap", alignItems: "flex-end" };
   const boxCliente = { flex: "1 1 420px", minWidth: 260 };
-  const boxSmall = { flex: "0 0 160px", minWidth: 140 }; // ✅ más chico para fecha/hora
+  const boxSmall = { flex: "0 0 160px", minWidth: 140 }; //  más chico para fecha/hora
 
   const secondRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap", alignItems: "flex-end" };
   const boxNota = { flex: "1 1 420px", minWidth: 260 };
@@ -445,7 +445,7 @@ function ProformasAddNew() {
         <div className="card" style={{ maxHeight: "75vh", overflowY: "auto" }}>
           <div className="container" style={{ paddingBottom: "3rem" }}>
 
-            {/* ✅ FILA 1: CLIENTE + FECHA + HORA (fecha/hora más chicos) */}
+            {/*  FILA 1: CLIENTE + FECHA + HORA (fecha/hora más chicos) */}
             <div style={topRow}>
               <div style={boxCliente}>
                 <label className="fw-bold">Cliente</label>
@@ -463,7 +463,7 @@ function ProformasAddNew() {
               </div>
             </div>
 
-            {/* ✅ FILA 2: NOTA + CELULAR + ENTREGA */}
+            {/*  FILA 2: NOTA + CELULAR + ENTREGA */}
             <div style={secondRow}>
               <div style={boxNota}>
                 <label className="fw-bold">Notas</label>
