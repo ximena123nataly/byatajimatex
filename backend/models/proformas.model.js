@@ -40,6 +40,7 @@ class Proforma {
             customer_id,
             cliente,
             celular,
+            notas,          -- ✅ AÑADIDO
             detalle,
             total_general,
             anticipo,
@@ -91,7 +92,6 @@ class Proforma {
     try {
       let d = jwt.decode(req.cookies.accessToken, { complete: true });
 
-      // 👇 aquí el user_id interno (depende de tu token)
       const user_id = d?.payload?.user_id || d?.payload?.id || null;
 
       new Promise((resolve, reject) => {
@@ -106,14 +106,14 @@ class Proforma {
         const qInsert = `
           INSERT INTO proformas
           (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
-           cliente, celular, detalle, total_general, anticipo, saldo, estado, entregado, user_id)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           cliente, celular, notas, detalle, total_general, anticipo, saldo, estado, entregado, user_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `;
 
         db.query(
           qInsert,
           [
-            "", // <-- se llena luego con 0000001
+            "",
             req.body.fecha || null,
             req.body.hora || null,
             req.body.fecha_entrega || null,
@@ -121,6 +121,10 @@ class Proforma {
             req.body.customer_id || null,
             req.body.cliente,
             req.body.celular || null,
+
+            // ✅ NOTAS
+            req.body.notas ? String(req.body.notas) : null,
+
             detalleStr,
             total,
             anticipo,
@@ -132,8 +136,8 @@ class Proforma {
           (err, result) => {
             if (err) return reject(err);
 
-            const newId = result.insertId; // 1,2,3...
-            const proforma_id = String(newId).padStart(7, "0"); // "0000001"
+            const newId = result.insertId;
+            const proforma_id = String(newId).padStart(7, "0");
 
             const qUpdate = "UPDATE proformas SET proforma_id = ? WHERE id = ?";
             db.query(qUpdate, [proforma_id, newId], (err2) => {
@@ -202,7 +206,7 @@ class Proforma {
     }
   };
 
-  // COBRAR PROFORMA: suma monto al anticipo y recalcula saldo
+  // COBRAR PROFORMA
   cobrarProforma = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
@@ -210,13 +214,9 @@ class Proforma {
       const id = req.body?.id;
       const monto = Number(req.body?.monto);
 
-      if (!id) {
-        return res.send({ operation: "error", message: "Falta id" });
-      }
-
-      if (!Number.isFinite(monto) || monto <= 0) {
+      if (!id) return res.send({ operation: "error", message: "Falta id" });
+      if (!Number.isFinite(monto) || monto <= 0)
         return res.send({ operation: "error", message: "Monto inválido" });
-      }
 
       new Promise((resolve, reject) => {
         const qGet = `
@@ -280,7 +280,7 @@ class Proforma {
     }
   };
 
-  // DELETE PROFORMA (por id)
+  // DELETE PROFORMA
   deleteProforma = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });

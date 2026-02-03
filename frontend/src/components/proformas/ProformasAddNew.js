@@ -26,16 +26,19 @@ function ProformasAddNew() {
   const [pageState, setPageState] = useState(1);
   const [permission, setPermission] = useState(null);
 
-  // ✅ CAMBIO: usar fecha/hora LOCAL (no UTC)
+  // ✅ NOTAS (ahora sí dentro del componente)
+  const [notas, setNotas] = useState("");
+
+  // Fecha/Hora local
   const todayISO = getLocalISODate();
   const nowHHMM = getLocalTimeHHMM();
 
   // Cabecera
   const [fecha, setFecha] = useState(todayISO);
-  const [hora, setHora] = useState(nowHHMM); // HH:MM
+  const [hora, setHora] = useState(nowHHMM);
 
   const [fechaEntrega, setFechaEntrega] = useState(todayISO);
-  const [horaEntrega, setHoraEntrega] = useState(nowHHMM); // HH:MM
+  const [horaEntrega, setHoraEntrega] = useState(nowHHMM);
 
   // Cliente
   const [cliente, setCliente] = useState("");
@@ -60,7 +63,7 @@ function ProformasAddNew() {
   const [submitButtonState, setSubmitButtonState] = useState(false);
   const [proformaCreada, setProformaCreada] = useState("");
 
-  // Seguridad / Permisos
+  // Permisos
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
       method: "POST",
@@ -135,7 +138,7 @@ function ProformasAddNew() {
     return totalGeneral - Math.max(0, toNumber(anticipo));
   }, [totalGeneral, anticipo]);
 
-  // ✅ IMPRESION: MITAD HOJA CARTA + DISEÑO TAJIMA (como tu captura)
+  // ✅ IMPRESION
   const imprimirProforma = (p) => {
     const items = Array.isArray(p.items) ? p.items : [];
 
@@ -162,6 +165,10 @@ function ProformasAddNew() {
       })
       .join("");
 
+    const notasHTML = p.notas
+      ? `<div class="small wrap" style="margin-top:8px;"><b>Notas:</b> ${String(p.notas).replace(/\n/g, "<br/>")}</div>`
+      : "";
+
     const html = `
 <!doctype html>
 <html>
@@ -169,91 +176,37 @@ function ProformasAddNew() {
   <meta charset="utf-8"/>
   <title>Proforma ${p.proforma_id || ""}</title>
   <style>
-    /* ✅ Mitad de hoja carta VERTICAL */
     @page { size: letter portrait; margin: 0; }
     body { margin: 0; font-family: Arial, sans-serif; color: #111; }
-
-    /* ✅ “media hoja” */
-    .ticket {
-      width: 8.5in;
-      height: 5.5in;
-      box-sizing: border-box;
-      padding: 0.35in 0.45in;
-      margin: 0 auto;
-      overflow: hidden;
-    }
-
+    .ticket { width: 8.5in; height: 5.5in; box-sizing: border-box; padding: 0.35in 0.45in; margin: 0 auto; overflow: hidden; }
     .wrap { word-break: break-word; overflow-wrap: anywhere; }
-
     .small { font-size: 11px; line-height: 1.25; }
     .muted { color: #444; }
     .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
-
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .col-left  { width: 33%; }
     .col-center{ width: 34%; text-align: center; }
     .col-right { width: 33%; text-align: right; }
-
-    .logo {
-      width: 170px;
-      height: auto;
-      display: block;
-      margin-bottom: 6px;
-    }
-
+    .logo { width: 170px; height: auto; display: block; margin-bottom: 6px; }
     hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
-
-    .mid {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-    }
+    .mid { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .mid-left { width: 55%; }
     .mid-right{ width: 45%; text-align: right; }
-
     table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    thead th {
-      font-size: 12px;
-      text-align: left;
-      border-bottom: 1px solid #ddd;
-      padding: 7px 6px;
-    }
-    tbody td {
-      font-size: 12px;
-      border-bottom: 1px dashed #eee;
-      padding: 7px 6px;
-      vertical-align: top;
-    }
-
+    thead th { font-size: 12px; text-align: left; border-bottom: 1px solid #ddd; padding: 7px 6px; }
+    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; padding: 7px 6px; vertical-align: top; }
     .td-right { text-align: right; }
     .td-center { text-align: center; }
     .td-left { text-align: left; }
-
-    .totals {
-      width: 260px;
-      margin-left: auto;
-      margin-top: 10px;
-    }
+    .totals { width: 260px; margin-left: auto; margin-top: 10px; }
     .totals table { width: 100%; }
-    .totals td {
-      font-size: 12px;
-      padding: 4px 6px;
-    }
+    .totals td { font-size: 12px; padding: 4px 6px; }
     .totals tr td:first-child { text-align: left; }
     .totals tr td:last-child { text-align: right; font-weight: 700; }
   </style>
 </head>
-
 <body>
   <div class="ticket">
-
     <div class="header">
       <div class="col-left">
         <img class="logo" src="/tajima.png" alt="TAJIMA" />
@@ -264,7 +217,6 @@ function ProformasAddNew() {
           <div class="muted">jhonnfya@hotmail.com</div>
         </div>
       </div>
-
       <div class="col-center">
         <div class="title">PROFORMA</div>
         <div class="small" style="margin-top:10px;">
@@ -273,7 +225,6 @@ function ProformasAddNew() {
           <div>Cel.: 75866135/75274747-77221750</div>
         </div>
       </div>
-
       <div class="col-right small" style="margin-top:14px;">
         <div>N°: <b>${p.proforma_id || "--"}</b></div>
         <div>Fecha: <b>${p.fecha || ""}</b></div>
@@ -287,8 +238,8 @@ function ProformasAddNew() {
       <div class="mid-left wrap">
         <div><b>Cliente:</b> ${p.cliente || ""}</div>
         <div><b>Celular:</b> ${p.celular || ""}</div>
+        ${notasHTML}
       </div>
-
       <div class="mid-right">
         <div><b>Entregado:</b> ${p.entregado ? "SI" : "NO"}</div>
         <div class="muted"><b>Entrega:</b> ${p.fecha_entrega || ""} ${p.hora_entrega || ""}</div>
@@ -319,7 +270,6 @@ function ProformasAddNew() {
         <tr><td>Saldo</td><td>${money(p.saldo)}</td></tr>
       </table>
     </div>
-
   </div>
 
   <script>
@@ -343,18 +293,9 @@ function ProformasAddNew() {
   };
 
   const insertProforma = async () => {
-    if (fecha.trim() === "") {
-      swal("¡Ups!", "La fecha no puede estar vacía", "error");
-      return;
-    }
-    if (hora.trim() === "") {
-      swal("¡Ups!", "La hora no puede estar vacía", "error");
-      return;
-    }
-    if (cliente.trim() === "") {
-      swal("¡Ups!", "El cliente no puede estar vacío", "error");
-      return;
-    }
+    if (fecha.trim() === "") return swal("¡Ups!", "La fecha no puede estar vacía", "error");
+    if (hora.trim() === "") return swal("¡Ups!", "La hora no puede estar vacía", "error");
+    if (cliente.trim() === "") return swal("¡Ups!", "El cliente no puede estar vacío", "error");
 
     const validItems = rowsWithTotals.filter(
       (r) =>
@@ -370,7 +311,6 @@ function ProformasAddNew() {
 
     setSubmitButtonState(true);
 
-    // asegurar HH:MM:SS
     const horaDB = hora.length === 5 ? `${hora}:00` : hora;
     const horaEntregaDB = horaEntrega
       ? horaEntrega.length === 5
@@ -388,6 +328,9 @@ function ProformasAddNew() {
 
       cliente: cliente.trim(),
       celular: celular.trim(),
+
+      // ✅ ENVIAR NOTAS
+      notas: notas.trim() === "" ? null : notas.trim(),
 
       anticipo: toNumber(anticipo),
 
@@ -437,6 +380,7 @@ function ProformasAddNew() {
               hora: horaDB,
               cliente,
               celular,
+              notas,
               estado: "ACTIVA",
               entregado: 0,
               fecha_entrega: fechaEntrega,
@@ -455,7 +399,7 @@ function ProformasAddNew() {
           }
         });
 
-        // ✅ reset usando fecha/hora LOCAL
+        // Reset
         setFecha(getLocalISODate());
         setHora(getLocalTimeHHMM());
         setFechaEntrega("");
@@ -463,6 +407,7 @@ function ProformasAddNew() {
 
         setCliente("");
         setCelular("");
+        setNotas(""); // ✅ reset notas
         setAnticipo("0");
         setRows([{ cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" }]);
       } else {
@@ -475,12 +420,14 @@ function ProformasAddNew() {
     }
   };
 
-  // estilos de layout
-  const topRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap" };
-  const topBox = { flex: "1 1 0", minWidth: 240 };
+  // layout
+  const topRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap", alignItems: "flex-end" };
+  const boxCliente = { flex: "1 1 420px", minWidth: 260 };
+  const boxSmall = { flex: "0 0 160px", minWidth: 140 }; // ✅ más chico para fecha/hora
 
-  const secondRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap" };
-  const secondBox = { flex: "1 1 0", minWidth: 240 };
+  const secondRow = { display: "flex", gap: "18px", marginTop: "10px", flexWrap: "wrap", alignItems: "flex-end" };
+  const boxNota = { flex: "1 1 420px", minWidth: 260 };
+  const boxCel = { flex: "0 0 220px", minWidth: 200 };
 
   return (
     <div className="productaddnew" style={{ overflowY: "auto", paddingBottom: "2rem" }}>
@@ -497,36 +444,51 @@ function ProformasAddNew() {
       ) : pageState === 2 ? (
         <div className="card" style={{ maxHeight: "75vh", overflowY: "auto" }}>
           <div className="container" style={{ paddingBottom: "3rem" }}>
+
+            {/* ✅ FILA 1: CLIENTE + FECHA + HORA (fecha/hora más chicos) */}
             <div style={topRow}>
-              <div style={topBox}>
+              <div style={boxCliente}>
                 <label className="fw-bold">Cliente</label>
                 <input className="my_input" type="text" value={cliente} onChange={(e) => setCliente(e.target.value)} />
               </div>
 
-              <div style={topBox}>
+              <div style={boxSmall}>
                 <label className="fw-bold">Fecha</label>
                 <input className="my_input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
               </div>
 
-              <div style={topBox}>
+              <div style={boxSmall}>
                 <label className="fw-bold">Hora</label>
                 <input className="my_input" type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
               </div>
             </div>
 
+            {/* ✅ FILA 2: NOTA + CELULAR + ENTREGA */}
             <div style={secondRow}>
-              <div style={secondBox}>
+              <div style={boxNota}>
+                <label className="fw-bold">Notas</label>
+                <textarea
+                  className="my_input"
+                  rows={2}
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  placeholder="Notas adicionales..."
+                  style={{ resize: "vertical" }}
+                />
+              </div>
+
+              <div style={boxCel}>
                 <label className="fw-bold">Celular</label>
                 <input className="my_input" type="text" value={celular} onChange={(e) => setCelular(e.target.value)} />
               </div>
 
-              <div style={secondBox}>
-                <label className="fw-bold">Fecha de entrega</label>
+              <div style={boxSmall}>
+                <label className="fw-bold">Fecha entrega</label>
                 <input className="my_input" type="date" value={fechaEntrega} onChange={(e) => setFechaEntrega(e.target.value)} />
               </div>
 
-              <div style={secondBox}>
-                <label className="fw-bold">Hora de entrega</label>
+              <div style={boxSmall}>
+                <label className="fw-bold">Hora entrega</label>
                 <input className="my_input" type="time" value={horaEntrega} onChange={(e) => setHoraEntrega(e.target.value)} />
               </div>
             </div>
@@ -633,6 +595,7 @@ function ProformasAddNew() {
                 Guardar
               </button>
             </div>
+
           </div>
         </div>
       ) : (

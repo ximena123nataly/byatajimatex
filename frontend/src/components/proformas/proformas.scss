@@ -6,5 +6,20 @@
   background:  #FFFFFF !important; /* verde suave */
 }
 
+.actionGrid {
+  display: flex;
+  justify-content: flex-end; /* 👈 SIEMPRE a la derecha */
+  gap: 6px;                  /* espacio entre botones */
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+/* HACE MÁS PEQUEÑOS LOS CAMPOS DE FECHA Y HORA */
+input[type="date"],
+input[type="time"] {
+  width: 160px;
+  padding: 6px;
+  font-size: 14px;
+}
 
 

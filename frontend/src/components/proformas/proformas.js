@@ -29,6 +29,26 @@ function Proformas() {
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
+  // ✅ Evita que los botones queden con foco (SweetAlert devuelve foco al cerrar)
+  const clickNoFocusAsync = (fn) => async (e) => {
+    const el = e?.currentTarget;
+
+    // Quita foco al instante
+    if (el) el.blur();
+
+    try {
+      await fn();
+    } finally {
+      // SweetAlert devuelve el foco al cerrar, lo quitamos también
+      setTimeout(() => {
+        if (el) el.blur();
+        if (document?.activeElement && typeof document.activeElement.blur === "function") {
+          document.activeElement.blur();
+        }
+      }, 0);
+    }
+  };
+
   useEffect(() => {
     moment.locale("es");
 
@@ -48,7 +68,6 @@ function Proformas() {
               const p = body.permissions?.find((x) => x.page === "proformas");
               if (p?.view) setPermission(p);
               else window.location.href = "/unauthorized";
-
             });
         } else {
           window.location.href = "/login";
@@ -101,33 +120,81 @@ function Proformas() {
     }
   };
 
-  //  marcar como entregado
-  const entregarProforma = async (id) => {
-    const ok = await swal({
-      title: "¿Entregar pedido?",
-      text: "Esto marcará la proforma como ENTREGADA.",
-      icon: "warning",
-      buttons: ["Cancelar", "Sí, entregar"],
-      dangerMode: true,
-    });
-
-    if (!ok) return;
-
+  // ✅ ENTREGAR con cobro obligatorio si hay saldo (sin tocar el botón Cobrar)
+  const entregarProforma = async (id, saldoActual = 0) => {
     try {
-      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/entregar_proforma`, {
+      // 1) Si hay saldo, cobrar primero (obligatorio)
+      if (Number(saldoActual) > 0) {
+        const input = await swal({
+          title: "Cobro antes de entregar",
+          text: `Saldo pendiente: ${saldoActual}`,
+          content: {
+            element: "input",
+            attributes: {
+              placeholder: "Monto a cobrar",
+              type: "number",
+              min: "0",
+              step: "0.01",
+            },
+          },
+          buttons: ["Cancelar", "Cobrar y entregar"],
+          dangerMode: true,
+        });
+
+        // Canceló => NO entregar
+        if (input === null) return;
+
+        const monto = Number(input);
+        if (!Number.isFinite(monto) || monto <= 0) {
+          swal("¡Ups!", "Monto inválido", "error");
+          return;
+        }
+        if (monto > Number(saldoActual)) {
+          swal("¡Ups!", "No puedes cobrar más que el saldo", "error");
+          return;
+        }
+
+        // Ejecuta cobro
+        const cobrarRes = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/cobrar_proforma`, {
+          method: "POST",
+          headers: { "Content-type": "application/json; charset=UTF-8" },
+          body: JSON.stringify({ id, monto }),
+          credentials: "include",
+        });
+
+        const cobrarBody = await cobrarRes.json();
+
+        if (cobrarBody.operation !== "success") {
+          swal("¡Ups!", cobrarBody.message || "No se pudo cobrar", "error");
+          return;
+        }
+      }
+
+      // 2) Confirmar entrega
+      const ok = await swal({
+        title: "¿Entregar pedido?",
+        text: "Esto marcará la proforma como ENTREGADA.",
+        icon: "warning",
+        buttons: ["Cancelar", "Sí, entregar"],
+        dangerMode: true,
+      });
+
+      if (!ok) return;
+
+      const entregarRes = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/entregar_proforma`, {
         method: "POST",
         headers: { "Content-type": "application/json; charset=UTF-8" },
         body: JSON.stringify({ id }),
         credentials: "include",
       });
 
-      const body = await result.json();
+      const entregarBody = await entregarRes.json();
 
-      if (body.operation === "success") {
-        swal("Éxito", body.message || "Proforma marcada como entregada", "success");
+      if (entregarBody.operation === "success") {
+        swal("Éxito", entregarBody.message || "Proforma marcada como entregada", "success");
         getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
       } else {
-        swal("¡Ups!", body.message || "No se pudo entregar", "error");
+        swal("¡Ups!", entregarBody.message || "No se pudo entregar", "error");
       }
     } catch (err) {
       console.log(err);
@@ -135,7 +202,7 @@ function Proformas() {
     }
   };
 
-  //  NUEVO: COBRAR (suma al anticipo y baja el saldo)
+  // ✅ COBRAR (suma al anticipo y baja el saldo)
   const cobrarProforma = async (id, saldoActual) => {
     const input = await swal({
       title: "Cobrar saldo",
@@ -210,79 +277,77 @@ function Proformas() {
     setViewModalShow(false);
   };
 
-  const estadoES = (e) => e || "";
-
-  //  clase según entregado (0 rojo, 1 verde)
+  // ✅ clase según entregado (0 rojo, 1 blanco)
   const rowClassByEntregado = (obj) => {
     const entregado = Number(obj?.entregado) === 1;
     return entregado ? "row-entregado" : "row-no-entregado";
   };
 
   useEffect(() => {
-  if (proformas.length !== 0) {
-    const tArray = proformas.map((obj, i) => ({
-      sl: i + 1,
-      id: formatProforma(obj.id),
-      cliente: obj.cliente || "",
+    if (proformas.length !== 0) {
+      const tArray = proformas.map((obj, i) => ({
+        sl: i + 1,
+        id: formatProforma(obj.id),
+        cliente: obj.cliente || "",
 
-      total_general: Number(obj.total_general || 0).toFixed(2),
-      saldo: Number(obj.saldo || 0).toFixed(2),
+        total_general: Number(obj.total_general || 0).toFixed(2),
+        saldo: Number(obj.saldo || 0).toFixed(2),
 
-      fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
-      fecha_entrega: obj.fecha_entrega
-        ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
-        : "",
-      hora_entrega: obj.hora_entrega ? String(obj.hora_entrega).slice(0, 5) : "",
+        fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
+        fecha_entrega: obj.fecha_entrega
+          ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
+          : "",
+        hora_entrega: obj.hora_entrega ? String(obj.hora_entrega).slice(0, 5) : "",
 
-      action: (
-        <div className="actionGrid">
-          {Number(obj?.saldo) > 0 ? (
-            <button className="btn primary" onClick={() => cobrarProforma(obj.id, obj.saldo)}>
-              Cobrar
+        action: (
+          <div className="actionGrid">
+            {/* Cobrar: SOLO si hay saldo */}
+            {Number(obj?.saldo) > 0 && (
+              <button
+                className="btn primary"
+                onClick={clickNoFocusAsync(() => cobrarProforma(obj.id, obj.saldo))}
+              >
+                Cobrar
+              </button>
+            )}
+
+            {/* Entregar: SOLO si NO está entregado */}
+            {Number(obj?.entregado) !== 1 && (
+              <button
+                className="btn success"
+                onClick={clickNoFocusAsync(() => entregarProforma(obj.id, obj.saldo))}
+              >
+                Entregar
+              </button>
+            )}
+
+            <button
+              className="btn warning"
+              onClick={clickNoFocusAsync(() => openViewModal(obj))}
+            >
+              Ver
             </button>
-          ) : (
-            <button className="btn primary placeholder" disabled>
-              Cobrar
-            </button>
-          )}
 
-          {Number(obj?.entregado) !== 1 ? (
-            <button className="btn success" onClick={() => entregarProforma(obj.id)}>
-              Entregar
-            </button>
-          ) : (
-            <button className="btn success placeholder" disabled>
-              Entregar
-            </button>
-          )}
+            {permission?.delete && (
+              <button
+                className="btn danger"
+                onClick={clickNoFocusAsync(() => deleteProforma(obj.id))}
+              >
+                Eliminar
+              </button>
+            )}
+          </div>
+        ),
 
-          <button className="btn warning" onClick={() => openViewModal(obj)}>
-            Ver
-          </button>
 
-          {permission?.delete ? (
-            <button className="btn danger" onClick={() => deleteProforma(obj.id)}>
-              Eliminar
-            </button>
-          ) : (
-            <button className="btn danger placeholder" disabled>
-              Eliminar
-            </button>
-          )}
-        </div>
-      ),
+        _rowClass: rowClassByEntregado(obj),
+      }));
 
-      //  ESTE va dentro del objeto
-      _rowClass: rowClassByEntregado(obj),
-    }));
-
-    setData(tArray);
-  } else {
-    setData([]);
-  }
-}, [proformas, permission]);
-
-    
+      setData(tArray);
+    } else {
+      setData([]);
+    }
+  }, [proformas, permission]);
 
   return (
     <div className="products">
@@ -311,8 +376,6 @@ function Proformas() {
               "Hora entrega",
               "Acción",
             ]}
-
-
             columnOriginalNames={[
               ["sl", ""],
               ["id", ""],
@@ -324,8 +387,6 @@ function Proformas() {
               ["hora_entrega", ""],
               ["action", ""],
             ]}
-
-
             data={data}
             data_count={count}
             searchInput={searchInput}
