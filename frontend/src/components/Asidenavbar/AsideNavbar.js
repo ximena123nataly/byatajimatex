@@ -161,7 +161,7 @@ function AsideNavbar() {
         </Link>
       )}
 
-      {/* ✅ PROFORMAS */}
+      {/*  PROFORMAS */}
       {isView("proformas") && (
         <Link to="/proformas" style={{ textDecoration: "none" }}>
           <li>
@@ -171,15 +171,7 @@ function AsideNavbar() {
         </Link>
       )}
 
-      {/* (Opcional) Ventas: solo si existe esa página en permisos y rutas */}
-      {isView("ventas") && (
-        <Link to="/ventas" style={{ textDecoration: "none" }}>
-          <li>
-            <AttachMoneyIcon className="icon" />
-            <span>Ventas</span>
-          </li>
-        </Link>
-      )}
+     
 
       {(isView("suppliers") || isView("expenses")) && (
         <p className="title">COMPRAS</p>

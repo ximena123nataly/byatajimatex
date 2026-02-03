@@ -46,8 +46,9 @@ function Proformas() {
             .then((res) => res.json())
             .then((body) => {
               const p = body.permissions?.find((x) => x.page === "proformas");
-              if (p?.view && p?.create) setPermission(p);
+              if (p?.view) setPermission(p);
               else window.location.href = "/unauthorized";
+
             });
         } else {
           window.location.href = "/login";
@@ -100,7 +101,7 @@ function Proformas() {
     }
   };
 
-  // ✅ marcar como entregado
+  //  marcar como entregado
   const entregarProforma = async (id) => {
     const ok = await swal({
       title: "¿Entregar pedido?",
@@ -134,7 +135,7 @@ function Proformas() {
     }
   };
 
-  // ✅ NUEVO: COBRAR (suma al anticipo y baja el saldo)
+  //  NUEVO: COBRAR (suma al anticipo y baja el saldo)
   const cobrarProforma = async (id, saldoActual) => {
     const input = await swal({
       title: "Cobrar saldo",
@@ -211,63 +212,77 @@ function Proformas() {
 
   const estadoES = (e) => e || "";
 
-  // ✅ clase según entregado (0 rojo, 1 verde)
+  //  clase según entregado (0 rojo, 1 verde)
   const rowClassByEntregado = (obj) => {
     const entregado = Number(obj?.entregado) === 1;
     return entregado ? "row-entregado" : "row-no-entregado";
   };
 
   useEffect(() => {
-    if (proformas.length !== 0) {
-      const tArray = proformas.map((obj, i) => ({
-        sl: i + 1,
-        ref: formatProforma(obj.id),
-        cliente: obj.cliente || "",
-        total: obj.total_general ?? 0,
+  if (proformas.length !== 0) {
+    const tArray = proformas.map((obj, i) => ({
+      sl: i + 1,
+      id: formatProforma(obj.id),
+      cliente: obj.cliente || "",
 
-        fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
+      total_general: Number(obj.total_general || 0).toFixed(2),
+      saldo: Number(obj.saldo || 0).toFixed(2),
 
-        fecha_entrega: obj.fecha_entrega
-          ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
-          : "",
-        hora_entrega: obj.hora_entrega ? String(obj.hora_entrega).slice(0, 5) : "",
+      fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
+      fecha_entrega: obj.fecha_entrega
+        ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
+        : "",
+      hora_entrega: obj.hora_entrega ? String(obj.hora_entrega).slice(0, 5) : "",
 
-        estado: estadoES(obj.estado),
-
-        action: (
-          <>
-            <button className="btn warning" onClick={() => openViewModal(obj)}>
-              Ver
+      action: (
+        <div className="actionGrid">
+          {Number(obj?.saldo) > 0 ? (
+            <button className="btn primary" onClick={() => cobrarProforma(obj.id, obj.saldo)}>
+              Cobrar
             </button>
+          ) : (
+            <button className="btn primary placeholder" disabled>
+              Cobrar
+            </button>
+          )}
 
-            {/* ✅ NUEVO: Cobrar solo si debe saldo */}
-            {Number(obj?.saldo) > 0 && (
-              <button className="btn primary" onClick={() => cobrarProforma(obj.id, obj.saldo)}>
-                Cobrar
-              </button>
-            )}
+          {Number(obj?.entregado) !== 1 ? (
+            <button className="btn success" onClick={() => entregarProforma(obj.id)}>
+              Entregar
+            </button>
+          ) : (
+            <button className="btn success placeholder" disabled>
+              Entregar
+            </button>
+          )}
 
-            {/* ✅ Entregar solo si NO entregado */}
-            {Number(obj?.entregado) !== 1 && (
-              <button className="btn success" onClick={() => entregarProforma(obj.id)}>
-                Entregar
-              </button>
-            )}
+          <button className="btn warning" onClick={() => openViewModal(obj)}>
+            Ver
+          </button>
 
-            {permission?.delete && (
-              <button className="btn danger" onClick={() => deleteProforma(obj.id)}>
-                Eliminar
-              </button>
-            )}
-          </>
-        ),
+          {permission?.delete ? (
+            <button className="btn danger" onClick={() => deleteProforma(obj.id)}>
+              Eliminar
+            </button>
+          ) : (
+            <button className="btn danger placeholder" disabled>
+              Eliminar
+            </button>
+          )}
+        </div>
+      ),
 
-        _rowClass: rowClassByEntregado(obj),
-      }));
+      //  ESTE va dentro del objeto
+      _rowClass: rowClassByEntregado(obj),
+    }));
 
-      setData(tArray);
-    } else setData([]);
-  }, [proformas, permission]);
+    setData(tArray);
+  } else {
+    setData([]);
+  }
+}, [proformas, permission]);
+
+    
 
   return (
     <div className="products">
@@ -290,23 +305,27 @@ function Proformas() {
               "Proforma",
               "Cliente",
               "Total",
+              "Saldo",
               "Fecha",
               "Fecha entrega",
               "Hora entrega",
-              "Estado",
               "Acción",
             ]}
+
+
             columnOriginalNames={[
               ["sl", ""],
               ["id", ""],
               ["cliente", ""],
               ["total_general", ""],
+              ["saldo", ""],
               ["fecha", ""],
               ["fecha_entrega", ""],
               ["hora_entrega", ""],
-              ["estado", ""],
               ["action", ""],
             ]}
+
+
             data={data}
             data_count={count}
             searchInput={searchInput}
