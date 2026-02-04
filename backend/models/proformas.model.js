@@ -164,42 +164,54 @@ class Proforma {
   };
 
   // ENTREGAR PROFORMA (entregado = 1)
+  // ENTREGAR PROFORMA (entregado = 1 + delivered_at solo la primera vez)
   entregarProforma = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
 
-      new Promise((resolve, reject) => {
-        const { id } = req.body;
+      const { id } = req.body;
+      if (!id) {
+        return res.send({ operation: "failed", message: "ID de proforma requerido" });
+      }
 
-        if (!id) {
-          return resolve({
-            operation: "failed",
-            message: "ID de proforma requerido",
-          });
+      const q = `
+      UPDATE proformas
+      SET entregado = 1,
+          delivered_at = COALESCE(delivered_at, NOW())
+      WHERE id = ?
+        AND entregado <> 1
+    `;
+
+      db.query(q, [id], (err, result) => {
+        if (err) {
+          console.log(err);
+          return res.send({ operation: "error", message: "Something went wrong" });
         }
 
-        const q = "UPDATE proformas SET entregado = 1 WHERE id = ?";
-        db.query(q, [id], (err, result) => {
-          if (err) return reject(err);
-
-          if (result.affectedRows === 0) {
-            return resolve({
-              operation: "failed",
-              message: "No se encontró la proforma",
-            });
-          }
-
-          resolve({
+        if (result.affectedRows > 0) {
+          return res.send({
             operation: "success",
             message: "Proforma marcada como entregada",
           });
+        }
+
+        // Si no actualizó: o no existe o ya estaba entregada
+        const q2 = "SELECT id, entregado, delivered_at FROM proformas WHERE id = ? LIMIT 1";
+        db.query(q2, [id], (err2, rows) => {
+          if (err2) {
+            console.log(err2);
+            return res.send({ operation: "error", message: "Something went wrong" });
+          }
+          if (!rows || rows.length === 0) {
+            return res.send({ operation: "failed", message: "No se encontró la proforma" });
+          }
+          return res.send({
+            operation: "success",
+            message: "Esta proforma ya estaba entregada",
+            info: { delivered_at: rows[0].delivered_at },
+          });
         });
-      })
-        .then((value) => res.send(value))
-        .catch((err) => {
-          console.log(err);
-          res.send({ operation: "error", message: "Something went wrong" });
-        });
+      });
     } catch (error) {
       console.log(error);
       res.send({ operation: "error", message: "Something went wrong" });
