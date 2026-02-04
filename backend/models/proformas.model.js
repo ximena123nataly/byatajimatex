@@ -90,9 +90,10 @@ class Proforma {
   // ADD PROFORMA
   addProforma = (req, res) => {
     try {
-      let d = jwt.decode(req.cookies.accessToken, { complete: true });
 
-      const user_id = d?.payload?.user_id || d?.payload?.id || null;
+      const d = jwt.decode(req.cookies.accessToken, { complete: true });
+      const user_id = d?.payload?.user_id || null;
+
 
       new Promise((resolve, reject) => {
         const rawDetalle = req.body.detalle ?? req.body.items ?? [];

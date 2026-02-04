@@ -226,10 +226,16 @@ function ProformasAddNew() {
         </div>
       </div>
       <div class="col-right small" style="margin-top:14px;">
-        <div>N°: <b>${p.proforma_id || "--"}</b></div>
-        <div>Fecha: <b>${p.fecha || ""}</b></div>
-        <div>Hora: <b>${p.hora || ""}</b></div>
-      </div>
+  <div>
+    N°:
+    <span style="font-size:20px; font-weight:800;">
+      ${p.proforma_id || "--"}
+    </span>
+  </div>
+  <div>Fecha: <b>${p.fecha || ""}</b></div>
+  <div>Hora: <b>${p.hora || ""}</b></div>
+</div>
+
     </div>
 
     <hr />
@@ -242,7 +248,7 @@ function ProformasAddNew() {
       </div>
       <div class="mid-right">
         <div><b>Entregado:</b> ${p.entregado ? "SI" : "NO"}</div>
-        <div class="muted"><b>Entrega:</b> ${p.fecha_entrega || ""} ${p.hora_entrega || ""}</div>
+        <div class="muted"><b> Fecha de entrega:</b> ${p.fecha_entrega || ""} ${p.hora_entrega || ""}</div>
       </div>
     </div>
 

@@ -24,16 +24,18 @@ class User {
 						let d_password = CryptoJS.AES.decrypt(result[0].password, process.env.CRYPTOJS_SEED).toString(CryptoJS.enc.Utf8);
 						let t_password = CryptoJS.AES.decrypt(req.body.password, process.env.CRYPTOJS_SEED).toString(CryptoJS.enc.Utf8);
 						if (d_password == t_password) {
-
+							//---------------------------------------------------------------------------------------------------
 							const accessToken = jwt.sign(
 								{
+									user_id: result[0].user_id,     //user_id agrgado
 									email: result[0].email,
 									role: result[0].user_role
 								},
 								process.env.JWT_SEC,
 								{ expiresIn: process.env.JWT_EXPIRY }
-							)
-							res.cookie('accessToken', accessToken, { httpOnly: true, maxAge: 60*60*1000, sameSite: 'none', secure: true }); 
+							);
+
+							res.cookie('accessToken', accessToken, { httpOnly: true, maxAge: 60 * 60 * 1000, sameSite: 'none', secure: true });
 							resolve({ operation: "success", message: 'login successfull' });
 						} else {
 							reject({ operation: "error", message: 'password wrong' });
@@ -58,8 +60,8 @@ class User {
 
 	logout = (req, res) => {
 		res.cookie("accessToken", "", { maxAge: 1, sameSite: 'none', secure: true });
-		res.send({ operation: "success", message: 'Logout successfully'});
-	  };
+		res.send({ operation: "success", message: 'Logout successfully' });
+	};
 
 	refreshToken = (req, res) => {
 		try {
@@ -68,13 +70,15 @@ class User {
 
 			let newToken = jwt.sign(
 				{
+					user_id: d.payload.user_id,     // se añadio user_id
 					email: d.payload.email,
 					role: d.payload.role
 				},
 				process.env.JWT_SEC,
 				{ expiresIn: process.env.JWT_EXPIRY }
 			);
-			res.cookie('accessToken', newToken, { httpOnly: true, sameSite: 'none', secure: true }); 
+
+			res.cookie('accessToken', newToken, { httpOnly: true, sameSite: 'none', secure: true });
 			res.send({ operation: "success", message: 'Token refreshed' });
 		} catch (error) {
 			console.log(error);
@@ -83,15 +87,15 @@ class User {
 	}
 
 	verifyToken = (req, res) => {
-  let temptoken = req.cookies.accessToken;
+		let temptoken = req.cookies.accessToken;
 
-  jwt.verify(temptoken, process.env.JWT_SEC, (err, payload) => {
-    if (err) {
-      return res.send({ operation: "error", message: "Token expired" });
-    }
-    return res.send({ operation: "success", message: "Token verified" });
-  });
-};
+		jwt.verify(temptoken, process.env.JWT_SEC, (err, payload) => {
+			if (err) {
+				return res.send({ operation: "error", message: "Token expired" });
+			}
+			return res.send({ operation: "success", message: "Token verified" });
+		});
+	};
 
 
 	//ORIGINAL
@@ -131,40 +135,41 @@ class User {
 	}*/
 
 	getPermission = (req, res) => {
-  try {
-    const d = jwt.decode(req.cookies.accessToken);
-    const role = d.role;
+		try {
+			const d = jwt.decode(req.cookies.accessToken, { complete: true });
+			const role = d?.payload?.role;
 
-    const q = `
+
+			const q = `
       SELECT user_role_permissions
       FROM user_roles
       WHERE user_role_name = ?
     `;
 
-    db.query(q, [role], (err, result) => {
-      if (err) {
-        console.log(err);
-        return res.send({ operation: "error", message: "DB error" });
-      }
+			db.query(q, [role], (err, result) => {
+				if (err) {
+					console.log(err);
+					return res.send({ operation: "error", message: "DB error" });
+				}
 
-      if (!result.length) {
-        return res.send({ operation: "error", message: "Role not found" });
-      }
+				if (!result.length) {
+					return res.send({ operation: "error", message: "Role not found" });
+				}
 
-      // 🔥 AQUÍ ESTÁ LA CLAVE
-      const permissions = JSON.parse(result[0].user_role_permissions);
+				// 🔥 AQUÍ ESTÁ LA CLAVE
+				const permissions = JSON.parse(result[0].user_role_permissions);
 
-      res.send({
-        operation: "success",
-        permissions
-      });
-    });
+				res.send({
+					operation: "success",
+					permissions
+				});
+			});
 
-  } catch (error) {
-    console.log(error);
-    res.send({ operation: "error", message: "Something went wrong" });
-  }
-};
+		} catch (error) {
+			console.log(error);
+			res.send({ operation: "error", message: "Something went wrong" });
+		}
+	};
 
 	getEmployees = (req, res) => {
 		try {
