@@ -121,8 +121,6 @@ function AsideNavbar() {
 
   // =====================================================
   // 4) Menú (links)
-  // OJO: Proformas solo aparece si el backend da permiso:
-  // { page: "proformas", view: true }
   // =====================================================
   const MenuLinks = () => (
     <ul>
@@ -171,8 +169,6 @@ function AsideNavbar() {
         </Link>
       )}
 
-     
-
       {(isView("suppliers") || isView("expenses")) && (
         <p className="title">COMPRAS</p>
       )}
@@ -195,7 +191,9 @@ function AsideNavbar() {
         </Link>
       )}
 
-      {(isView("customers") || isView("orders")) && <p className="title">VENTAS</p>}
+      {(isView("customers") || isView("orders")) && (
+        <p className="title">VENTAS</p>
+      )}
 
       {isView("customers") && (
         <Link to="/customers" style={{ textDecoration: "none" }}>
@@ -231,6 +229,16 @@ function AsideNavbar() {
           <li>
             <SettingsApplicationsIcon className="icon" />
             <span>Configuración</span>
+          </li>
+        </Link>
+      )}
+
+      {/* ✅ CAMBIO 1: AGREGADO "CAJAS" EN USUARIO */}
+      {isView("caja") && (
+        <Link to="/caja" style={{ textDecoration: "none" }}>
+          <li>
+            <AttachMoneyIcon className="icon" />
+            <span>Cajas</span>
           </li>
         </Link>
       )}
