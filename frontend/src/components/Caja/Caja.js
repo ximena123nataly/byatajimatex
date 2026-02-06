@@ -1,18 +1,24 @@
 import React, { useEffect, useState } from "react";
 import "./Caja.scss";
+import CajaTransacciones from "./CajaTransacciones";
 
 function Caja() {
   const [caja, setCaja] = useState(null);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
 
+  const [transacciones, setTransacciones] = useState([]);
+  const [loadingTx, setLoadingTx] = useState(true);
+
   const backend = process.env.REACT_APP_BACKEND_ORIGIN;
 
   const cargarCaja = async () => {
     setLoading(true);
+    setLoadingTx(true);
     setMsg("");
 
     try {
+      // 1) Traer caja
       const res = await fetch(`${backend}/api/caja/get_caja`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -24,21 +30,44 @@ function Caja() {
 
       if (!data?.ok) {
         setCaja(null);
+        setTransacciones([]);
         setMsg(data?.msg || "No se pudo cargar la caja");
-      } else {
-        setCaja(data.caja);
+        setLoading(false);
+        setLoadingTx(false);
+        return;
       }
+
+      setCaja(data.caja);
+
+      // 2) Traer transacciones
+      const res2 = await fetch(`${backend}/api/caja/get_transacciones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+
+      const data2 = await res2.json();
+
+      if (data2?.ok) {
+        setTransacciones(data2.transacciones || []);
+      } else {
+        setTransacciones([]);
+      }
+
     } catch (e) {
       setCaja(null);
+      setTransacciones([]);
       setMsg("Error de conexión con el backend (Failed to fetch)");
     } finally {
       setLoading(false);
+      setLoadingTx(false);
     }
   };
 
   useEffect(() => {
     cargarCaja();
-    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saldoNum = Number(caja?.saldo ?? 0);
@@ -47,6 +76,7 @@ function Caja() {
 
   return (
     <div className="caja-container">
+      {/* TARJETA CAJA */}
       <div className="caja-card">
         <div className="caja-header">
           <h2>CAJA</h2>
@@ -85,6 +115,9 @@ function Caja() {
 
         {msg ? <div className="msg-error">{msg}</div> : null}
       </div>
+
+      {/* TABLA TRANSACCIONES */}
+      <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
     </div>
   );
 }

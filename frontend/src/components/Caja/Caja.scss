@@ -28,3 +28,109 @@
 .saldo-negativo {
   color: #e74c3c;
 }
+.caja-tx-card {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.caja-tx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tabla-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.tabla-caja {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-caja th,
+.tabla-caja td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabla-caja th {
+  font-weight: 800;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.badge-in {
+  background: rgba(46, 204, 113, 0.15);
+  border: 1px solid rgba(46, 204, 113, 0.35);
+}
+
+.badge-out {
+  background: rgba(231, 76, 60, 0.12);
+  border: 1px solid rgba(231, 76, 60, 0.30);
+}
+.caja-tx-card {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.caja-tx-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tabla-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.tabla-caja {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-caja th,
+.tabla-caja td {
+  padding: 10px;
+  border-bottom: 1px solid #42ca86;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.tabla-caja th {
+  font-weight: 800;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.badge-out {
+  background: #ffe5e5;
+  border: 1px solid #ff6b6b;
+  color: #c0392b;
+}
+.badge-in {
+  background: #e6fff1;
+  border: 1px solid #2ecc71;
+  color: #1e8449;
+}
+

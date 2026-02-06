@@ -1,12 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const verifyJwt = require("../middlewares/verifyJwt.js");
-const Expense = require('../models/expenses.model.js');
 
-const expense = new Expense();
+const expense = require("../models/expenses.model.js");
 
-router.post('/get_expenses', verifyJwt, expense.getExpenses)
-router.post('/add_expense', verifyJwt, expense.addExpense)
-router.post('/delete_expense', verifyJwt, expense.deleteExpense)
+// solo si los otros endpoints existen (si no, coméntalos)
+router.post("/add_expense", verifyJwt, expense.addExpense);
 
-module.exports = router
+module.exports = router;

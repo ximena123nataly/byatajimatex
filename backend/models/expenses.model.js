@@ -1,140 +1,130 @@
-const db = require('../db/conn.js');
-const jwt = require('jsonwebtoken');
-const uniqid = require("uniqid")
+addExpense = (req, res) => {
+  try {
+    let d = jwt.decode(req.cookies.accessToken, { complete: true });
+    const user_id = d?.payload?.user_id;
 
-class Expense {
-	constructor() {
-		//console.log('Expense object initialized');
-	}
+    new Promise((resolve, reject) => {
+      const expense_id = uniqid();
+      const montoGasto = Number(req.body.grand_total || 0);
 
-	getExpenses = (req, res) => {
-		try {
-			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let email = d.payload.email;
-			let role = d.payload.role;
+      const q =
+        "INSERT INTO `expenses`(`expense_id`, `expense_ref`, `supplier_id`, `due_date`, `items`, `tax`, `grand_total`) VALUES (?,?,?,?,?,?,?)";
 
-			new Promise((resolve, reject) => {
+      db.query(
+        q,
+        [
+          expense_id,
+          req.body.expense_reference,
+          req.body.supplier_id,
+          req.body.due_date,
+          JSON.stringify(req.body.item_array),
+          req.body.tax,
+          req.body.grand_total,
+        ],
+        (err, result) => {
+          if (err) return reject(err);
 
-				let tsa = ""
-				if(req.body.search_value!="")
-				{
-					tsa = `WHERE s.name LIKE "%${req.body.search_value}%" OR e.expense_ref LIKE "%${req.body.search_value}%"` 
-				}
- 
-				let tso = ""
-				if((req.body.sort_column!="") && (req.body.sort_order!=""))
-				{
-					tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}` 
-				}
+          // actualizar stock
+          const parr = req.body.item_array.map((prod) => {
+            return new Promise((res2, rej2) => {
+              const q2 =
+                "UPDATE `products` SET product_stock = product_stock + ? WHERE `product_id`= ?";
+              db.query(q2, [prod.quantity, prod.product_id], (err2) => {
+                if (err2) return rej2(err2);
+                res2();
+              });
+            });
+          });
 
-				let q = "SELECT e.*, s.name as supplier_name FROM expenses e LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id " + tsa + tso + " LIMIT ?, 10"
-				db.query(q, [req.body.start_value], (err, result) => {
-					if (err) {
-						return reject(err);
-					}
+          Promise.all(parr)
+            .then(() => {
+              // Si no hay user_id o monto inválido, no tocamos caja (pero gasto sí queda)
+              if (!user_id || !Number.isFinite(montoGasto) || montoGasto <= 0) {
+                return resolve({
+                  operation: "success",
+                  message: "Expense added successfully",
+                });
+              }
 
-					if(req.body.search_value!=""){
-						return resolve({ operation: "success", message: 'search expenses got', info: {expenses: result, count: result.length} });
-					}
-					let q = "SELECT COUNT(*) AS val FROM `expenses`"
-					db.query(q, (err, result2) => {
-						if (err) {
-							return reject(err);							
-						}
-						// console.log(result2)
-						resolve({ operation: "success", message: '10 expenses got', info: {expenses: result, count: result2[0].val} });
-					})
-				})
-			})
-			.then((value) => {
-				res.send(value);
-			})
-			.catch((err) => {
-				console.log(err);
-				res.send({ operation: "error", message: 'Something went wrong' });
-			})
-		} catch (error) {
-			console.log(error);
-			res.send({ operation: "error", message: 'Something went wrong' });
-		}
-	}
+              
+              db.query(
+                "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1",
+                [user_id],
+                (e1, r1) => {
+                  if (e1 || !r1.length) {
+                    console.log("Caja no encontrada o error:", e1);
+                    return resolve({
+                      operation: "success",
+                      message: "Expense added successfully",
+                    });
+                  }
 
-	addExpense = (req, res) => {
-		try {
-			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let email = d.payload.email;
-			let role = d.payload.role;
+                  const id_caja = r1[0].id_caja;
 
-			new Promise((resolve, reject) => {
-				let q = "INSERT INTO `expenses`(`expense_id`, `expense_ref`, `supplier_id`, `due_date`, `items`, `tax`, `grand_total`) VALUES (?,?,?,?,?,?,?)"
-				db.query(q, [uniqid(), req.body.expense_reference, req.body.supplier_id, req.body.due_date, JSON.stringify(req.body.item_array), req.body.tax, req.body.grand_total], (err, result) => {
-					if(err) {
-						return reject(err);
-					}
+                 
+                  const now = new Date();
+                  const fechaBO = now.toLocaleDateString("en-CA", {
+                    timeZone: "America/La_Paz",
+                  }); // YYYY-MM-DD
+                  const horaBO = now.toLocaleTimeString("en-GB", {
+                    timeZone: "America/La_Paz",
+                    hour12: false,
+                  }); // HH:mm:ss
 
-					let parr = req.body.item_array.map((prod) => {
-						return new Promise((res, rej) => {
-							let q = "UPDATE `products` SET product_stock = product_stock + ? WHERE `product_id`= ?"
-							db.query(q, [prod.quantity, prod.product_id], (err2, result2) => {
-								if(err2) {
-									console.log(err2)
-									rej();
-								}
-								res();
-							})
-						})
-					})
+                  
+                  const qTx = `
+                    INSERT INTO caja_transacciones
+                    (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
+                    VALUES (?, ?, 'EGRESO', 'GASTO', ?, ?, ?, ?)
+                  `;
 
-					Promise.all(parr)
-					.then(() => {
-						resolve({ operation: "success", message: 'Expense added successfully' });
-					})
-					.catch((error) => {
-						console.log(error)
-						reject();
-					})
-				})
-			})
-			.then((value) => {
-				res.send(value);
-			})
-			.catch((err) => {
-				console.log(err);
-				res.send({ operation: "error", message: 'Something went wrong' });
-			})
-		} catch (error) {
-			console.log(error);
-			res.send({ operation: "error", message: 'Something went wrong' });
-		}
-	}
+                  db.query(
+                    qTx,
+                    [id_caja, user_id, expense_id, montoGasto, fechaBO, horaBO],
+                    (eTx) => {
+                      if (eTx) {
+                        console.log("Error tx caja:", eTx);
+                        return resolve({
+                          operation: "success",
+                          message: "Expense added successfully",
+                        });
+                      }
 
-	deleteExpense = (req, res) => {
-		try {
-			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let email = d.payload.email;
-			let role = d.payload.role;
+                   
+                      db.query(
+                        "UPDATE caja SET saldo = saldo - ? WHERE id_caja=?",
+                        [montoGasto, id_caja],
+                        (eUp) => {
+                          if (eUp) console.log("Error saldo caja:", eUp);
 
-			new Promise((resolve, reject) => {
-				let q = "DELETE FROM `expenses` WHERE expense_id = ?"
-				db.query(q, [req.body.expense_id], (err, result) => {
-					if (err) {
-						return reject(err);
-					}
-					resolve({ operation: "success", message: 'expense deleted successfully'});
-				})
-			})
-			.then((value) => {
-				res.send(value);
-			})
-			.catch((err) => {
-				console.log(err);
-				res.send({ operation: "error", message: 'Something went wrong' });
-			})
-		} catch (error) {
-			console.log(error);
-			res.send({ operation: "error", message: 'Something went wrong' });
-		}
-	}
-}
-
-module.exports = Expense;
+                          return resolve({
+                            operation: "success",
+                            message: "Expense added successfully",
+                          });
+                        }
+                      );
+                    }
+                  );
+                }
+              );
+            })
+            .catch((error) => {
+              console.log(error);
+              reject(error);
+            });
+        }
+      );
+    })
+      .then((value) => res.send(value))
+      .catch((err) => {
+        console.log(err);
+        res.send({ operation: "error", message: "Something went wrong" });
+      });
+  } catch (error) {
+    console.log(error);
+    res.send({ operation: "error", message: "Something went wrong" });
+  }
+};
+module.exports = {
+  addExpense,
+};
