@@ -1,130 +1,197 @@
-addExpense = (req, res) => {
-  try {
-    let d = jwt.decode(req.cookies.accessToken, { complete: true });
-    const user_id = d?.payload?.user_id;
+const db = require('../db/conn.js');
+const jwt = require('jsonwebtoken');
+const uniqid = require("uniqid")
 
-    new Promise((resolve, reject) => {
-      const expense_id = uniqid();
-      const montoGasto = Number(req.body.grand_total || 0);
+class Expense {
 
-      const q =
-        "INSERT INTO `expenses`(`expense_id`, `expense_ref`, `supplier_id`, `due_date`, `items`, `tax`, `grand_total`) VALUES (?,?,?,?,?,?,?)";
+	constructor() {}
 
-      db.query(
-        q,
-        [
-          expense_id,
-          req.body.expense_reference,
-          req.body.supplier_id,
-          req.body.due_date,
-          JSON.stringify(req.body.item_array),
-          req.body.tax,
-          req.body.grand_total,
-        ],
-        (err, result) => {
-          if (err) return reject(err);
 
-          // actualizar stock
-          const parr = req.body.item_array.map((prod) => {
-            return new Promise((res2, rej2) => {
-              const q2 =
-                "UPDATE `products` SET product_stock = product_stock + ? WHERE `product_id`= ?";
-              db.query(q2, [prod.quantity, prod.product_id], (err2) => {
-                if (err2) return rej2(err2);
-                res2();
-              });
-            });
-          });
+	getExpenses = (req, res) => {
+		try {
 
-          Promise.all(parr)
-            .then(() => {
-              // Si no hay user_id o monto inválido, no tocamos caja (pero gasto sí queda)
-              if (!user_id || !Number.isFinite(montoGasto) || montoGasto <= 0) {
-                return resolve({
-                  operation: "success",
-                  message: "Expense added successfully",
-                });
-              }
+			new Promise((resolve, reject) => {
 
-              
-              db.query(
-                "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1",
-                [user_id],
-                (e1, r1) => {
-                  if (e1 || !r1.length) {
-                    console.log("Caja no encontrada o error:", e1);
-                    return resolve({
-                      operation: "success",
-                      message: "Expense added successfully",
-                    });
-                  }
+				let tsa = ""
+				if(req.body.search_value!="")
+				{
+					tsa = `WHERE s.name LIKE "%${req.body.search_value}%"
+						   OR e.expense_ref LIKE "%${req.body.search_value}%"`
+				}
 
-                  const id_caja = r1[0].id_caja;
+				let tso = ""
+				if((req.body.sort_column!="") && (req.body.sort_order!=""))
+				{
+					tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`
+				}
 
-                 
-                  const now = new Date();
-                  const fechaBO = now.toLocaleDateString("en-CA", {
-                    timeZone: "America/La_Paz",
-                  }); // YYYY-MM-DD
-                  const horaBO = now.toLocaleTimeString("en-GB", {
-                    timeZone: "America/La_Paz",
-                    hour12: false,
-                  }); // HH:mm:ss
+				let q = `
+					SELECT e.*, s.name as supplier_name
+					FROM expenses e
+					LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
+					${tsa}
+					${tso}
+					LIMIT ?,10
+				`;
 
-                  
-                  const qTx = `
-                    INSERT INTO caja_transacciones
-                    (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
-                    VALUES (?, ?, 'EGRESO', 'GASTO', ?, ?, ?, ?)
-                  `;
+				db.query(q, [req.body.start_value], (err, result) => {
+					if (err) return reject(err);
 
-                  db.query(
-                    qTx,
-                    [id_caja, user_id, expense_id, montoGasto, fechaBO, horaBO],
-                    (eTx) => {
-                      if (eTx) {
-                        console.log("Error tx caja:", eTx);
-                        return resolve({
-                          operation: "success",
-                          message: "Expense added successfully",
-                        });
-                      }
+					let q2 = "SELECT COUNT(*) AS val FROM expenses";
+					db.query(q2, (err2, result2) => {
+						if (err2) return reject(err2);
 
-                   
-                      db.query(
-                        "UPDATE caja SET saldo = saldo - ? WHERE id_caja=?",
-                        [montoGasto, id_caja],
-                        (eUp) => {
-                          if (eUp) console.log("Error saldo caja:", eUp);
+						resolve({
+							operation: "success",
+							info: {
+								expenses: result,
+								count: result2[0].val
+							}
+						});
+					})
+				})
 
-                          return resolve({
-                            operation: "success",
-                            message: "Expense added successfully",
-                          });
-                        }
-                      );
-                    }
-                  );
-                }
-              );
-            })
-            .catch((error) => {
-              console.log(error);
-              reject(error);
-            });
-        }
-      );
-    })
-      .then((value) => res.send(value))
-      .catch((err) => {
-        console.log(err);
-        res.send({ operation: "error", message: "Something went wrong" });
-      });
-  } catch (error) {
-    console.log(error);
-    res.send({ operation: "error", message: "Something went wrong" });
-  }
-};
-module.exports = {
-  addExpense,
-};
+			})
+			.then(v => res.send(v))
+			.catch(err => {
+				console.log(err);
+				res.send({ operation:"error" });
+			})
+
+		} catch (e) {
+			console.log(e);
+			res.send({ operation:"error" });
+		}
+	}
+
+
+	
+	addExpense = (req, res) => {
+
+		try {
+
+			let d = jwt.decode(req.cookies.accessToken, { complete: true });
+			let id_usuario = d.payload.user_id;
+
+			new Promise((resolve, reject) => {
+
+				const expense_id = uniqid();
+
+				let q = `
+					INSERT INTO expenses
+					(expense_id, expense_ref, supplier_id, due_date, items, tax, grand_total)
+					VALUES (?,?,?,?,?,?,?)
+				`;
+
+				db.query(q, [
+					expense_id,
+					req.body.expense_reference,
+					req.body.supplier_id,
+					req.body.due_date,
+					JSON.stringify(req.body.item_array),
+					req.body.tax,
+					req.body.grand_total
+				], (err) => {
+
+					if(err) return reject(err);
+
+				
+					let parr = req.body.item_array.map((prod) => {
+						return new Promise((res2, rej2) => {
+							let q2 = `
+								UPDATE products
+								SET product_stock = product_stock + ?
+								WHERE product_id = ?
+							`;
+							db.query(q2,[prod.quantity, prod.product_id], (e2)=>{
+								if(e2) return rej2(e2);
+								res2();
+							});
+						});
+					});
+
+					Promise.all(parr)
+					.then(()=>{
+
+						
+
+						let qcaja = `
+							SELECT id_caja
+							FROM caja
+							WHERE id_usuario = ?
+							LIMIT 1
+						`;
+
+						db.query(qcaja,[id_usuario], (errCaja, cajaRes)=>{
+
+							if(errCaja) return reject(errCaja);
+							if(cajaRes.length === 0)
+								return resolve({operation:"success"});
+
+							let id_caja = cajaRes[0].id_caja;
+
+							let qtx = `
+								INSERT INTO caja_transacciones
+								(id_transaccion,id_usuario,id_caja,tipo,origen,nro_registro,monto,fecha,hora)
+								VALUES (?,?,?,?,?,?,?,CURDATE(),CURTIME())
+							`;
+
+							db.query(qtx,[
+								uniqid(),
+								id_usuario,
+								id_caja,
+								'EGRESO',
+								'GASTO',
+								expense_id,
+								req.body.grand_total
+							], (errTx)=>{
+
+								if(errTx) return reject(errTx);
+
+								let qup = `
+									UPDATE caja
+									SET saldo = saldo - ?
+									WHERE id_caja = ?
+								`;
+
+								db.query(qup,[req.body.grand_total,id_caja], ()=>{
+									resolve({
+										operation:"success",
+										message:"Expense added successfully"
+									});
+								});
+
+							});
+
+						});
+
+					})
+					.catch(reject);
+
+				});
+
+			})
+			.then(v => res.send(v))
+			.catch(err=>{
+				console.log(err);
+				res.send({operation:"error"});
+			});
+
+		} catch(e) {
+			console.log(e);
+			res.send({operation:"error"});
+		}
+	}
+
+
+	deleteExpense = (req,res)=>{
+		db.query(
+			"DELETE FROM expenses WHERE expense_id=?",
+			[req.body.expense_id],
+			()=> res.send({operation:"success"})
+		);
+	}
+
+}
+
+module.exports = Expense;

@@ -38,7 +38,9 @@ app.use('/', require('./routes/expenses.routes.js'));
 app.use("/", require("./routes/proformas.routes.js"));
 app.use("/", require("./routes/caja.routes.js"));
 
-app.listen(port, () => {
-  console.log(`App listening on port ${port}!`)
-});
 
+
+
+app.listen(port, () => {
+	console.log(`App listening on port ${port}!`)
+});
