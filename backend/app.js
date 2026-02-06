@@ -36,7 +36,8 @@ app.use('/', require('./routes/suppliers.routes.js'));
 app.use('/', require('./routes/orders.routes.js'));
 app.use('/', require('./routes/expenses.routes.js'));
 app.use("/", require("./routes/proformas.routes.js"));
-app.use("/api/caja", require("./routes/caja.routes"));
+app.use("/api/caja", require("./routes/caja.routes.js"));
+
 
 
 

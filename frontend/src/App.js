@@ -6,7 +6,7 @@ import { DarkModeContext } from './context/darkModeContext';
 import Proformas from "./components/proformas/proformas";
 import ProformasAddNew from "./components/proformas/ProformasAddNew";
 
-//  SOLO ESTO para Caja
+
 
 import Caja from "./components/Caja/Caja";
 
