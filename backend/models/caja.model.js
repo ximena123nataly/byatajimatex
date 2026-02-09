@@ -8,19 +8,26 @@ class Caja {
     return res.send({ ok: true, msg: "Caja funcionando" });
   };
 
-  // ✅ sacar user_id del token
+  
   getUserIdFromToken = (req) => {
     const d = jwt.decode(req.cookies.accessToken, { complete: true });
     return d?.payload?.user_id || null;
   };
 
-  // ✅ sacar role del token
+ 
   getRoleFromToken = (req) => {
     const d = jwt.decode(req.cookies.accessToken, { complete: true });
-    return d?.payload?.role || null;
+    const role = d?.payload?.role || "";
+    return String(role).toLowerCase();
   };
 
-  // ✅ crear caja si no existe
+  
+  isAdmin = (req) => {
+    const role = this.getRoleFromToken(req);
+    return role === "admin" || role === "administrador";
+  };
+
+  
   ensureCaja = (user_id) => {
     return new Promise((resolve, reject) => {
       if (!user_id) return reject(new Error("user_id no encontrado"));
@@ -63,9 +70,7 @@ class Caja {
     });
   };
 
-  // =========================================
-  // ✅ CAJA DEL USUARIO (como ya lo tenías)
-  // =========================================
+  
   getCaja = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
@@ -79,9 +84,7 @@ class Caja {
     }
   };
 
-  // =========================================
-  // ✅ TRANSACCIONES DEL USUARIO (como ya lo tenías)
-  // =========================================
+  
   getTransacciones = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
@@ -110,28 +113,24 @@ class Caja {
     }
   };
 
-  // =========================================
-  // ✅ ADMIN: LISTAR TODAS LAS CAJAS
-  // endpoint: POST /api/caja/get_cajas
-  // =========================================
+  
   getCajas = async (req, res) => {
     try {
-      const role = this.getRoleFromToken(req);
-      if (role !== "admin") {
-        return res.send({ ok: false, msg: "Solo admin" });
-      }
+      if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
 
+      
       const q = `
         SELECT c.id_caja, c.id_usuario, c.nombre_caja, c.saldo,
-               u.name as usuario_nombre, u.email as usuario_email
+               u.user_name AS usuario_nombre,
+               u.email AS usuario_email
         FROM caja c
-        LEFT JOIN user u ON u.id_usuario = c.id_usuario
+        LEFT JOIN \`user\` u ON u.user_id = c.id_usuario
         ORDER BY c.id_caja ASC
       `;
 
       db.query(q, (err, rows) => {
         if (err) {
-          console.log(err);
+          console.log("getCajas SQL error:", err);
           return res.send({ ok: false, msg: "Error cargando cajas" });
         }
         return res.send({ ok: true, cajas: rows || [] });
@@ -142,17 +141,10 @@ class Caja {
     }
   };
 
-  // =========================================
-  // ✅ ADMIN: TRAER UNA CAJA POR ID
-  // endpoint: POST /api/caja/get_caja_by_id
-  // body: { id_caja }
-  // =========================================
+  
   getCajaById = async (req, res) => {
     try {
-      const role = this.getRoleFromToken(req);
-      if (role !== "admin") {
-        return res.send({ ok: false, msg: "Solo admin" });
-      }
+      if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
 
       const { id_caja } = req.body;
       if (!id_caja) return res.send({ ok: false, msg: "Falta id_caja" });
@@ -180,17 +172,10 @@ class Caja {
     }
   };
 
-  // =========================================
-  // ✅ ADMIN: TRANSACCIONES POR CAJA
-  // endpoint: POST /api/caja/get_transacciones_by_caja
-  // body: { id_caja }
-  // =========================================
+
   getTransaccionesByCaja = async (req, res) => {
     try {
-      const role = this.getRoleFromToken(req);
-      if (role !== "admin") {
-        return res.send({ ok: false, msg: "Solo admin" });
-      }
+      if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
 
       const { id_caja } = req.body;
       if (!id_caja) return res.send({ ok: false, msg: "Falta id_caja" });

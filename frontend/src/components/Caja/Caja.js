@@ -151,9 +151,7 @@ function Caja() {
     }
   };
 
-  // =============================
-  // refrescar
-  // =============================
+
   const refrescar = async () => {
     if (isAdmin) {
       await cargarCajasAdmin();
@@ -249,9 +247,10 @@ function Caja() {
             >
               {cajas.map((c) => (
                 <option key={c.id_caja} value={String(c.id_caja)}>
-                  {c.usuario_nombre ? `${c.usuario_nombre} (${c.id_usuario})` : c.id_usuario} - Caja #{c.id_caja}
+                  {c.usuario_nombre || "Usuario"} - Caja #{c.id_caja}
                 </option>
               ))}
+
             </select>
 
             <div style={{ marginTop: "10px", fontSize: "13px", color: "#666" }}>
