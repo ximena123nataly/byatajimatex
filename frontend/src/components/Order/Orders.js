@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from "react-router-dom"
-import { Modal, OverlayTrigger, Popover } from 'react-bootstrap';
+import { Modal } from 'react-bootstrap';
 import './Orders.scss'
 import Table from '../Table/Table'
 
@@ -11,267 +11,437 @@ import Loader from '../PageStates/Loader';
 import Error from '../PageStates/Error';
 
 function Orders() {
-	const [pageState, setPageState] = useState(1)
-	const [permission, setPermission] = useState(null)
+  const [pageState, setPageState] = useState(1)
+  const [permission, setPermission] = useState(null)
 
-	const [orders, setOrders] = useState([])
-	const [orderCount, setOrderCount] = useState(0)
+  const [orders, setOrders] = useState([])
+  const [orderCount, setOrderCount] = useState(0)
 
-	const [searchInput, setSearchInput] = useState("")
-	const [sortColumn, setSortColumn] = useState("")
-	const [sortOrder, setSortOrder] = useState("")
-	const [tablePage, setTablePage] = useState(1)
-	const [data, setData] = useState([])
+  const [searchInput, setSearchInput] = useState("")
+  const [sortColumn, setSortColumn] = useState("")
+  const [sortOrder, setSortOrder] = useState("")
+  const [tablePage, setTablePage] = useState(1)
+  const [data, setData] = useState([])
 
-	// Modal
-	const [viewModalShow, setViewModalShow] = useState(false)
-	const [viewOrderDetails, setViewOrderDetails] = useState(null)
-	const [productDetails, setProductDetails] = useState([])
+  // Modal
+  const [viewModalShow, setViewModalShow] = useState(false)
+  const [viewOrderDetails, setViewOrderDetails] = useState(null)
 
-	useEffect(() => {
-			moment.locale("es");
-			  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-				method: 'POST',
-				credentials: 'include'
-			  })
-				.then(res => res.json())
-				.then(body => {
-				  if (body.operation === 'success') {
-					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-					  method: 'POST',
-					  credentials: 'include'
-					})
-					  .then(res => res.json())
-					  .then(body => {
-						const p = body.permissions?.find(x => x.page === 'orders');
-			
-						if (p?.view && p?.create) {
-						  setPermission(p);
-						} else {
-						  window.location.href = '/unauthorized';
-						}
-					  });
-				  } else {
-					window.location.href = '/login';
-				  }
-				})
-				.catch(console.log);
-			}, [])
+  useEffect(() => {
+    moment.locale("es");
+    fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+      method: 'POST',
+      credentials: 'include'
+    })
+      .then(res => res.json())
+      .then(body => {
+        if (body.operation === 'success') {
+          fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+            method: 'POST',
+            credentials: 'include'
+          })
+            .then(res => res.json())
+            .then(body => {
+              const p = body.permissions?.find(x => x.page === 'orders');
 
-	const getOrders = async (sv, sc, so, scv) => {
-		let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_orders`, {
-			method: 'POST',
-			headers: { 'Content-type': 'application/json; charset=UTF-8' },
-			body: JSON.stringify({ start_value: sv, sort_column: sc, sort_order: so, search_value: scv }),
-			credentials: 'include'
-		})
+              if (p?.view && p?.create) {
+                setPermission(p);
+              } else {
+                window.location.href = '/unauthorized';
+              }
+            });
+        } else {
+          window.location.href = '/login';
+        }
+      })
+      .catch(console.log);
+  }, [])
 
-		let body = await result.json()
-		setOrders(body.info.orders)
-		setOrderCount(body.info.count)
-	}
+  const getOrders = async (sv, sc, so, scv) => {
+    let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_orders`, {
+      method: 'POST',
+      headers: { 'Content-type': 'application/json; charset=UTF-8' },
+      body: JSON.stringify({ start_value: sv, sort_column: sc, sort_order: so, search_value: scv }),
+      credentials: 'include'
+    })
 
-	const getProductsDetailsById = async (value) => {
-		let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_details_by_id`, {
-			method: 'POST',
-			headers: { 'Content-type': 'application/json; charset=UTF-8' },
-			body: JSON.stringify({ product_id_list: value }),
-			credentials: 'include'
-		})
+    let body = await result.json()
+    setOrders(body.info.orders)
+    setOrderCount(body.info.count)
+  }
 
-		let body = await result.json()
-		setProductDetails(body.info.products);
-	}
+  useEffect(() => {
+    if (permission !== null) {
+      getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput)
+        .then(() => setPageState(2))
+        .catch(() => setPageState(3))
+    }
+  }, [permission])
 
-	useEffect(() => {
-		if (permission !== null) {
-			getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput)
-				.then(() => setPageState(2))
-				.catch(() => setPageState(3))
-		}
-	}, [permission])
+  useEffect(() => {
+    if (permission !== null)
+      getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+  }, [tablePage, sortColumn, sortOrder, searchInput])
 
-	useEffect(() => {
-		if (permission !== null)
-			getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-	}, [tablePage, sortColumn, sortOrder, searchInput])
+  const deleteOrder = async (id) => {
+    let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_order`, {
+      method: 'POST',
+      headers: { 'Content-type': 'application/json; charset=UTF-8' },
+      body: JSON.stringify({ order_id: id }),
+      credentials: 'include'
+    })
 
-	const deleteOrder = async (id) => {
-		let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_order`, {
-			method: 'POST',
-			headers: { 'Content-type': 'application/json; charset=UTF-8' },
-			body: JSON.stringify({ order_id: id }),
-			credentials: 'include'
-		})
+    let body = await result.json()
+    if (body.operation === 'success') {
+      getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+      swal('Éxito', body.message, 'success')
+    } else {
+      swal('Oops!', 'Algo salió mal', 'error')
+    }
+  }
 
-		let body = await result.json()
-		if (body.operation === 'success') {
-			getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-			swal('Éxito', body.message, 'success')
-		} else {
-			swal('Oops!', 'Algo salió mal', 'error')
-		}
-	}
+  useEffect(() => {
+    if (orders.length !== 0) {
+      let tArray = orders.map((obj, i) => {
+        let tObj = {}
+        tObj.sl = i + 1;
+        tObj.order_ref = obj.order_ref;
+        tObj.customer_name = obj.customer_name;
+        tObj.due_date = moment(obj.due_date).format('D [de] MMMM, YYYY');
+        tObj.grand_total = obj.grand_total;
+        tObj.addedon = moment(obj.timeStamp).format('D [de] MMMM, YYYY');
+        tObj.action =
+          <>
+            <button className='btn warning' style={{ marginRight: '0.5rem' }} onClick={() => { viewModalInit(obj.order_id) }}>
+              Ver
+            </button>
+            {
+              permission.delete &&
+              <button className='btn danger' style={{ marginLeft: '0.5rem' }}
+                onClick={() => {
+                  swal({
+                    title: "¿Estás seguro?",
+                    text: "Una vez eliminado, no podrás recuperar este pedido.",
+                    icon: "warning",
+                    buttons: true,
+                    dangerMode: true,
+                  })
+                    .then((willDelete) => {
+                      if (willDelete) deleteOrder(obj.order_id)
+                    });
+                }}
+              >
+                Eliminar
+              </button>
+            }
+          </>
+        return tObj;
+      })
+      setData(tArray)
+    } else {
+      setData([])
+    }
+  }, [orders])
 
-	useEffect(() => {
-		if (orders.length !== 0) {
-			let tArray = orders.map((obj, i) => {
-				let tObj = {}
-				tObj.sl = i + 1;
-				tObj.order_ref = obj.order_ref;
-				tObj.customer_name = obj.customer_name;
-				tObj.due_date = moment(obj.due_date).format('D [de] MMMM, YYYY');
-				tObj.grand_total = obj.grand_total;
-				tObj.addedon = moment(obj.timeStamp).format('D [de] MMMM, YYYY');
-				tObj.action =
-					<>
-						<button className='btn warning' style={{ marginRight: '0.5rem' }} onClick={() => { viewModalInit(obj.order_id) }}>
-							Ver
-						</button>
-						{
-							permission.delete &&
-							<button className='btn danger' style={{ marginLeft: '0.5rem' }}
-								onClick={() => {
-									swal({
-										title: "¿Estás seguro?",
-										text: "Una vez eliminado, no podrás recuperar este pedido.",
-										icon: "warning",
-										buttons: true,
-										dangerMode: true,
-									})
-										.then((willDelete) => {
-											if (willDelete) deleteOrder(obj.order_id)
-										});
-								}}
-							>
-								Eliminar
-							</button>
-						}
-					</>
-				return tObj;
-			})
-			setData(tArray)
-		}
-	}, [orders])
+  const viewModalInit = (id) => {
+    let p = orders.find(x => x.order_id === id)
+    setViewOrderDetails(p)
+    setViewModalShow(true);
+  }
 
-	const viewModalInit = (id) => {
-		let p = orders.find(x => x.order_id === id)
-		setViewOrderDetails(p)
-		setViewModalShow(true);
+  const handleViewModalClose = () => {
+    setViewModalShow(false);
+    setViewOrderDetails(null)
+  }
 
-		getProductsDetailsById(JSON.parse(p.items).map(x => x.product_id))
-	}
+  // ---------- IMPRESION (MISMO ESTILO QUE PROFORMAS) ----------
+  const toNumber = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
 
-	const handleViewModalClose = () => {
-		setViewModalShow(false);
-		setViewOrderDetails(null)
-		setProductDetails([])
-	}
+  const money = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return "0.00";
+    return num.toFixed(2);
+  };
 
-	return (
-		<div className='orders'>
-			<div style={{ overflow: "scroll", height: "100%" }} >
-				<div className='order-header'>
-					<div className='title'>Ventas</div>
-					<Link to={"/orders/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
-						Agregar nuevo
-					</Link>
-				</div>
+  const imprimirVenta = (o) => {
+    if (!o) return;
 
-				{
-					pageState === 1 ? <Loader /> :
-						pageState === 2 ?
-							<div className="card">
-								<div className="container">
-									<Table
-										headers={['N°', 'Ref. Pedido', 'Cliente', 'Vence', 'Total', 'Fecha', 'Acción']}
-										columnOriginalNames={["order_ref", "customer_name", "due_date", "grand_total", "timeStamp"]}
-										sortColumn={sortColumn}
-										setSortColumn={setSortColumn}
-										sortOrder={sortOrder}
-										setSortOrder={setSortOrder}
-										data={data}
-										data_count={orderCount}
-										searchInput={searchInput}
-										setSearchInput={setSearchInput}
-										custom_styles={["3rem", "6rem", "6rem", "8rem", "5rem", "8rem", "10rem"]}
-										current_page={tablePage}
-										tablePageChangeFunc={setTablePage}
-									/>
-								</div>
-							</div>
-							:
-							<Error />
-				}
+    let items = [];
+    try {
+      items = o.items ? JSON.parse(o.items) : [];
+    } catch (e) {
+      items = [];
+    }
 
-				<Modal show={viewModalShow} onHide={handleViewModalClose} size="lg" centered >
-					<Modal.Header closeButton>
-						<Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
-							Ver pedido
-						</Modal.Title>
-					</Modal.Header>
-					<Modal.Body style={{ backgroundColor: "#fafafa" }} >
-						<div className='container d-flex gap-2'>
-							<div className='card my_card' style={{ flex: 1 }}>
-								<div className='card-body'>
-									{
-										viewOrderDetails &&
-										<>
-											<div className='form-group mb-2'>
-												<label className='fw-bold'>Referencia</label>
-												<input className='my_form_control' value={viewOrderDetails.order_ref} readOnly />
-											</div>
-											<div className='form-group mb-2'>
-												<label className='fw-bold'>Cliente</label>
-												<input className='my_form_control' value={viewOrderDetails.customer_name} readOnly />
-											</div>
-											<div className='form-group mb-2'>
-												<label className='fw-bold'>Fecha de vencimiento</label>
-												<input className='my_form_control' value={moment(viewOrderDetails.due_date).format('D [de] MMMM, YYYY')} readOnly />
-											</div>
-											<div className='form-group mb-2'>
-												<label className='fw-bold'>Impuesto</label>
-												<input className='my_form_control' value={`${viewOrderDetails.tax}%`} readOnly />
-											</div>
-											<div className='form-group mb-2'>
-												<label className='fw-bold'>Total</label>
-												<input className='my_form_control' value={viewOrderDetails.grand_total} readOnly />
-											</div>
+    const filas = (items || [])
+      .map((it) => {
+        const cant = toNumber(it.quantity);
+        const pu = toNumber(it.rate);
+        const det = String(it.product_name || "").replace(/\n/g, "<br/>");
+        const tot = cant * pu;
 
-											<div className='form-group mb-2'>
-												<label className='fw-bold mb-2'>Detalle de productos</label>
-												<div className='p-2 border rounded'>
-													{
-														productDetails.length > 0 &&
-														JSON.parse(viewOrderDetails.items).map((viewItem, ind) => {
-															let img = productDetails.find(x => x.product_id === viewItem.product_id)?.image
-															return (
-																<div key={ind} className='py-2 row gx-0'>
-																	<div className='col-4'>{viewItem.product_name}</div>
-																	<div className='col-2 text-center'>{viewItem.quantity}</div>
-																	<div className='col-2 text-center'>{viewItem.rate}</div>
-																	<div className='col-2 text-center'>{viewItem.rate * viewItem.quantity}</div>
-																</div>
-															)
-														})
-													}
-												</div>
-											</div>
-										</>
-									}
-								</div>
-							</div>
-						</div>
-					</Modal.Body>
-					<Modal.Footer>
-						<button className='btn btn-outline-danger' onClick={handleViewModalClose}>
-							Cerrar
-						</button>
-					</Modal.Footer>
-				</Modal>
-			</div>
-		</div>
-	)
+        return `
+          <tr>
+            <td class="td-right" style="width:55px;">${cant}</td>
+            <td class="td-left wrap">${det}</td>
+            <td class="td-right" style="width:80px;">${money(pu)}</td>
+            <td class="td-right" style="width:90px;">${money(tot)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Venta ${o.order_ref || ""}</title>
+  <style>
+    @page { size: letter portrait; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
+    .ticket { width: 8.5in; height: 5.5in; box-sizing: border-box; padding: 0.35in 0.45in; margin: 0 auto; overflow: hidden; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
+    .small { font-size: 11px; line-height: 1.25; }
+    .muted { color: #444; }
+    .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .col-left  { width: 33%; }
+    .col-center{ width: 34%; text-align: center; }
+    .col-right { width: 33%; text-align: right; }
+    .logo { width: 170px; height: auto; display: block; margin-bottom: 6px; }
+    hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
+    .mid { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .mid-left { width: 55%; }
+    .mid-right{ width: 45%; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    thead th { font-size: 12px; text-align: left; border-bottom: 1px solid #ddd; padding: 7px 6px; }
+    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; padding: 7px 6px; vertical-align: top; }
+    .td-right { text-align: right; }
+    .td-left { text-align: left; }
+    .totals { width: 260px; margin-left: auto; margin-top: 10px; }
+    .totals table { width: 100%; }
+    .totals td { font-size: 12px; padding: 4px 6px; }
+    .totals tr td:first-child { text-align: left; }
+    .totals tr td:last-child { text-align: right; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="header">
+      <div class="col-left">
+        <img class="logo" src="/tajima.png" alt="TAJIMA" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="col-center">
+        <div class="title">VENTA</div>
+        <div class="small" style="margin-top:10px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135-75274747-77221750</div>
+        </div>
+      </div>
+
+      <div class="col-right small" style="margin-top:14px;">
+        <div>
+          N°:
+          <span style="font-size:20px; font-weight:800;">
+            ${o.order_ref || "--"}
+          </span>
+        </div>
+        <div>Fecha: <b>${moment(o.timeStamp).format("YYYY-MM-DD")}</b></div>
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="mid small">
+      <div class="mid-left wrap">
+        <div><b>Cliente:</b> ${o.customer_name || ""}</div>
+        <div><b>Vence:</b> ${moment(o.due_date).format("YYYY-MM-DD")}</div>
+        <div><b>Impuesto:</b> ${toNumber(o.tax)}%</div>
+      </div>
+      <div class="mid-right">
+        <div class="muted"><b>Total:</b> ${money(o.grand_total)}</div>
+      </div>
+    </div>
+
+    <hr />
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:55px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:80px;" class="td-right">P/U</th>
+          <th style="width:90px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="4" style="padding:10px; font-size:12px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <table>
+        <tr><td>Impuesto</td><td>${toNumber(o.tax)}%</td></tr>
+        <tr><td>Total</td><td>${money(o.grand_total)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    const w = window.open("", "_blank", "width=900,height=650");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
+  return (
+    <div className='orders'>
+      <div style={{ overflow: "scroll", height: "100%" }} >
+        <div className='order-header'>
+          <div className='title'>Ventas</div>
+          <Link to={"/orders/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
+            Agregar nuevo
+          </Link>
+        </div>
+
+        {
+          pageState === 1 ? <Loader /> :
+            pageState === 2 ?
+              <div className="card">
+                <div className="container">
+                  <Table
+                    headers={['N°', 'Ref. Pedido', 'Cliente', 'Vence', 'Total', 'Fecha', 'Acción']}
+                    columnOriginalNames={["order_ref", "customer_name", "due_date", "grand_total", "timeStamp"]}
+                    sortColumn={sortColumn}
+                    setSortColumn={setSortColumn}
+                    sortOrder={sortOrder}
+                    setSortOrder={setSortOrder}
+                    data={data}
+                    data_count={orderCount}
+                    searchInput={searchInput}
+                    setSearchInput={setSearchInput}
+                    custom_styles={["3rem", "6rem", "6rem", "8rem", "5rem", "8rem", "10rem"]}
+                    current_page={tablePage}
+                    tablePageChangeFunc={setTablePage}
+                  />
+                </div>
+              </div>
+              :
+              <Error />
+        }
+
+        <Modal show={viewModalShow} onHide={handleViewModalClose} size="lg" centered >
+          {/* HEADER CON BOTÓN IMPRIMIR */}
+          <Modal.Header>
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+              <Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
+                Ver pedido
+              </Modal.Title>
+
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <button
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={() => imprimirVenta(viewOrderDetails)}
+                >
+                  Imprimir
+                </button>
+                <button className="btn-close" onClick={handleViewModalClose}></button>
+              </div>
+            </div>
+          </Modal.Header>
+
+          <Modal.Body style={{ backgroundColor: "#fafafa" }} >
+            <div className='container d-flex gap-2'>
+              <div className='card my_card' style={{ flex: 1 }}>
+                <div className='card-body'>
+                  {
+                    viewOrderDetails &&
+                    <>
+                      <div className='form-group mb-2'>
+                        <label className='fw-bold'>Referencia</label>
+                        <input className='my_form_control' value={viewOrderDetails.order_ref} readOnly />
+                      </div>
+                      <div className='form-group mb-2'>
+                        <label className='fw-bold'>Cliente</label>
+                        <input className='my_form_control' value={viewOrderDetails.customer_name} readOnly />
+                      </div>
+                      <div className='form-group mb-2'>
+                        <label className='fw-bold'>Fecha de vencimiento</label>
+                        <input className='my_form_control' value={moment(viewOrderDetails.due_date).format('D [de] MMMM, YYYY')} readOnly />
+                      </div>
+                      <div className='form-group mb-2'>
+                        <label className='fw-bold'>Impuesto</label>
+                        <input className='my_form_control' value={`${viewOrderDetails.tax}%`} readOnly />
+                      </div>
+                      <div className='form-group mb-2'>
+                        <label className='fw-bold'>Total</label>
+                        <input className='my_form_control' value={viewOrderDetails.grand_total} readOnly />
+                      </div>
+
+                      <div className='form-group mb-2'>
+                        <label className='fw-bold mb-2'>Detalle de productos</label>
+                        <div className='p-2 border rounded'>
+                          <div className='mb-2 row gx-0 fw-bold text-secondary' style={{ fontSize: "smaller" }}>
+                            <div className='col-6'>Producto</div>
+                            <div className='col-2 text-center'>Cantidad</div>
+                            <div className='col-2 text-center'>Precio</div>
+                            <div className='col-2 text-center'>Total</div>
+                          </div>
+
+                          {
+                            viewOrderDetails.items &&
+                            JSON.parse(viewOrderDetails.items).map((viewItem, ind) => (
+                              <div key={ind} className='py-2 row gx-0' style={{ borderBottom: "1px dashed lightgray" }}>
+                                <div className='col-6'>{viewItem.product_name}</div>
+                                <div className='col-2 text-center'>{viewItem.quantity}</div>
+                                <div className='col-2 text-center'>{viewItem.rate}</div>
+                                <div className='col-2 text-center'>{viewItem.rate * viewItem.quantity}</div>
+                              </div>
+                            ))
+                          }
+                        </div>
+                      </div>
+                    </>
+                  }
+                </div>
+              </div>
+            </div>
+          </Modal.Body>
+
+          <Modal.Footer>
+            <button className='btn btn-outline-danger' onClick={handleViewModalClose}>
+              Cerrar
+            </button>
+          </Modal.Footer>
+        </Modal>
+      </div>
+    </div>
+  )
 }
 
 export default Orders

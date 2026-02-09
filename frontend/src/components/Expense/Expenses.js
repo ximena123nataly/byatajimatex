@@ -28,34 +28,33 @@ function Expenses() {
   const [productDetails, setProductDetails] = useState([])
 
   useEffect(() => {
-        //moment.locale("es");
-        fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-        method: 'POST',
-        credentials: 'include'
-        })
-        .then(res => res.json())
-        .then(body => {
-          if (body.operation === 'success') {
+    fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+      method: 'POST',
+      credentials: 'include'
+    })
+      .then(res => res.json())
+      .then(body => {
+        if (body.operation === 'success') {
           fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
             method: 'POST',
             credentials: 'include'
           })
             .then(res => res.json())
             .then(body => {
-            const p = body.permissions?.find(x => x.page === 'expenses');
-      
-            if (p?.view && p?.create) {
-              setPermission(p);
-            } else {
-              window.location.href = '/unauthorized';
-            }
+              const p = body.permissions?.find(x => x.page === 'expenses');
+
+              if (p?.view && p?.create) {
+                setPermission(p);
+              } else {
+                window.location.href = '/unauthorized';
+              }
             });
-          } else {
+        } else {
           window.location.href = '/login';
-          }
-        })
-        .catch(console.log);
-      }, [])
+        }
+      })
+      .catch(console.log);
+  }, [])
 
 
   const getExpenses = async (sv, sc, so, scv) => {
@@ -178,7 +177,12 @@ function Expenses() {
     setViewExpenseDetails(p)
     setViewModalShow(true);
 
-    getProductsDetailsById(JSON.parse(p.items).map(x => x.product_id))
+    // carga imagenes para el modal (no afecta impresión)
+    try {
+      getProductsDetailsById(JSON.parse(p.items).map(x => x.product_id))
+    } catch (e) {
+      setProductDetails([])
+    }
   }
 
   const handleViewModalClose = () => {
@@ -186,6 +190,171 @@ function Expenses() {
     setViewExpenseDetails(null)
     setProductDetails([])
   }
+
+  // ---------- IMPRESION (MISMO ESTILO QUE PROFORMAS) ----------
+  const toNumber = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const money = (n) => {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return "0.00";
+    return num.toFixed(2);
+  };
+
+  const imprimirGasto = (gasto) => {
+    if (!gasto) return;
+
+    let items = [];
+    try {
+      items = gasto.items ? JSON.parse(gasto.items) : [];
+    } catch (e) {
+      items = [];
+    }
+
+    const filas = (items || [])
+      .map((it) => {
+        const cant = toNumber(it.quantity ?? it.cantidad);
+        const pu = toNumber(it.rate ?? it.precio_unitario);
+        const det = String(it.product_name ?? it.detalle ?? "").replace(/\n/g, "<br/>");
+        const tot = cant * pu;
+
+        return `
+          <tr>
+            <td class="td-right" style="width:55px;">${cant}</td>
+            <td class="td-left wrap">${det}</td>
+            <td class="td-right" style="width:80px;">${money(pu)}</td>
+            <td class="td-right" style="width:90px;">${money(tot)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Gasto ${gasto.expense_ref || ""}</title>
+  <style>
+    @page { size: letter portrait; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
+    .ticket { width: 8.5in; height: 5.5in; box-sizing: border-box; padding: 0.35in 0.45in; margin: 0 auto; overflow: hidden; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
+    .small { font-size: 11px; line-height: 1.25; }
+    .muted { color: #444; }
+    .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .col-left  { width: 33%; }
+    .col-center{ width: 34%; text-align: center; }
+    .col-right { width: 33%; text-align: right; }
+    .logo { width: 170px; height: auto; display: block; margin-bottom: 6px; }
+    hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
+    .mid { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .mid-left { width: 55%; }
+    .mid-right{ width: 45%; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    thead th { font-size: 12px; text-align: left; border-bottom: 1px solid #ddd; padding: 7px 6px; }
+    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; padding: 7px 6px; vertical-align: top; }
+    .td-right { text-align: right; }
+    .td-left { text-align: left; }
+    .totals { width: 260px; margin-left: auto; margin-top: 10px; }
+    .totals table { width: 100%; }
+    .totals td { font-size: 12px; padding: 4px 6px; }
+    .totals tr td:first-child { text-align: left; }
+    .totals tr td:last-child { text-align: right; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="header">
+      <div class="col-left">
+        <img class="logo" src="/tajima.png" alt="TAJIMA" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="col-center">
+        <div class="title">GASTO</div>
+        <div class="small" style="margin-top:10px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135-75274747-77221750</div>
+        </div>
+      </div>
+
+      <div class="col-right small" style="margin-top:14px;">
+        <div>
+          Ref:
+          <span style="font-size:16px; font-weight:800;">
+            ${gasto.expense_ref || "--"}
+          </span>
+        </div>
+        <div>Fecha: <b>${moment(gasto.timeStamp).format("YYYY-MM-DD")}</b></div>
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="mid small">
+      <div class="mid-left wrap">
+        <div><b>Proveedor:</b> ${gasto.supplier_name || ""}</div>
+        <div><b>Vence:</b> ${moment(gasto.due_date).format("YYYY-MM-DD")}</div>
+        <div><b>Impuesto:</b> ${toNumber(gasto.tax)}%</div>
+      </div>
+      <div class="mid-right">
+        <div class="muted"><b>Total:</b> ${money(gasto.grand_total)}</div>
+      </div>
+    </div>
+
+    <hr />
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:55px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:80px;" class="td-right">P/U</th>
+          <th style="width:90px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="4" style="padding:10px; font-size:12px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <table>
+        <tr><td>Impuesto</td><td>${toNumber(gasto.tax)}%</td></tr>
+        <tr><td>Total</td><td>${money(gasto.grand_total)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    const w = window.open("", "_blank", "width=900,height=650");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
 
   return (
     <div className='expenses'>
@@ -225,11 +394,25 @@ function Expenses() {
         }
 
         <Modal show={viewModalShow} onHide={() => { handleViewModalClose() }} size="lg" centered >
-          <Modal.Header closeButton>
-            <Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
-              Ver gasto
-            </Modal.Title>
+          {/* HEADER CON BOTÓN IMPRIMIR */}
+          <Modal.Header>
+            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+              <Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
+                Ver gasto
+              </Modal.Title>
+
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <button
+                  className="btn btn-outline-primary btn-sm"
+                  onClick={() => imprimirGasto(viewExpenseDetails)}
+                >
+                  Imprimir
+                </button>
+                <button className="btn-close" onClick={handleViewModalClose}></button>
+              </div>
+            </div>
           </Modal.Header>
+
           <Modal.Body style={{ backgroundColor: "#fafafa" }} >
             <div className='container d-flex gap-2'>
               <div className='card my_card' style={{ flex: 1 }}>
@@ -317,6 +500,7 @@ function Expenses() {
               </div>
             </div>
           </Modal.Body>
+
           <Modal.Footer>
             <button className='btn btn-outline-danger' style={{ transition: "color 0.4s, background-color 0.4s" }} onClick={() => { handleViewModalClose() }}>
               Cerrar
