@@ -15,72 +15,34 @@ function Dashboard() {
 
   const [productGenderP, setProductGenderP] = useState([])
 
-  //ORIGINAL
-  /*
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
       method: 'POST',
       credentials: 'include'
     })
-      .then(async (response) => {
-        let body = await response.json()
+      .then(res => res.json())
+      .then(body => {
         if (body.operation === 'success') {
           fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
             method: 'POST',
             credentials: 'include'
           })
-            .then(async (response) => {
-              let body = await response.json()
+            .then(res => res.json())
+            .then(body => {
+              const p = body.permissions?.find(x => x.page === 'dashboard')
 
-              //let p = JSON.parse(body.info).find(x => x.page === 'dashboard')
-              const p = body.permissions?.find(x => x.page === 'dashboard');
-              if (p.view && p.create) {
+              if (p?.view && p?.create) {
                 setPermission(p)
               } else {
-                window.location.href = '/unauthorized';
+                window.location.href = '/unauthorized'
               }
-            })
-            .catch((error) => {
-              console.log(error)
             })
         } else {
           window.location.href = '/login'
         }
       })
-      .catch((error) => {
-        console.log(error)
-      })
-  }, [])*/
-
-  useEffect(() => {
-  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-    method: 'POST',
-    credentials: 'include'
-  })
-    .then(res => res.json())
-    .then(body => {
-      if (body.operation === 'success') {
-        fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-          method: 'POST',
-          credentials: 'include'
-        })
-          .then(res => res.json())
-          .then(body => {
-            const p = body.permissions?.find(x => x.page === 'dashboard');
-
-            if (p?.view && p?.create) {
-              setPermission(p);
-            } else {
-              window.location.href = '/unauthorized';
-            }
-          });
-      } else {
-        window.location.href = '/login';
-      }
-    })
-    .catch(console.log);
-}, []);
-
+      .catch(console.log)
+  }, [])
 
   const getReportStats = async () => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_report_stats`, {
@@ -136,7 +98,6 @@ function Dashboard() {
       productStats[2].length > 0
     ) {
       let data = productStats[2]
-
       let total = data.reduce((p, o) => p + o.count, 0)
 
       let t = data.map(x => ({
@@ -165,9 +126,20 @@ function Dashboard() {
                     <hr className='my-1' style={{ color: "darkgrey" }} />
                     <div className='itme_stats'>
                       <div style={{ flex: "1" }}>
+                        {/*  Bordados que faltan bordar */}
+                        <div className="row mb-1">
+                          <div className='col-9 text-danger fw-bold'>
+                            Bordados que faltan bordar:
+                          </div>
+                          <div className='col-3 fw-bold text-end'>
+                            {productStats?.[4]?.bordados_pendientes ?? 0}
+                          </div>
+                        </div>
+
                         <div className="row mb-1">
                           <div className='col-9'>Número total de artículos:</div>
-                          <div className='col-3 fw-bold'>{productStats[0]?.total_products ?? 0}</div>
+                          <div className='col-3 fw-bold text-end'>
+                            {productStats[0]?.total_products ?? 0}</div>
                         </div>
 
                         <div className='row'>
@@ -184,15 +156,48 @@ function Dashboard() {
                             )
                           })
                         }
+
+                        
+
                       </div>
 
                       {
                         productGenderP.length > 3 &&
                         <div className='d-flex justify-content-center align-items-center' style={{ flex: "1", position: "relative" }}>
                           <svg width="180px" height="180px" viewBox="0 0 42 42" className="donut">
-                            <circle className="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#516fc9" strokeWidth="5" strokeDasharray={`${productGenderP[1]?.percentage ?? 0} ${100 - (productGenderP[1]?.percentage ?? 0)}`} strokeDashoffset="0"></circle>
-                            <circle className="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#f07fce" strokeWidth="5" strokeDasharray={`${productGenderP[0]?.percentage ?? 0}  ${100 - (productGenderP[0]?.percentage ?? 0)}`} strokeDashoffset={productGenderP[1].percentage * -1}></circle>
-                            <circle className="donut-segment" cx="21" cy="21" r="15.91549430918954" fill="transparent" stroke="#fcbc53" strokeWidth="5" strokeDasharray={`${productGenderP[2]?.percentage ?? 0} ${100 - (productGenderP[2]?.percentage ?? 0)}`} strokeDashoffset={(productGenderP[1].percentage + productGenderP[0].percentage) * -1}></circle>
+                            <circle
+                              className="donut-segment"
+                              cx="21"
+                              cy="21"
+                              r="15.91549430918954"
+                              fill="transparent"
+                              stroke="#516fc9"
+                              strokeWidth="5"
+                              strokeDasharray={`${productGenderP[1]?.percentage ?? 0} ${100 - (productGenderP[1]?.percentage ?? 0)}`}
+                              strokeDashoffset="0"
+                            />
+                            <circle
+                              className="donut-segment"
+                              cx="21"
+                              cy="21"
+                              r="15.91549430918954"
+                              fill="transparent"
+                              stroke="#f07fce"
+                              strokeWidth="5"
+                              strokeDasharray={`${productGenderP[0]?.percentage ?? 0}  ${100 - (productGenderP[0]?.percentage ?? 0)}`}
+                              strokeDashoffset={productGenderP[1].percentage * -1}
+                            />
+                            <circle
+                              className="donut-segment"
+                              cx="21"
+                              cy="21"
+                              r="15.91549430918954"
+                              fill="transparent"
+                              stroke="#fcbc53"
+                              strokeWidth="5"
+                              strokeDasharray={`${productGenderP[2]?.percentage ?? 0} ${100 - (productGenderP[2]?.percentage ?? 0)}`}
+                              strokeDashoffset={(productGenderP[1].percentage + productGenderP[0].percentage) * -1}
+                            />
                           </svg>
 
                           <div style={{ fontSize: "smaller", position: "absolute" }}>
@@ -225,8 +230,15 @@ function Dashboard() {
                               <div key={i} className="card-items">
                                 {
                                   x.image === null ?
-                                    <div className='d-flex align-items-center fs-5 text-center' style={{ height: "80%" }}>No hay imagen disponible</div> :
-                                    <img style={{ height: "80%", borderRadius: "5px" }} src={`${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${x.image}`} alt="producto" />
+                                    <div className='d-flex align-items-center fs-5 text-center' style={{ height: "80%" }}>
+                                      No hay imagen disponible
+                                    </div>
+                                    :
+                                    <img
+                                      style={{ height: "80%", borderRadius: "5px" }}
+                                      src={`${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${x.image}`}
+                                      alt="producto"
+                                    />
                                 }
                                 <div className='text-center fw-bold' style={{ fontSize: "small" }} title={x.name}>
                                   {x.name.length > 20 ? x.name.slice(0, 20) + "..." : x.name}

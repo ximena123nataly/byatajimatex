@@ -5,7 +5,7 @@ import "./AsideNavbar.scss";
 import swal from "sweetalert";
 import { DarkModeContext } from "../../context/darkModeContext";
 
-// Icons
+
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import StoreIcon from "@mui/icons-material/Store";
@@ -22,22 +22,12 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 
 function AsideNavbar() {
-  // Controla tema claro/oscuro
+
   const { dispatch } = useContext(DarkModeContext);
-
-  // permissions: lista de permisos que viene del backend
-  // ejemplo esperado:
-  // [{page:"products", view:true}, {page:"proformas", view:true}, ...]
   const [permission, setPermission] = useState([]);
-
-  // toggel: abre/cierra el menú en móvil
   const [toggel, setToggel] = useState(false);
 
-  // =====================================================
-  // 1) Al cargar el componente:
-  // - verifica token (sesión)
-  // - si OK: pide permisos al backend
-  // =====================================================
+  
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
       method: "POST",
@@ -46,7 +36,7 @@ function AsideNavbar() {
       .then(async (response) => {
         const body = await response.json();
 
-        // Si el token es válido => pedimos permisos
+        
         if (body.operation === "success") {
           fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
             method: "POST",
@@ -54,14 +44,14 @@ function AsideNavbar() {
           })
             .then((res) => res.json())
             .then((body) => {
-              // body.permissions debe ser un array
+              
               setPermission(body.permissions || []);
             })
             .catch((error) => {
               console.log(error);
             });
         } else {
-          // Si no hay sesión válida => login
+          
           window.location.href = "/login";
         }
       })
@@ -70,9 +60,7 @@ function AsideNavbar() {
       });
   }, []);
 
-  // =====================================================
-  // 2) Logout con confirmación (sweetalert)
-  // =====================================================
+  
   const logout = () => {
     swal({
       title: "¿Estás seguro?",
@@ -98,17 +86,13 @@ function AsideNavbar() {
     });
   };
 
-  // =====================================================
-  // 3) isView(page)
-  // Devuelve true si el usuario tiene permiso de "ver" esa página
-  // Esto controla qué items aparecen en el menú
-  // =====================================================
+  
   const isView = (page) => {
     if (!Array.isArray(permission)) return false;
     return permission.find((p) => p.page === page)?.view === true;
   };
 
-  // Texto del logo cambia según permiso (admin/empleado)
+ 
   const LogoText = () => (
     <>
       {isView("employees") ? (
@@ -119,9 +103,7 @@ function AsideNavbar() {
     </>
   );
 
-  // =====================================================
-  // 4) Menú (links)
-  // =====================================================
+
   const MenuLinks = () => (
     <ul>
       {isView("dashboard") && (
@@ -233,7 +215,7 @@ function AsideNavbar() {
         </Link>
       )}
 
-      {/* ✅ CAMBIO 1: AGREGADO "CAJAS" EN USUARIO */}
+      
       {isView("caja") && (
         <Link to="/caja" style={{ textDecoration: "none" }}>
           <li>
@@ -250,11 +232,7 @@ function AsideNavbar() {
     </ul>
   );
 
-  // =====================================================
-  // 5) Render:
-  // - panel fijo (desktop)
-  // - menú deslizable (móvil)
-  // =====================================================
+  
   return (
     <div>
       <div className="toggelDiv">

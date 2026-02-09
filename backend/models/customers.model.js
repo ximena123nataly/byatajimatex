@@ -18,7 +18,7 @@ class Customer {
 				let tsa = ""
 
 
-				// CAMBIO: incluir celular en la búsqueda del listado
+				
 				if (req.body.search_value != "") {
 					tsa = `WHERE name LIKE "%${req.body.search_value}%"
       OR address LIKE "%${req.body.search_value}%"
@@ -46,7 +46,7 @@ class Customer {
 						if (err) {
 							return reject(err);
 						}
-						// console.log(result2)
+						
 						resolve({ operation: "success", message: '10 customers got', info: { customers: result, count: result2[0].val } });
 					})
 				})
@@ -63,12 +63,12 @@ class Customer {
 			res.send({ operation: "error", message: 'Something went wrong' });
 		}
 	}
-//----------------------------------
+
 	addCustomer = (req, res) => {
 		try {
 			const d = jwt.decode(req.cookies.accessToken, { complete: true });
 
-			//usuario que crea el cliente (interno)
+			
 			const user_id =
 				d?.payload?.user_id ||
 				d?.payload?.employee_id ||
@@ -112,7 +112,7 @@ class Customer {
 		}
 	};
 
-//--------------------------------------
+
 	updateCustomer = (req, res) => {
 		try {
 			let d = jwt.decode(req.cookies.accessToken, { complete: true });
@@ -130,7 +130,7 @@ class Customer {
 						resolve({ operation: "error", message: 'Duplicate customer email' });
 					}
 					else {
-						//CAMBIO: actualizar también `celular`
+						
 						let q2 = "UPDATE `customers` SET `name`=?,`address`=?,`email`=?,`celular`=? WHERE `customer_id`=?"
 						db.query(q2, [req.body.name, req.body.address, req.body.email, req.body.celular, req.body.customer_id], (err2, result2) => {
 							if (err2) {

@@ -2,7 +2,7 @@ const db = require("../db/conn.js");
 const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
-// ===== Helpers fecha/hora Bolivia (sin tocar docker) =====
+
 function nowDateTimeTZ(tz = "America/La_Paz") {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -94,9 +94,7 @@ class Order {
     }
   };
 
-  // ===========================
-  // CREAR VENTA -> CAJA (INGRESO)
-  // ===========================
+  
   addOrder = (req, res) => {
     try {
       const id_usuario = getUserIdFromCookie(req);
@@ -119,7 +117,7 @@ class Order {
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-        // 1) Insert order
+        
         const q1 =
           "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`, `grand_total`, `user_id`) " +
           "VALUES (?,?,?,?,?,?,?,?)";
@@ -143,7 +141,7 @@ class Order {
               );
             }
 
-            // 2) Descontar stock
+            
             const parr = req.body.item_array.map((prod) => {
               return new Promise((resolve, reject) => {
                 const q2 = "UPDATE `products` SET product_stock = product_stock - ? WHERE `product_id`= ?";
@@ -156,7 +154,7 @@ class Order {
 
             Promise.all(parr)
               .then(() => {
-                // 3) Buscar caja del usuario
+                
                 const qcaja = "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1";
                 db.query(qcaja, [id_usuario], (errCaja, cajaRes) => {
                   if (errCaja) {
@@ -165,7 +163,7 @@ class Order {
                     );
                   }
 
-                  // si no tiene caja, igual guardamos la venta
+                  
                   if (!cajaRes || cajaRes.length === 0) {
                     return db.commit(() =>
                       res.send({ operation: "success", message: "Order added (sin caja)" })
@@ -174,7 +172,7 @@ class Order {
 
                   const id_caja = cajaRes[0].id_caja;
 
-                  // 4) Insert transacción caja (INGRESO - VENTA)
+                  
                   const qtx = `
                     INSERT INTO caja_transacciones
                     (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -191,7 +189,7 @@ class Order {
                         );
                       }
 
-                      // 5) Update saldo caja (SUMA)
+                  
                       const qup = "UPDATE caja SET saldo = saldo + ? WHERE id_caja=?";
                       db.query(qup, [grandTotal, id_caja], (errUp) => {
                         if (errUp) {
@@ -223,9 +221,7 @@ class Order {
     }
   };
 
-  // ===========================
-  // ELIMINAR VENTA -> REVERTIR CAJA + STOCK
-  // ===========================
+  
   deleteOrder = (req, res) => {
     try {
       const id_usuario = getUserIdFromCookie(req);
@@ -241,7 +237,7 @@ class Order {
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-        // 1) Traer order para items
+        
         db.query("SELECT * FROM orders WHERE order_id=?", [order_id], (e1, rows) => {
           if (e1) {
             return db.rollback(() => res.send({ operation: "error", message: e1.message }));
@@ -259,7 +255,7 @@ class Order {
             items = [];
           }
 
-          // 2) Revertir stock (SUMAR lo que se descontó)
+         
           const stockTasks = items.map((p) => {
             return new Promise((resolve, reject) => {
               db.query(
@@ -272,7 +268,7 @@ class Order {
 
           Promise.all(stockTasks)
             .then(() => {
-              // 3) Buscar transacción de caja asociada
+              
               db.query(
                 "SELECT id_caja, monto FROM caja_transacciones WHERE origen='VENTA' AND nro_registro=? LIMIT 1",
                 [order_id],
@@ -286,7 +282,7 @@ class Order {
                   const hasTx = txRows && txRows.length > 0;
 
                   const proceedDeleteOrder = () => {
-                    // 4) Borrar order
+                   
                     db.query("DELETE FROM orders WHERE order_id=?", [order_id], (e4) => {
                       if (e4) {
                         return db.rollback(() =>
@@ -304,7 +300,7 @@ class Order {
 
                   const { id_caja, monto } = txRows[0];
 
-                  // 3.1 borrar tx
+                  
                   db.query(
                     "DELETE FROM caja_transacciones WHERE origen='VENTA' AND nro_registro=?",
                     [order_id],
@@ -315,7 +311,7 @@ class Order {
                         );
                       }
 
-                      // 3.2 revertir saldo (RESTAR)
+                  
                       db.query(
                         "UPDATE caja SET saldo = saldo - ? WHERE id_caja=?",
                         [monto, id_caja],

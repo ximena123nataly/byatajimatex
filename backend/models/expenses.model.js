@@ -2,7 +2,7 @@ const db = require("../db/conn.js");
 const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
-// ===== Helpers =====
+
 function nowDateTimeTZ(tz = "America/La_Paz") {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -119,13 +119,13 @@ class Expense {
 
       const expense_id = uniqid();
 
-      // ✅ FECHA/HORA Bolivia aunque Docker esté en UTC
+    
       const { fecha, hora } = nowDateTimeTZ("America/La_Paz");
 
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-        // 1) Insert expense
+        
         const q = `
           INSERT INTO expenses
           (expense_id, expense_ref, supplier_id, due_date, items, tax, grand_total, user_id)
@@ -147,7 +147,7 @@ class Expense {
           (err) => {
             if (err) return db.rollback(() => res.send({ operation: "error", message: err.message }));
 
-            // 2) Update stock (sumar)
+          
             const tasks = req.body.item_array.map((prod) => {
               return new Promise((resolve, reject) => {
                 db.query(
@@ -160,7 +160,7 @@ class Expense {
 
             Promise.all(tasks)
               .then(() => {
-                // 3) Buscar caja del usuario
+                
                 db.query(
                   `SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1`,
                   [id_usuario],
@@ -183,7 +183,7 @@ class Expense {
 
                     const id_caja = cajaRes[0].id_caja;
 
-                    // 4) Insert transacción caja con fecha/hora correcta
+                   
                     const qtx = `
                       INSERT INTO caja_transacciones
                       (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -200,7 +200,7 @@ class Expense {
                           );
                         }
 
-                        // 5) Update saldo caja
+                      
                         db.query(
                           `UPDATE caja SET saldo = saldo - ? WHERE id_caja = ?`,
                           [grandTotal, id_caja],
@@ -250,7 +250,7 @@ class Expense {
         db.beginTransaction((txErr) => {
           if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-          // 1) Revertir stock
+          
           const tasks = items.map((p) => {
             return new Promise((resolve, reject) => {
               db.query(

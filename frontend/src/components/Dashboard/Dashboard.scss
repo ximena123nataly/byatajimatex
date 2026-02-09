@@ -74,4 +74,27 @@
 			align-items: center;
 		}
 	}
+
+	.bordados-pendientes {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  padding: 6px 10px;
+  background: #fff;
+  margin-top: 6px;
+
+  .label {
+    color: #dc3545;
+    font-weight: 600;
+  }
+
+  .value {
+    font-weight: 800;
+    font-size: 16px;
+    color: #111;
+  }
+}
+
 }

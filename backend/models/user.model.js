@@ -24,10 +24,10 @@ class User {
 						let d_password = CryptoJS.AES.decrypt(result[0].password, process.env.CRYPTOJS_SEED).toString(CryptoJS.enc.Utf8);
 						let t_password = CryptoJS.AES.decrypt(req.body.password, process.env.CRYPTOJS_SEED).toString(CryptoJS.enc.Utf8);
 						if (d_password == t_password) {
-							//---------------------------------------------------------------------------------------------------
+							
 							const accessToken = jwt.sign(
 								{
-									user_id: result[0].user_id,     //user_id agrgado
+									user_id: result[0].user_id,    
 									email: result[0].email,
 									role: result[0].user_role
 								},
@@ -49,7 +49,7 @@ class User {
 					res.send(value);
 				})
 				.catch((err) => {
-					//console.log(err);
+					
 					res.send(err);
 				})
 		} catch (error) {
@@ -70,7 +70,7 @@ class User {
 
 			let newToken = jwt.sign(
 				{
-					user_id: d.payload.user_id,     // se añadio user_id
+					user_id: d.payload.user_id,   
 					email: d.payload.email,
 					role: d.payload.role
 				},
@@ -156,7 +156,7 @@ class User {
 					return res.send({ operation: "error", message: "Role not found" });
 				}
 
-				// 🔥 AQUÍ ESTÁ LA CLAVE
+				
 				const permissions = JSON.parse(result[0].user_role_permissions);
 
 				res.send({
@@ -204,7 +204,7 @@ class User {
 						if (err) {
 							return reject(err);
 						}
-						// console.log(result2)
+					
 						resolve({ operation: "success", message: '10 employees got', info: { employees: result, count: result2[0].val } });
 					})
 				})

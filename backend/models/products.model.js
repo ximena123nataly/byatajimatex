@@ -6,7 +6,7 @@ const path = require("path")
 
 class Product {
 	constructor() {
-		//console.log('Product object initialized');
+		
 	}
 
 	getProducts = (req, res) => {
@@ -42,7 +42,7 @@ class Product {
 						if (err) {
 							return reject(err);
 						}
-						// console.log(result2)
+						
 						resolve({ operation: "success", message: '10 products got', info: { products: result, count: result2[0].val } });
 					})
 				})
@@ -72,7 +72,7 @@ class Product {
 					if (err) {
 						return reject(err);
 					}
-					// console.log(result)
+					
 					resolve({ operation: "success", message: '10 products got', info: { products: result } });
 				})
 			})
@@ -101,7 +101,7 @@ class Product {
 					if (err) {
 						return reject(err);
 					}
-					// console.log(result)
+					
 					resolve({ operation: "success", message: 'Success', info: { products: result } });
 				})
 			})
@@ -195,7 +195,7 @@ class Product {
 					if (result[0].image != null) {
 						p = new Promise((res, rej) => {
 							let pathToFile = path.resolve("./") + "/public/uploads/" + result[0].image
-							//console.log(pathToFile)
+						
 							fs.unlink(pathToFile, function (ferr) {
 								if (ferr) {
 									rej(ferr);

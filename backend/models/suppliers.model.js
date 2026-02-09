@@ -4,7 +4,7 @@ const uniqid = require("uniqid")
 
 class Supplier {
 	constructor() {
-		//console.log('Customer object initialized');
+		
 	}
 
 	getSuppliers = (req, res) => {
@@ -40,7 +40,7 @@ class Supplier {
 						if (err) {
 							return reject(err);
 						}
-						// console.log(result2)
+						
 						resolve({ operation: "success", message: '10 suppliers got', info: { suppliers: result, count: result2[0].val } });
 					})
 				})
@@ -157,7 +157,7 @@ class Supplier {
 					if (err) {
 						return reject(err);
 					}
-					// console.log(result)
+					
 					resolve({ operation: "success", message: '10 suppliers got', info: { suppliers: result } });
 				})
 			})

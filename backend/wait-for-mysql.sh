@@ -6,5 +6,5 @@ until nc -z -v $DB_HOST $DB_PORT; do
   sleep 2
 done
 
-echo "✅ MySQL está disponible, arrancando backend..."
+echo "MySQL está disponible, arrancando backend..."
 exec "$@"
