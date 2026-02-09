@@ -166,3 +166,9 @@
   max-height: none;     /* sin límite */
   height: auto;
 }
+
+.caja-container{
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
