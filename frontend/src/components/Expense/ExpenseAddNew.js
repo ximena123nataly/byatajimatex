@@ -149,6 +149,7 @@ function ExpenseAddNew() {
 
     if (body.operation === 'success') {
       swal("¡Éxito!", "Gasto creado exitosamente", "success")
+      window.dispatchEvent(new Event("caja_actualizada"));
 
       setExpenseRef('')
       setSelectedSupplier(null)

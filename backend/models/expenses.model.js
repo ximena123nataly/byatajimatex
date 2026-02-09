@@ -1,197 +1,305 @@
-const db = require('../db/conn.js');
-const jwt = require('jsonwebtoken');
-const uniqid = require("uniqid")
+const db = require("../db/conn.js");
+const jwt = require("jsonwebtoken");
+const uniqid = require("uniqid");
+
+// ===== Helpers =====
+function nowDateTimeTZ(tz = "America/La_Paz") {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const get = (type) => parts.find((p) => p.type === type)?.value;
+
+  return {
+    fecha: `${get("year")}-${get("month")}-${get("day")}`,
+    hora: `${get("hour")}:${get("minute")}:${get("second")}`,
+  };
+}
+
+function getUserIdFromCookie(req) {
+  try {
+    const decoded = jwt.decode(req.cookies.accessToken, { complete: true });
+    const p = decoded?.payload || {};
+    return p.user_id || p.id_usuario || p.id || null;
+  } catch {
+    return null;
+  }
+}
 
 class Expense {
+  constructor() {}
 
-	constructor() {}
+  getExpenses = (req, res) => {
+    try {
+      const sv = req.body.search_value || "";
+      const sortCol = req.body.sort_column || "";
+      const sortOrd = req.body.sort_order || "";
+      const startVal = Number(req.body.start_value || 0);
 
+      let where = "";
+      const params = [];
 
-	getExpenses = (req, res) => {
-		try {
+      if (sv.trim() !== "") {
+        where = `WHERE (s.name LIKE ? OR e.expense_ref LIKE ?)`;
+        params.push(`%${sv}%`, `%${sv}%`);
+      }
 
-			new Promise((resolve, reject) => {
+      const allowedSort = new Set(["expense_ref", "due_date", "grand_total", "timeStamp"]);
+      let orderBy = "";
+      if (allowedSort.has(sortCol) && (sortOrd === "ASC" || sortOrd === "DESC")) {
+        orderBy = `ORDER BY e.${sortCol} ${sortOrd}`;
+      } else {
+        orderBy = `ORDER BY e.timeStamp DESC`;
+      }
 
-				let tsa = ""
-				if(req.body.search_value!="")
-				{
-					tsa = `WHERE s.name LIKE "%${req.body.search_value}%"
-						   OR e.expense_ref LIKE "%${req.body.search_value}%"`
-				}
+      const q = `
+        SELECT e.*, s.name as supplier_name
+        FROM expenses e
+        LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
+        ${where}
+        ${orderBy}
+        LIMIT ?,10
+      `;
+      const qParams = [...params, startVal];
 
-				let tso = ""
-				if((req.body.sort_column!="") && (req.body.sort_order!=""))
-				{
-					tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`
-				}
+      db.query(q, qParams, (err, result) => {
+        if (err) return res.send({ operation: "error", message: err.message });
 
-				let q = `
-					SELECT e.*, s.name as supplier_name
-					FROM expenses e
-					LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
-					${tsa}
-					${tso}
-					LIMIT ?,10
-				`;
+        const q2 = `
+          SELECT COUNT(*) AS val
+          FROM expenses e
+          LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
+          ${where}
+        `;
 
-				db.query(q, [req.body.start_value], (err, result) => {
-					if (err) return reject(err);
+        db.query(q2, params, (err2, result2) => {
+          if (err2) return res.send({ operation: "error", message: err2.message });
 
-					let q2 = "SELECT COUNT(*) AS val FROM expenses";
-					db.query(q2, (err2, result2) => {
-						if (err2) return reject(err2);
+          res.send({
+            operation: "success",
+            info: {
+              expenses: result,
+              count: result2[0].val,
+            },
+          });
+        });
+      });
+    } catch (e) {
+      res.send({ operation: "error", message: e?.message || "Error cargando gastos" });
+    }
+  };
 
-						resolve({
-							operation: "success",
-							info: {
-								expenses: result,
-								count: result2[0].val
-							}
-						});
-					})
-				})
+  addExpense = (req, res) => {
+    try {
+      const id_usuario = getUserIdFromCookie(req);
+      if (!id_usuario) return res.send({ operation: "error", message: "No autorizado" });
 
-			})
-			.then(v => res.send(v))
-			.catch(err => {
-				console.log(err);
-				res.send({ operation:"error" });
-			})
+      if (!req.body.expense_reference || !req.body.supplier_id || !req.body.due_date) {
+        return res.send({
+          operation: "error",
+          message: "Faltan datos: expense_reference / supplier_id / due_date",
+        });
+      }
 
-		} catch (e) {
-			console.log(e);
-			res.send({ operation:"error" });
-		}
-	}
+      if (!Array.isArray(req.body.item_array) || req.body.item_array.length === 0) {
+        return res.send({ operation: "error", message: "items vacío" });
+      }
 
+      const grandTotal = Number(req.body.grand_total);
+      if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
+        return res.send({ operation: "error", message: "grand_total inválido" });
+      }
 
-	
-	addExpense = (req, res) => {
+      const expense_id = uniqid();
 
-		try {
+      // ✅ FECHA/HORA Bolivia aunque Docker esté en UTC
+      const { fecha, hora } = nowDateTimeTZ("America/La_Paz");
 
-			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let id_usuario = d.payload.user_id;
+      db.beginTransaction((txErr) => {
+        if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-			new Promise((resolve, reject) => {
+        // 1) Insert expense
+        const q = `
+          INSERT INTO expenses
+          (expense_id, expense_ref, supplier_id, due_date, items, tax, grand_total, user_id)
+          VALUES (?,?,?,?,?,?,?,?)
+        `;
 
-				const expense_id = uniqid();
+        db.query(
+          q,
+          [
+            expense_id,
+            req.body.expense_reference,
+            req.body.supplier_id,
+            req.body.due_date,
+            JSON.stringify(req.body.item_array),
+            req.body.tax || 0,
+            grandTotal,
+            id_usuario,
+          ],
+          (err) => {
+            if (err) return db.rollback(() => res.send({ operation: "error", message: err.message }));
 
-				let q = `
-					INSERT INTO expenses
-					(expense_id, expense_ref, supplier_id, due_date, items, tax, grand_total)
-					VALUES (?,?,?,?,?,?,?)
-				`;
+            // 2) Update stock (sumar)
+            const tasks = req.body.item_array.map((prod) => {
+              return new Promise((resolve, reject) => {
+                db.query(
+                  `UPDATE products SET product_stock = product_stock + ? WHERE product_id = ?`,
+                  [prod.quantity, prod.product_id],
+                  (e2) => (e2 ? reject(e2) : resolve())
+                );
+              });
+            });
 
-				db.query(q, [
-					expense_id,
-					req.body.expense_reference,
-					req.body.supplier_id,
-					req.body.due_date,
-					JSON.stringify(req.body.item_array),
-					req.body.tax,
-					req.body.grand_total
-				], (err) => {
+            Promise.all(tasks)
+              .then(() => {
+                // 3) Buscar caja del usuario
+                db.query(
+                  `SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1`,
+                  [id_usuario],
+                  (errCaja, cajaRes) => {
+                    if (errCaja) {
+                      return db.rollback(() =>
+                        res.send({ operation: "error", message: errCaja.message })
+                      );
+                    }
 
-					if(err) return reject(err);
+                    if (!cajaRes || cajaRes.length === 0) {
+                      return db.commit(() =>
+                        res.send({
+                          operation: "success",
+                          message: "Expense added (sin caja asignada)",
+                          expense_id,
+                        })
+                      );
+                    }
 
-				
-					let parr = req.body.item_array.map((prod) => {
-						return new Promise((res2, rej2) => {
-							let q2 = `
-								UPDATE products
-								SET product_stock = product_stock + ?
-								WHERE product_id = ?
-							`;
-							db.query(q2,[prod.quantity, prod.product_id], (e2)=>{
-								if(e2) return rej2(e2);
-								res2();
-							});
-						});
-					});
+                    const id_caja = cajaRes[0].id_caja;
 
-					Promise.all(parr)
-					.then(()=>{
+                    // 4) Insert transacción caja con fecha/hora correcta
+                    const qtx = `
+                      INSERT INTO caja_transacciones
+                      (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
+                      VALUES (?,?,?,?,?,?,?,?)
+                    `;
 
-						
+                    db.query(
+                      qtx,
+                      [id_caja, id_usuario, "EGRESO", "GASTO", expense_id, grandTotal, fecha, hora],
+                      (errTx) => {
+                        if (errTx) {
+                          return db.rollback(() =>
+                            res.send({ operation: "error", message: errTx.message })
+                          );
+                        }
 
-						let qcaja = `
-							SELECT id_caja
-							FROM caja
-							WHERE id_usuario = ?
-							LIMIT 1
-						`;
+                        // 5) Update saldo caja
+                        db.query(
+                          `UPDATE caja SET saldo = saldo - ? WHERE id_caja = ?`,
+                          [grandTotal, id_caja],
+                          (errUp) => {
+                            if (errUp) {
+                              return db.rollback(() =>
+                                res.send({ operation: "error", message: errUp.message })
+                              );
+                            }
 
-						db.query(qcaja,[id_usuario], (errCaja, cajaRes)=>{
+                            db.commit(() =>
+                              res.send({
+                                operation: "success",
+                                message: "Expense added successfully",
+                                expense_id,
+                              })
+                            );
+                          }
+                        );
+                      }
+                    );
+                  }
+                );
+              })
+              .catch((e) => db.rollback(() => res.send({ operation: "error", message: e.message })));
+          }
+        );
+      });
+    } catch (e) {
+      res.send({ operation: "error", message: e?.message || "Error al guardar gasto" });
+    }
+  };
 
-							if(errCaja) return reject(errCaja);
-							if(cajaRes.length === 0)
-								return resolve({operation:"success"});
+  deleteExpense = (req, res) => {
+    try {
+      const expense_id = req.body.expense_id;
+      if (!expense_id) return res.send({ operation: "error", message: "expense_id requerido" });
 
-							let id_caja = cajaRes[0].id_caja;
+      db.query("SELECT * FROM expenses WHERE expense_id=?", [expense_id], (err, rows) => {
+        if (err) return res.send({ operation: "error", message: err.message });
+        if (!rows || rows.length === 0) return res.send({ operation: "error", message: "Gasto no encontrado" });
 
-							let qtx = `
-								INSERT INTO caja_transacciones
-								(id_transaccion,id_usuario,id_caja,tipo,origen,nro_registro,monto,fecha,hora)
-								VALUES (?,?,?,?,?,?,?,CURDATE(),CURTIME())
-							`;
+        const expense = rows[0];
+        let items = [];
+        try { items = JSON.parse(expense.items || "[]"); } catch { items = []; }
 
-							db.query(qtx,[
-								uniqid(),
-								id_usuario,
-								id_caja,
-								'EGRESO',
-								'GASTO',
-								expense_id,
-								req.body.grand_total
-							], (errTx)=>{
+        db.beginTransaction((txErr) => {
+          if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-								if(errTx) return reject(errTx);
+          // 1) Revertir stock
+          const tasks = items.map((p) => {
+            return new Promise((resolve, reject) => {
+              db.query(
+                "UPDATE products SET product_stock = product_stock - ? WHERE product_id=?",
+                [p.quantity, p.product_id],
+                (e) => (e ? reject(e) : resolve())
+              );
+            });
+          });
 
-								let qup = `
-									UPDATE caja
-									SET saldo = saldo - ?
-									WHERE id_caja = ?
-								`;
+          Promise.all(tasks)
+            .then(() => new Promise((resolve, reject) => {
+              db.query(
+                "SELECT id_caja, monto FROM caja_transacciones WHERE origen='GASTO' AND nro_registro=? LIMIT 1",
+                [expense_id],
+                (e, tRows) => {
+                  if (e) return reject(e);
+                  resolve(tRows && tRows.length ? tRows[0] : null);
+                }
+              );
+            }))
+            .then((txRow) => new Promise((resolve, reject) => {
+              if (!txRow) return resolve(null);
 
-								db.query(qup,[req.body.grand_total,id_caja], ()=>{
-									resolve({
-										operation:"success",
-										message:"Expense added successfully"
-									});
-								});
+              db.query(
+                "DELETE FROM caja_transacciones WHERE origen='GASTO' AND nro_registro=?",
+                [expense_id],
+                (e) => {
+                  if (e) return reject(e);
 
-							});
-
-						});
-
-					})
-					.catch(reject);
-
-				});
-
-			})
-			.then(v => res.send(v))
-			.catch(err=>{
-				console.log(err);
-				res.send({operation:"error"});
-			});
-
-		} catch(e) {
-			console.log(e);
-			res.send({operation:"error"});
-		}
-	}
-
-
-	deleteExpense = (req,res)=>{
-		db.query(
-			"DELETE FROM expenses WHERE expense_id=?",
-			[req.body.expense_id],
-			()=> res.send({operation:"success"})
-		);
-	}
-
+                  db.query(
+                    "UPDATE caja SET saldo = saldo + ? WHERE id_caja=?",
+                    [txRow.monto, txRow.id_caja],
+                    (e2) => (e2 ? reject(e2) : resolve(null))
+                  );
+                }
+              );
+            }))
+            .then(() => new Promise((resolve, reject) => {
+              db.query("DELETE FROM expenses WHERE expense_id=?", [expense_id], (e) => (e ? reject(e) : resolve()));
+            }))
+            .then(() => db.commit(() => res.send({ operation: "success", message: "Gasto eliminado" })))
+            .catch((e) => db.rollback(() => res.send({ operation: "error", message: e.message })));
+        });
+      });
+    } catch (e) {
+      res.send({ operation: "error", message: e?.message || "Error eliminando gasto" });
+    }
+  };
 }
 
 module.exports = Expense;

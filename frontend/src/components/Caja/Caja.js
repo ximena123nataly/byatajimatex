@@ -18,7 +18,7 @@ function Caja() {
     setMsg("");
 
     try {
-      // 1) Traer caja
+      // ===== 1) TRAER CAJA =====
       const res = await fetch(`${backend}/api/caja/get_caja`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -39,7 +39,7 @@ function Caja() {
 
       setCaja(data.caja);
 
-      // 2) Traer transacciones
+      // ===== 2) TRAER TRANSACCIONES =====
       const res2 = await fetch(`${backend}/api/caja/get_transacciones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,57 +67,79 @@ function Caja() {
 
   useEffect(() => {
     cargarCaja();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    const handler = () => cargarCaja();
+    window.addEventListener("caja_actualizada", handler);
+
+    return () => window.removeEventListener("caja_actualizada", handler);
   }, []);
 
   const saldoNum = Number(caja?.saldo ?? 0);
   const saldoClass =
-    saldoNum > 0 ? "saldo-positivo" : saldoNum < 0 ? "saldo-negativo" : "";
+    saldoNum > 0 ? "saldo-positivo" :
+    saldoNum < 0 ? "saldo-negativo" : "";
 
   return (
-    <div className="caja-container">
-      {/* TARJETA CAJA */}
-      <div className="caja-card">
-        <div className="caja-header">
-          <h2>CAJA</h2>
-          <button className="btn-refrescar" onClick={cargarCaja} disabled={loading}>
-            {loading ? "..." : "Refrescar"}
-          </button>
+    // ✅ ESTE DIV HACE QUE TODA LA PAGINA SCROLLEE
+    <div style={{ overflow: "auto", height: "100%" }}>
+
+      <div className="caja-container">
+
+        {/* ===== TARJETA CAJA ===== */}
+        <div className="caja-card">
+
+          <div className="caja-header">
+            <h2>CAJA</h2>
+
+            <button
+              className="btn-refrescar"
+              onClick={cargarCaja}
+              disabled={loading}
+            >
+              {loading ? "..." : "Refrescar"}
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="muted">Cargando...</p>
+          ) : caja ? (
+            <>
+              <div className="row">
+                <span>ID Caja:</span>
+                <b>{caja.id_caja}</b>
+              </div>
+
+              <div className="row">
+                <span>ID Usuario:</span>
+                <b>{caja.id_usuario}</b>
+              </div>
+
+              <div className="row">
+                <span>Nombre:</span>
+                <b>{caja.nombre_caja}</b>
+              </div>
+
+              <div className="row saldo">
+                <span>Saldo:</span>
+                <b className={saldoClass}>
+                  Bs {saldoNum.toFixed(2)}
+                </b>
+              </div>
+            </>
+          ) : (
+            <p className="muted">No hay caja.</p>
+          )}
+
+          {msg && <div className="msg-error">{msg}</div>}
         </div>
 
-        {loading ? (
-          <p className="muted">Cargando...</p>
-        ) : caja ? (
-          <>
-            <div className="row">
-              <span>ID Caja:</span>
-              <b>{caja.id_caja}</b>
-            </div>
+        {/* ===== TABLA TRANSACCIONES ===== */}
+        <CajaTransacciones
+          transacciones={transacciones}
+          loading={loadingTx}
+        />
 
-            <div className="row">
-              <span>ID Usuario:</span>
-              <b>{caja.id_usuario}</b>
-            </div>
-
-            <div className="row">
-              <span>Nombre:</span>
-              <b>{caja.nombre_caja}</b>
-            </div>
-
-            <div className="row saldo">
-              <span>Saldo:</span>
-              <b className={saldoClass}>Bs {saldoNum.toFixed(2)}</b>
-            </div>
-          </>
-        ) : (
-          <p className="muted">No hay caja.</p>
-        )}
-
-        {msg ? <div className="msg-error">{msg}</div> : null}
       </div>
-
-      {/* TABLA TRANSACCIONES */}
-      <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
     </div>
   );
 }

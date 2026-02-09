@@ -2,9 +2,21 @@ import React from "react";
 
 const fmtFecha = (v) => {
   if (!v) return "-";
-  const d = new Date(v);
-  return d.toLocaleDateString("es-BO"); // 6/2/2026
+
+  if (typeof v === "string") {
+    // si viene con hora (ISO)
+    const fecha = v.split("T")[0]; // ← corta la hora
+
+    const [y, m, d] = fecha.split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  return "-";
 };
+
+
+
+
 
 const fmtHora = (v) => {
   if (!v) return "-";

@@ -133,4 +133,36 @@
   border: 1px solid #2ecc71;
   color: #1e8449;
 }
+.caja-container { height: 100%; overflow: auto; }
 
+.caja-tx-card .tabla-wrap {
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+/* ===== Scroll de TODA la página (no solo la tabla) ===== */
+.caja-container{
+  padding: 20px;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;   /* clave: no ocultar */
+  display: block;      /* no flex forzado */
+}
+
+/* tarjeta movimientos normal */
+.caja-tx-card{
+  margin-top: 20px;
+  width: 100%;
+  flex: initial;
+  min-height: auto;
+  overflow: visible;
+}
+
+/* la tabla solo scrollea horizontal si es muy ancha */
+.tabla-wrap{
+  margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: visible;  /* sin scroll vertical interno */
+  max-height: none;     /* sin límite */
+  height: auto;
+}
