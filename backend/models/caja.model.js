@@ -1,5 +1,28 @@
 const db = require("../db/conn.js");
 const jwt = require("jsonwebtoken");
+const uniqid = require("uniqid");
+
+// FECHA Y HORA 
+function nowLaPaz() {
+  const d = new Date();
+
+  const fecha = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/La_Paz",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d); // YYYY-MM-DD
+
+  const hora = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/La_Paz",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(d); // HH:mm:ss
+
+  return { fecha, hora };
+}
 
 class Caja {
   constructor() {}
@@ -21,7 +44,6 @@ class Caja {
     return String(role).toLowerCase();
   };
 
-  
   isAdmin = (req) => {
     const role = this.getRoleFromToken(req);
     return role === "admin" || role === "administrador";
@@ -70,7 +92,7 @@ class Caja {
     });
   };
 
-  
+ 
   getCaja = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
@@ -113,12 +135,11 @@ class Caja {
     }
   };
 
-  
+ 
   getCajas = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
 
-      
       const q = `
         SELECT c.id_caja, c.id_usuario, c.nombre_caja, c.saldo,
                u.user_name AS usuario_nombre,
@@ -172,7 +193,7 @@ class Caja {
     }
   };
 
-
+  
   getTransaccionesByCaja = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
@@ -198,6 +219,153 @@ class Caja {
     } catch (e) {
       console.log(e);
       return res.send({ ok: false, msg: "Error cargando movimientos" });
+    }
+  };
+
+  
+  getDestinosTraspaso = async (req, res) => {
+    try {
+      const user_id = this.getUserIdFromToken(req);
+      if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
+
+     
+      db.query(
+        `SELECT user_id, user_name, email
+         FROM \`user\`
+         WHERE user_id <> ?
+         ORDER BY user_name ASC`,
+        [user_id],
+        (err, rows) => {
+          if (err) {
+            console.log(err);
+            return res.send({ ok: false, msg: "Error cargando usuarios" });
+          }
+          return res.send({ ok: true, usuarios: rows || [] });
+        }
+      );
+    } catch (e) {
+      console.log(e);
+      return res.send({ ok: false, msg: "Error cargando usuarios" });
+    }
+  };
+
+  
+  traspasoSaldo = async (req, res) => {
+    try {
+      const id_usuario_origen = this.getUserIdFromToken(req);
+      if (!id_usuario_origen) return res.send({ ok: false, msg: "No autorizado" });
+
+      const { id_usuario_destino, monto } = req.body;
+
+      const montoNum = parseFloat(monto);
+
+      if (!id_usuario_destino) return res.send({ ok: false, msg: "Falta usuario destino" });
+      if (!monto || isNaN(montoNum) || montoNum <= 0) {
+        return res.send({ ok: false, msg: "Monto inválido" });
+      }
+      if (String(id_usuario_origen) === String(id_usuario_destino)) {
+        return res.send({ ok: false, msg: "No puedes traspasarte a ti mismo" });
+      }
+
+      const cajaOrigen = await this.ensureCaja(id_usuario_origen);
+      const cajaDestino = await this.ensureCaja(id_usuario_destino);
+
+      
+      const saldoOrigen = parseFloat(cajaOrigen.saldo || 0);
+      if (saldoOrigen < montoNum) {
+        return res.send({ ok: false, msg: "Saldo insuficiente" });
+      }
+
+      const nro = "trp_" + uniqid();
+
+      const { fecha, hora } = nowLaPaz();
+
+
+     
+      db.beginTransaction((err0) => {
+        if (err0) {
+          console.log(err0);
+          return res.send({ ok: false, msg: "Error iniciando transacción" });
+        }
+
+       
+        db.query(
+          `INSERT INTO caja_transacciones
+           (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
+           VALUES (?,?,?,?,?,?,?,?)`,
+          [cajaOrigen.id_caja, id_usuario_origen, "EGRESO", "TRASPASO", nro, montoNum, fecha, hora],
+          (err1) => {
+            if (err1) {
+              console.log(err1);
+              return db.rollback(() =>
+                res.send({ ok: false, msg: "Error registrando egreso" })
+              );
+            }
+
+            
+            db.query(
+              `INSERT INTO caja_transacciones
+               (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
+               VALUES (?,?,?,?,?,?,?,?)`,
+              [cajaDestino.id_caja, id_usuario_destino, "INGRESO", "TRASPASO", nro, montoNum, fecha, hora],
+              (err2) => {
+                if (err2) {
+                  console.log(err2);
+                  return db.rollback(() =>
+                    res.send({ ok: false, msg: "Error registrando ingreso" })
+                  );
+                }
+
+               
+                db.query(
+                  `UPDATE caja SET saldo = saldo - ? WHERE id_caja=?`,
+                  [montoNum, cajaOrigen.id_caja],
+                  (err3) => {
+                    if (err3) {
+                      console.log(err3);
+                      return db.rollback(() =>
+                        res.send({ ok: false, msg: "Error actualizando saldo origen" })
+                      );
+                    }
+
+                    
+                    db.query(
+                      `UPDATE caja SET saldo = saldo + ? WHERE id_caja=?`,
+                      [montoNum, cajaDestino.id_caja],
+                      (err4) => {
+                        if (err4) {
+                          console.log(err4);
+                          return db.rollback(() =>
+                            res.send({ ok: false, msg: "Error actualizando saldo destino" })
+                          );
+                        }
+
+                       
+                        db.commit((err5) => {
+                          if (err5) {
+                            console.log(err5);
+                            return db.rollback(() =>
+                              res.send({ ok: false, msg: "Error confirmando traspaso" })
+                            );
+                          }
+                          return res.send({
+                            ok: true,
+                            msg: "Traspaso realizado",
+                            nro_registro: nro,
+                          });
+                        });
+                      }
+                    );
+                  }
+                );
+              }
+            );
+          }
+        );
+      });
+    } catch (e) {
+      console.log(e);
+      return res.send({ ok: false, msg: "Error servidor" });
     }
   };
 }

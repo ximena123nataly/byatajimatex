@@ -12,14 +12,30 @@ function Caja() {
   const [transacciones, setTransacciones] = useState([]);
   const [loadingTx, setLoadingTx] = useState(true);
 
-  // ✅ Admin: panel ver cajas
   const [isAdmin, setIsAdmin] = useState(false);
   const [cajas, setCajas] = useState([]);
   const [selectedCajaId, setSelectedCajaId] = useState("");
 
-  // =============================
+  
+  // TRASPASO DE SALDO
+  
+  const [showTraspaso, setShowTraspaso] = useState(false);
+  const [usuariosDestino, setUsuariosDestino] = useState([]);
+  const [destino, setDestino] = useState("");
+  const [montoTraspaso, setMontoTraspaso] = useState("");
+  const [loadingTraspaso, setLoadingTraspaso] = useState(false);
+
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [toast, setToast] = useState({ show: false, type: "ok", text: "" });
+
+  const showToast = (type, text) => {
+    setToast({ show: true, type, text });
+    setTimeout(() => setToast((t) => ({ ...t, show: false })), 2500);
+  };
+
+ 
   // EMPLEADO: caja propia
-  // =============================
+  
   const cargarCajaMia = async () => {
     setLoading(true);
     setLoadingTx(true);
@@ -65,9 +81,9 @@ function Caja() {
     }
   };
 
-  // =============================
+  
   // ADMIN: cargar lista de cajas
-  // =============================
+ 
   const cargarCajasAdmin = async () => {
     try {
       const res = await fetch(`${backend}/api/caja/get_cajas`, {
@@ -101,9 +117,9 @@ function Caja() {
     }
   };
 
-  // =============================
+
   // ADMIN: cargar caja por id
-  // =============================
+
   const cargarCajaPorId = async (id_caja) => {
     if (!id_caja) return;
 
@@ -151,7 +167,6 @@ function Caja() {
     }
   };
 
-
   const refrescar = async () => {
     if (isAdmin) {
       await cargarCajasAdmin();
@@ -161,9 +176,88 @@ function Caja() {
     await cargarCajaMia();
   };
 
-  // =============================
-  // init
-  // =============================
+  
+  // TRASPASO: cargar destinos
+  
+  const cargarDestinosTraspaso = async () => {
+    try {
+      const res = await fetch(`${backend}/api/caja/get_destinos_traspaso`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      });
+
+      const data = await res.json();
+      if (data?.ok) {
+        setUsuariosDestino(data.usuarios || []);
+      } else {
+        setUsuariosDestino([]);
+        showToast("err", data?.msg || "No se pudieron cargar los usuarios");
+      }
+    } catch (e) {
+      console.log(e);
+      setUsuariosDestino([]);
+      showToast("err", "Error cargando usuarios destino");
+    }
+  };
+
+ 
+  // TRASPASO: abrir confirmación
+  
+  const abrirConfirmacionTraspaso = () => {
+    if (!destino) return showToast("err", "Selecciona un destino");
+
+    const montoNum = Number(montoTraspaso);
+    if (!montoTraspaso || isNaN(montoNum) || montoNum <= 0) {
+      return showToast("err", "Monto inválido");
+    }
+
+    setShowConfirm(true);
+  };
+
+ 
+  // TRASPASO: confirmar
+
+  const confirmarTraspaso = async () => {
+    const montoNum = Number(montoTraspaso);
+    setLoadingTraspaso(true);
+
+    try {
+      const res = await fetch(`${backend}/api/caja/traspaso_saldo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id_usuario_destino: destino,
+          monto: montoNum,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data?.ok) {
+        showToast("err", data?.msg || "Error en traspaso");
+        return;
+      }
+
+      showToast("ok", " Traspaso realizado");
+
+      setShowConfirm(false);
+      setShowTraspaso(false);
+      setDestino("");
+      setMontoTraspaso("");
+
+      await refrescar();
+      window.dispatchEvent(new Event("caja_actualizada"));
+    } catch (e) {
+      showToast("err", "Error de conexión (Failed to fetch)");
+    } finally {
+      setLoadingTraspaso(false);
+    }
+  };
+
+  
   useEffect(() => {
     (async () => {
       const esAdmin = await cargarCajasAdmin();
@@ -176,26 +270,27 @@ function Caja() {
     window.addEventListener("caja_actualizada", handler);
 
     return () => window.removeEventListener("caja_actualizada", handler);
-    // eslint-disable-next-line
+   
   }, []);
 
-  // admin cambia caja
+
   useEffect(() => {
     if (isAdmin && selectedCajaId) {
       cargarCajaPorId(selectedCajaId);
     }
-    // eslint-disable-next-line
+    
   }, [selectedCajaId, isAdmin]);
 
   const saldoNum = Number(caja?.saldo ?? 0);
-  const saldoClass =
-    saldoNum > 0 ? "saldo-positivo" : saldoNum < 0 ? "saldo-negativo" : "";
+  const saldoClass = saldoNum > 0 ? "saldo-positivo" : saldoNum < 0 ? "saldo-negativo" : "";
 
   return (
     <div style={{ overflowY: "auto", height: "calc(100vh - 80px)" }}>
-      <div className="caja-container" style={{ display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}>
-
-        {/* IZQUIERDA: CAJA */}
+      <div
+        className="caja-container"
+        style={{ display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}
+      >
+       
         <div className="caja-card">
           <div className="caja-header">
             <h2>CAJA</h2>
@@ -209,13 +304,34 @@ function Caja() {
             <p className="muted">Cargando...</p>
           ) : caja ? (
             <>
-              <div className="row"><span>ID Caja:</span><b>{caja.id_caja}</b></div>
-              <div className="row"><span>ID Usuario:</span><b>{caja.id_usuario}</b></div>
-              <div className="row"><span>Nombre:</span><b>{caja.nombre_caja}</b></div>
+              <div className="row">
+                <span>ID Caja:</span>
+                <b>{caja.id_caja}</b>
+              </div>
+              <div className="row">
+                <span>ID Usuario:</span>
+                <b>{caja.id_usuario}</b>
+              </div>
+              <div className="row">
+                <span>Nombre:</span>
+                <b>{caja.nombre_caja}</b>
+              </div>
               <div className="row saldo">
                 <span>Saldo:</span>
                 <b className={saldoClass}>Bs {saldoNum.toFixed(2)}</b>
               </div>
+
+              
+              <button
+                className="btn-traspaso"
+                onClick={async () => {
+                  await cargarDestinosTraspaso();
+                  setShowTraspaso(true);
+                }}
+                disabled={loading}
+              >
+                TRASPASAR SALDO
+              </button>
             </>
           ) : (
             <p className="muted">No hay caja.</p>
@@ -224,7 +340,7 @@ function Caja() {
           {msg && <div className="msg-error">{msg}</div>}
         </div>
 
-        {/* DERECHA: PANEL VER CAJAS (ADMIN) */}
+       
         {isAdmin && (
           <div
             className="caja-card"
@@ -250,7 +366,6 @@ function Caja() {
                   {c.usuario_nombre || "Usuario"} - Caja #{c.id_caja}
                 </option>
               ))}
-
             </select>
 
             <div style={{ marginTop: "10px", fontSize: "13px", color: "#666" }}>
@@ -259,11 +374,83 @@ function Caja() {
           </div>
         )}
 
-        {/* ABAJO: MOVIMIENTOS */}
+        
         <div style={{ width: "100%" }}>
           <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
         </div>
       </div>
+
+     
+      {showTraspaso && (
+        <div className="modal-backdrop">
+          <div className="modal-box">
+            <h3 style={{ marginTop: 0 }}>Traspasar saldo</h3>
+
+            <label>Destino</label>
+            <select className="my_form_control" value={destino} onChange={(e) => setDestino(e.target.value)}>
+              <option value="">Seleccionar usuario</option>
+              {usuariosDestino.map((u) => (
+                <option key={u.user_id} value={u.user_id}>
+                  {u.user_name}
+                </option>
+              ))}
+            </select>
+
+            <label style={{ marginTop: "10px" }}>Monto</label>
+            <input
+              className="my_form_control"
+              type="number"
+              value={montoTraspaso}
+              onChange={(e) => setMontoTraspaso(e.target.value)}
+              placeholder="Monto a traspasar"
+            />
+
+            <div className="modal-actions">
+              <button
+                onClick={() => {
+                  setShowTraspaso(false);
+                  setShowConfirm(false);
+                }}
+                disabled={loadingTraspaso}
+              >
+                Cancelar
+              </button>
+
+              <button onClick={abrirConfirmacionTraspaso} disabled={loadingTraspaso}>
+                {loadingTraspaso ? "..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {showConfirm && (
+        <div className="modal-backdrop">
+          <div className="modal-box">
+            <h3 style={{ marginTop: 0 }}>Confirmar traspaso</h3>
+
+            <p style={{ margin: "10px 0", color: "#333" }}>
+              ¿Seguro que quieres traspasar <b>Bs {Number(montoTraspaso || 0).toFixed(2)}</b>?
+            </p>
+
+            <div className="modal-actions">
+              <button onClick={() => setShowConfirm(false)} disabled={loadingTraspaso}>
+                Cancelar
+              </button>
+
+              <button onClick={confirmarTraspaso} disabled={loadingTraspaso}>
+                {loadingTraspaso ? "..." : "Sí, traspasar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      
+      {toast.show && (
+        <div className={`toast-msg ${toast.type === "ok" ? "toast-ok" : "toast-err"}`}>{toast.text}</div>
+      )}
     </div>
   );
 }

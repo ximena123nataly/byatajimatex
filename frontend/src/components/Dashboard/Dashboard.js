@@ -129,7 +129,7 @@ function Dashboard() {
                         {/*  Bordados que faltan bordar */}
                         <div className="row mb-1">
                           <div className='col-9 text-danger fw-bold'>
-                            Bordados que faltan bordar:
+                            Trabajos que faltan bordar 
                           </div>
                           <div className='col-3 fw-bold text-end'>
                             {productStats?.[4]?.bordados_pendientes ?? 0}
