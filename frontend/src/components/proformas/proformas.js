@@ -29,17 +29,13 @@ function Proformas() {
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
-  //  Evita que los botones queden con foco (SweetAlert devuelve foco al cerrar)
   const clickNoFocusAsync = (fn) => async (e) => {
     const el = e?.currentTarget;
-
-    // Quita foco al instante
     if (el) el.blur();
 
     try {
       await fn();
     } finally {
-      // SweetAlert devuelve el foco al cerrar, lo quitamos también
       setTimeout(() => {
         if (el) el.blur();
         if (document?.activeElement && typeof document.activeElement.blur === "function") {
@@ -120,10 +116,8 @@ function Proformas() {
     }
   };
 
-  //  ENTREGAR con cobro obligatorio si hay saldo (sin tocar el botón Cobrar)
   const entregarProforma = async (id, saldoActual = 0) => {
     try {
-      // 1) Si hay saldo, cobrar primero (obligatorio)
       if (Number(saldoActual) > 0) {
         const input = await swal({
           title: "Cobro antes de entregar",
@@ -141,7 +135,6 @@ function Proformas() {
           dangerMode: true,
         });
 
-        // Canceló => NO entregar
         if (input === null) return;
 
         const monto = Number(input);
@@ -154,7 +147,6 @@ function Proformas() {
           return;
         }
 
-        // Ejecuta cobro
         const cobrarRes = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/cobrar_proforma`, {
           method: "POST",
           headers: { "Content-type": "application/json; charset=UTF-8" },
@@ -170,7 +162,6 @@ function Proformas() {
         }
       }
 
-      // 2) Confirmar entrega
       const ok = await swal({
         title: "¿Entregar pedido?",
         text: "Esto marcará la proforma como ENTREGADA.",
@@ -202,9 +193,6 @@ function Proformas() {
     }
   };
 
-
-
-  // COBRAR: SOLO permite pagar el saldo COMPLETO
   const cobrarProforma = async (id, saldoActual) => {
     const saldoNum = Number(saldoActual);
 
@@ -237,14 +225,11 @@ function Proformas() {
       return;
     }
 
-    //  Si excede el saldo
     if (monto > saldoNum) {
       swal("¡Ups!", "No puedes cobrar más que el saldo", "error");
       return;
     }
 
-    //  Si es menor al saldo (NO PERMITIDO)
-    // comparación con tolerancia por decimales
     const diff = Math.abs(monto - saldoNum);
     if (diff > 0.009) {
       swal("¡Ups!", "Debes pagar el saldo completo", "warning");
@@ -255,7 +240,7 @@ function Proformas() {
       const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/cobrar_proforma`, {
         method: "POST",
         headers: { "Content-type": "application/json; charset=UTF-8" },
-        body: JSON.stringify({ id, monto: saldoNum }), // ✅ mandamos el saldo exacto
+        body: JSON.stringify({ id, monto: saldoNum }),
         credentials: "include",
       });
 
@@ -272,7 +257,6 @@ function Proformas() {
       swal("¡Ups!", "Error de conexión con el servidor", "error");
     }
   };
-
 
   const openViewModal = (obj) => {
     let parsed = obj;
@@ -298,11 +282,202 @@ function Proformas() {
     setViewModalShow(false);
   };
 
-  // ✅ clase según entregado (0 rojo, 1 blanco)
   const rowClassByEntregado = (obj) => {
     const entregado = Number(obj?.entregado) === 1;
     return entregado ? "row-entregado" : "row-no-entregado";
   };
+
+
+  const imprimirProforma = (p) => {
+    if (!p) return;
+
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const money = (n) => {
+      const num = Number(n);
+      if (!Number.isFinite(num)) return "0.00";
+      return num.toFixed(2);
+    };
+
+    const safe = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+
+    const items = Array.isArray(p.detalle) ? p.detalle : [];
+
+    const filas = items
+      .map((it) => {
+        const cant = toNumber(it.cantidad);
+        const pu = toNumber(it.precio_unitario);
+        const tot = toNumber(it.total);
+
+        const ofertaTxt = it.oferta && it.oferta !== "Sin oferta" ? `(${safe(it.oferta)})` : "";
+        const det = safe(it.detalle || "").replace(/\n/g, "<br/>");
+
+        return `
+          <tr>
+            <td class="td-right" style="width:55px;">${cant}</td>
+            <td class="td-left wrap">${det}</td>
+            <td class="td-center" style="width:120px;">${ofertaTxt}</td>
+            <td class="td-right" style="width:80px;">${money(pu)}</td>
+            <td class="td-right" style="width:90px;">${money(tot)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const notasHTML =
+      p.notas && String(p.notas).trim() !== ""
+        ? `<div class="small wrap" style="margin-top:8px;"><b>Notas:</b> ${safe(p.notas).replace(/\n/g, "<br/>")}</div>`
+        : "";
+
+
+
+    const fechaPrint = p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : "";
+    const horaPrint = p.hora ? String(p.hora).slice(0, 8) : "";
+
+    const fechaEntregaPrint = p.fecha_entrega ? moment.utc(p.fecha_entrega).format("YYYY-MM-DD") : "";
+    const horaEntregaPrint = p.hora_entrega ? String(p.hora_entrega).slice(0, 5) : "";
+
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Proforma ${safe(formatProforma(p.id))}</title>
+  <style>
+    @page { size: letter portrait; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
+    .ticket { width: 8.5in; height: 5.5in; box-sizing: border-box; padding: 0.35in 0.45in; margin: 0 auto; overflow: hidden; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
+    .small { font-size: 11px; line-height: 1.25; }
+    .muted { color: #444; }
+    .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .col-left  { width: 33%; }
+    .col-center{ width: 34%; text-align: center; }
+    .col-right { width: 33%; text-align: right; }
+    .logo { width: 170px; height: auto; display: block; margin-bottom: 6px; }
+    hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
+    .mid { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .mid-left { width: 55%; }
+    .mid-right{ width: 45%; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    thead th { font-size: 12px; text-align: left; border-bottom: 1px solid #ddd; padding: 7px 6px; }
+    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; padding: 7px 6px; vertical-align: top; }
+    .td-right { text-align: right; }
+    .td-center { text-align: center; }
+    .td-left { text-align: left; }
+    .totals { width: 260px; margin-left: auto; margin-top: 10px; }
+    .totals table { width: 100%; }
+    .totals td { font-size: 12px; padding: 4px 6px; }
+    .totals tr td:first-child { text-align: left; }
+    .totals tr td:last-child { text-align: right; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="header">
+      <div class="col-left">
+        <img class="logo" src="/tajima.png" alt="TAJIMA" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="col-center">
+        <div class="title">PROFORMA</div>
+        <div class="small" style="margin-top:10px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135-75274747-77221750</div>
+        </div>
+      </div>
+
+      <div class="col-right small" style="margin-top:14px;">
+        <div>
+          N°:
+          <span style="font-size:20px; font-weight:800;">
+            ${safe(formatProforma(p.id))}
+          </span>
+        </div>
+        <div>Fecha: <b>${fechaPrint}</b></div>
+        <div>Hora: <b>${horaPrint}</b></div>
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="mid small">
+      <div class="mid-left wrap">
+        <div><b>Cliente:</b> ${safe(p.cliente || "")}</div>
+        <div><b>Celular:</b> ${safe(p.celular || "")}</div>
+        ${notasHTML}
+      </div>
+      <div class="mid-right">
+        <div><b>Entregado:</b> ${Number(p.entregado) ? "SI" : "NO"}</div>
+        <div class="muted"><b> Fecha de entrega:</b> ${fechaEntregaPrint} ${horaEntregaPrint}</div>
+      </div>
+    </div>
+
+    <hr />
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:55px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:120px;" class="td-center"></th>
+          <th style="width:80px;" class="td-right">P/U</th>
+          <th style="width:90px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="5" style="padding:10px; font-size:12px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <table>
+        <tr><td>Anticipo</td><td>${money(p.anticipo ?? 0)}</td></tr>
+        <tr><td>Total</td><td>${money(p.total_general ?? 0)}</td></tr>
+        <tr><td>Saldo</td><td>${money(p.saldo ?? 0)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    const w = window.open("", "_blank", "width=900,height=650");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
 
   useEffect(() => {
     if (proformas.length !== 0) {
@@ -315,51 +490,34 @@ function Proformas() {
         saldo: Number(obj.saldo || 0).toFixed(2),
 
         fecha: obj.fecha ? moment.utc(obj.fecha).format("D [de] MMMM, YYYY") : "",
-        fecha_entrega: obj.fecha_entrega
-          ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY")
-          : "",
+        fecha_entrega: obj.fecha_entrega ? moment.utc(obj.fecha_entrega).format("D [de] MMMM, YYYY") : "",
         hora_entrega: obj.hora_entrega ? String(obj.hora_entrega).slice(0, 5) : "",
 
         action: (
           <div className="actionGrid">
-            {/* Cobrar: SOLO si hay saldo */}
             {Number(obj?.saldo) > 0 && (
-              <button
-                className="btn primary"
-                onClick={clickNoFocusAsync(() => cobrarProforma(obj.id, obj.saldo))}
-              >
+              <button className="btn primary" onClick={clickNoFocusAsync(() => cobrarProforma(obj.id, obj.saldo))}>
                 Cobrar
               </button>
             )}
 
-            {/* Entregar: SOLO si NO está entregado */}
             {Number(obj?.entregado) !== 1 && (
-              <button
-                className="btn success"
-                onClick={clickNoFocusAsync(() => entregarProforma(obj.id, obj.saldo))}
-              >
+              <button className="btn success" onClick={clickNoFocusAsync(() => entregarProforma(obj.id, obj.saldo))}>
                 Entregar
               </button>
             )}
 
-            <button
-              className="btn warning"
-              onClick={clickNoFocusAsync(() => openViewModal(obj))}
-            >
+            <button className="btn warning" onClick={clickNoFocusAsync(() => openViewModal(obj))}>
               Ver
             </button>
 
             {permission?.delete && (
-              <button
-                className="btn danger"
-                onClick={clickNoFocusAsync(() => deleteProforma(obj.id))}
-              >
+              <button className="btn danger" onClick={clickNoFocusAsync(() => deleteProforma(obj.id))}>
                 Eliminar
               </button>
             )}
           </div>
         ),
-
 
         _rowClass: rowClassByEntregado(obj),
       }));
@@ -386,17 +544,7 @@ function Proformas() {
           <Loader />
         ) : pageState === 2 ? (
           <Table
-            headers={[
-              "N°",
-              "Proforma",
-              "Cliente",
-              "Total",
-              "Saldo",
-              "Fecha",
-              "Fecha entrega",
-              "Hora entrega",
-              "Acción",
-            ]}
+            headers={["N°", "Proforma", "Cliente", "Total", "Saldo", "Fecha", "Fecha entrega", "Hora entrega", "Acción"]}
             columnOriginalNames={[
               ["sl", ""],
               ["id", ""],
@@ -463,13 +611,10 @@ function Proformas() {
 
                     <div>
                       <b>Fecha entrega:</b>{" "}
-                      {selected.fecha_entrega
-                        ? moment.utc(selected.fecha_entrega).format("D [de] MMMM, YYYY")
-                        : "-"}
+                      {selected.fecha_entrega ? moment.utc(selected.fecha_entrega).format("D [de] MMMM, YYYY") : "-"}
                     </div>
                     <div>
-                      <b>Hora entrega:</b>{" "}
-                      {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
+                      <b>Hora entrega:</b> {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
                     </div>
 
                     <div>
@@ -519,7 +664,26 @@ function Proformas() {
                   </table>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end", 
+                    alignItems: "flex-end",
+                    marginTop: "1rem",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
+
+                  <button
+                    className="btn btn-outline-primary"
+                    onClick={() => imprimirProforma(selected)}
+                    style={{ minWidth: "120px" }}
+                  >
+                    Imprimir
+                  </button>
+
                   <div style={{ minWidth: "280px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span>
@@ -543,6 +707,7 @@ function Proformas() {
                     </div>
                   </div>
                 </div>
+
               </>
             )}
           </Modal.Body>
@@ -553,3 +718,4 @@ function Proformas() {
 }
 
 export default Proformas;
+

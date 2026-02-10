@@ -253,11 +253,12 @@ function Orders() {
 
       <div class="col-right small" style="margin-top:14px;">
         <div>
-          N°:
-          <span style="font-size:20px; font-weight:800;">
-            ${o.order_ref || "--"}
-          </span>
-        </div>
+  N°:
+  <span style="font-size:20px; font-weight:800;">
+    ${o.order_id || "--"}
+  </span>
+</div>
+
         <div>Fecha: <b>${moment(o.timeStamp).format("YYYY-MM-DD")}</b></div>
       </div>
     </div>
@@ -356,7 +357,7 @@ function Orders() {
         }
 
         <Modal show={viewModalShow} onHide={handleViewModalClose} size="lg" centered >
-          {/* HEADER CON BOTÓN IMPRIMIR */}
+
           <Modal.Header>
             <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
               <Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
@@ -364,16 +365,11 @@ function Orders() {
               </Modal.Title>
 
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <button
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => imprimirVenta(viewOrderDetails)}
-                >
-                  Imprimir
-                </button>
                 <button className="btn-close" onClick={handleViewModalClose}></button>
               </div>
             </div>
           </Modal.Header>
+
 
           <Modal.Body style={{ backgroundColor: "#fafafa" }} >
             <div className='container d-flex gap-2'>
@@ -433,11 +429,22 @@ function Orders() {
             </div>
           </Modal.Body>
 
-          <Modal.Footer>
+
+
+          <Modal.Footer className="d-flex justify-content-end gap-2">
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => imprimirVenta(viewOrderDetails)}
+              disabled={!viewOrderDetails}
+            >
+              Imprimir
+            </button>
+
             <button className='btn btn-outline-danger' onClick={handleViewModalClose}>
               Cerrar
             </button>
           </Modal.Footer>
+
         </Modal>
       </div>
     </div>

@@ -1,23 +1,23 @@
 .mytable tbody tr.row-no-entregado {
-  background: #faa3aa !important; /* rojo suave */
+  background: #faa3aa !important; 
 }
 
 .mytable tbody tr.row-entregado {
-  background:  #FFFFFF !important; /* verde suave */
+  background:  #FFFFFF !important; 
 }
 
 .actionGrid {
   display: flex;
-  justify-content: flex-end; /* 👈 SIEMPRE a la derecha */
-  gap: 6px;                  /* espacio entre botones */
+  justify-content: flex-end; 
+  gap: 6px;                  
   align-items: center;
   flex-wrap: nowrap;
 }
 
-/* HACE MÁS PEQUEÑOS LOS CAMPOS DE FECHA Y HORA */
+
 input[type="date"],
 input[type="time"] {
-  width: 160px;
+  width: 170px;
   padding: 6px;
   font-size: 14px;
 }

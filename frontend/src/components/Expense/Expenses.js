@@ -22,7 +22,7 @@ function Expenses() {
   const [tablePage, setTablePage] = useState(1)
   const [data, setData] = useState([])
 
-  // Modal related state variables
+
   const [viewModalShow, setViewModalShow] = useState(false)
   const [viewExpenseDetails, setViewExpenseDetails] = useState(null)
   const [productDetails, setProductDetails] = useState([])
@@ -55,7 +55,6 @@ function Expenses() {
       })
       .catch(console.log);
   }, [])
-
 
   const getExpenses = async (sv, sc, so, scv) => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_expenses`, {
@@ -104,8 +103,6 @@ function Expenses() {
     if (permission !== null)
       getExpenses((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
   }, [tablePage, sortColumn, sortOrder, searchInput])
-
-
 
   const deleteExpense = async (id) => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_expense`, {
@@ -177,7 +174,7 @@ function Expenses() {
     setViewExpenseDetails(p)
     setViewModalShow(true);
 
-    // carga imagenes para el modal (no afecta impresión)
+
     try {
       getProductsDetailsById(JSON.parse(p.items).map(x => x.product_id))
     } catch (e) {
@@ -191,7 +188,7 @@ function Expenses() {
     setProductDetails([])
   }
 
-  // ---------- IMPRESION (MISMO ESTILO QUE PROFORMAS) ----------
+
   const toNumber = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
@@ -205,6 +202,7 @@ function Expenses() {
 
   const imprimirGasto = (gasto) => {
     if (!gasto) return;
+    const pad7 = (n) => String(n ?? "").padStart(7, "0");
 
     let items = [];
     try {
@@ -290,11 +288,12 @@ function Expenses() {
 
       <div class="col-right small" style="margin-top:14px;">
         <div>
-          Ref:
-          <span style="font-size:16px; font-weight:800;">
-            ${gasto.expense_ref || "--"}
-          </span>
-        </div>
+  N°:
+  <span style="font-size:18px; font-weight:800;">
+    ${pad7(gasto.expense_id)}
+  </span>
+</div>
+
         <div>Fecha: <b>${moment(gasto.timeStamp).format("YYYY-MM-DD")}</b></div>
       </div>
     </div>
@@ -362,7 +361,7 @@ function Expenses() {
         <div className='expense-header'>
           <div className='title'>Gastos</div>
           <Link to={"/expenses/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
-            Agregar nuevo
+            Agregar nuevo gasto
           </Link>
         </div>
 
@@ -394,20 +393,15 @@ function Expenses() {
         }
 
         <Modal show={viewModalShow} onHide={() => { handleViewModalClose() }} size="lg" centered >
-          {/* HEADER CON BOTÓN IMPRIMIR */}
+
           <Modal.Header>
             <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
               <Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
                 Ver gasto
               </Modal.Title>
 
+
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <button
-                  className="btn btn-outline-primary btn-sm"
-                  onClick={() => imprimirGasto(viewExpenseDetails)}
-                >
-                  Imprimir
-                </button>
                 <button className="btn-close" onClick={handleViewModalClose}></button>
               </div>
             </div>
@@ -501,8 +495,21 @@ function Expenses() {
             </div>
           </Modal.Body>
 
-          <Modal.Footer>
-            <button className='btn btn-outline-danger' style={{ transition: "color 0.4s, background-color 0.4s" }} onClick={() => { handleViewModalClose() }}>
+
+          <Modal.Footer className="d-flex justify-content-end gap-2">
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => imprimirGasto(viewExpenseDetails)}
+              disabled={!viewExpenseDetails}
+            >
+              Imprimir
+            </button>
+
+            <button
+              className='btn btn-outline-danger'
+              style={{ transition: "color 0.4s, background-color 0.4s" }}
+              onClick={handleViewModalClose}
+            >
               Cerrar
             </button>
           </Modal.Footer>

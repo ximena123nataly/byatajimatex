@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import './ExpenseAddNew.scss'
 
 import Select from 'react-select'
@@ -6,25 +6,54 @@ import swal from 'sweetalert';
 import Loader from '../PageStates/Loader';
 import Error from '../PageStates/Error';
 
+// ✅ CAMBIO: helpers (número y dinero)
+const toNumber = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+};
+const money = (n) => {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "0.00";
+  return num.toFixed(2);
+};
+
+// ✅ CAMBIO: fecha local YYYY-MM-DD (evita ISO largo)
+const getLocalISODate = () => {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 function ExpenseAddNew() {
-  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayISO = getLocalISODate(); // ✅ CAMBIO (local)
 
   const [pageState, setPageState] = useState(1)
   const [permission, setPermission] = useState(null)
 
   const [supplierList, setSupplierList] = useState([])
-  const [productList, setProductList] = useState([])
 
   const [expenseRef, setExpenseRef] = useState('')
   const [selectedSupplier, setSelectedSupplier] = useState(null)
-  const [dueDate, setDueDate] = useState(todayISO) //  hoy por defecto
-  const [itemArray, setItemArray] = useState([{ product_id: null, product_name: null, quantity: 0, rate: 0 }])
+  const [dueDate, setDueDate] = useState(todayISO)
+
+  // ✅ CAMBIO: gasto libre (detalle + cantidad + tarifa)
+  const [itemArray, setItemArray] = useState([{ detalle: "", quantity: 0, rate: 0 }])
   const [tax, setTax] = useState(0)
-  const [grandTotal, setGrandTotal] = useState(0)
+
+  // ✅ CAMBIO: subtotal + total calculados
+  const subtotal = useMemo(() => {
+    return itemArray.reduce((p, o) => p + (toNumber(o.quantity) * toNumber(o.rate)), 0);
+  }, [itemArray]);
+
+  const grandTotal = useMemo(() => {
+    return subtotal + (subtotal * toNumber(tax) / 100);
+  }, [subtotal, tax]);
 
   const [submitButtonState, setSubmitButtonState] = useState(false)
 
-  // CAMBIO: estados para boton de Acceso  "Nuevo proveedor"
+  // Modal proveedor
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [newSupplierName, setNewSupplierName] = useState("");
   const [newSupplierEmail, setNewSupplierEmail] = useState("");
@@ -61,21 +90,7 @@ function ExpenseAddNew() {
       .catch(console.log);
   }, [])
 
-  const getProducts = async (value) => {
-    let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_search`, {
-      method: 'POST',
-      headers: { 'Content-type': 'application/json; charset=UTF-8' },
-      body: JSON.stringify({ search_value: value }),
-      credentials: 'include'
-    })
-
-    let body = await result.json()
-    setProductList(body.info.products)
-  }
-
   const getSuppliers = async (value) => {
-    // revisa si tu ruta está mal escrita en backend:
-
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_suppiers_search`, {
       method: 'POST',
       headers: { 'Content-type': 'application/json; charset=UTF-8' },
@@ -91,10 +106,152 @@ function ExpenseAddNew() {
     if (permission !== null) setPageState(2);
   }, [permission])
 
-  useEffect(() => {
-    let temp = itemArray.reduce((p, o) => p + (o.quantity * o.rate), 0)
-    setGrandTotal(temp + (temp * tax / 100))
-  }, [itemArray, tax])
+  // ✅ CAMBIO: impresión tipo proformas (tajima)
+  const imprimirGasto = (p) => {
+    if (!p) return;
+
+    const items = Array.isArray(p.items) ? p.items : [];
+
+    const filas = items.map((it) => {
+      const cant = toNumber(it.quantity);
+      const pu = toNumber(it.rate);
+      const det = String(it.detalle || "").replace(/\n/g, "<br/>");
+      const tot = cant * pu;
+
+      return `
+        <tr>
+          <td class="td-right" style="width:55px;">${cant}</td>
+          <td class="td-left wrap">${det}</td>
+          <td class="td-right" style="width:80px;">${money(pu)}</td>
+          <td class="td-right" style="width:90px;">${money(tot)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Gasto ${p.ref || ""}</title>
+  <style>
+    @page { size: letter portrait; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
+    .ticket { width: 8.5in; height: 5.5in; box-sizing: border-box; padding: 0.35in 0.45in; margin: 0 auto; overflow: hidden; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
+    .small { font-size: 11px; line-height: 1.25; }
+    .muted { color: #444; }
+    .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .col-left  { width: 33%; }
+    .col-center{ width: 34%; text-align: center; }
+    .col-right { width: 33%; text-align: right; }
+    .logo { width: 170px; height: auto; display: block; margin-bottom: 6px; }
+    hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
+    .mid { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .mid-left { width: 55%; }
+    .mid-right{ width: 45%; text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    thead th { font-size: 12px; text-align: left; border-bottom: 1px solid #ddd; padding: 7px 6px; }
+    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; padding: 7px 6px; vertical-align: top; }
+    .td-right { text-align: right; }
+    .td-left { text-align: left; }
+    .totals { width: 260px; margin-left: auto; margin-top: 10px; }
+    .totals table { width: 100%; }
+    .totals td { font-size: 12px; padding: 4px 6px; }
+    .totals tr td:first-child { text-align: left; }
+    .totals tr td:last-child { text-align: right; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="header">
+      <div class="col-left">
+        <img class="logo" src="/tajima.png" alt="TAJIMA" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="col-center">
+        <div class="title">GASTO</div>
+        <div class="small" style="margin-top:10px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135-75274747-77221750</div>
+        </div>
+      </div>
+
+      <div class="col-right small" style="margin-top:14px;">
+        <div>
+          Ref:
+          <span style="font-size:16px; font-weight:800;">
+            ${p.ref || "--"}
+          </span>
+        </div>
+        <div>Fecha: <b>${p.fecha || ""}</b></div>
+      </div>
+    </div>
+
+    <hr />
+
+    <div class="mid small">
+      <div class="mid-left wrap">
+        <div><b>Proveedor:</b> ${p.proveedor || ""}</div>
+        <div><b>Vence:</b> ${p.vence || ""}</div>
+        <div><b>Impuesto:</b> ${toNumber(p.tax)}%</div>
+      </div>
+      <div class="mid-right">
+        <div class="muted"><b>Total:</b> ${money(p.total)}</div>
+      </div>
+    </div>
+
+    <hr />
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:55px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:80px;" class="td-right">P/U</th>
+          <th style="width:90px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="4" style="padding:10px; font-size:12px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <table>
+        <tr><td>Impuesto</td><td>${toNumber(p.tax)}%</td></tr>
+        <tr><td>Total</td><td>${money(p.total)}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    const w = window.open("", "_blank", "width=900,height=650");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
 
   const insertExpense = async () => {
     if (expenseRef === "") {
@@ -110,15 +267,13 @@ function ExpenseAddNew() {
       return;
     }
 
-    let flag = false;
+    // ✅ CAMBIO: validar detalle libre
+    let invalid = false;
     itemArray.forEach(obj => {
-      if (obj.product_id === null || obj.product_name === null || obj.quantity < 1 || obj.rate < 1) {
-        flag = true;
-      }
+      if (!String(obj.detalle || "").trim() || toNumber(obj.quantity) < 1 || toNumber(obj.rate) < 1) invalid = true;
     });
-
-    if (flag) {
-      swal("¡Ups!", "¡Por favor ingresa correctamente todos los detalles de los ítems!", "error")
+    if (invalid) {
+      swal("¡Ups!", "Completa Detalle, Cantidad y Tarifa en todos los ítems", "error")
       return;
     }
 
@@ -131,9 +286,16 @@ function ExpenseAddNew() {
     obj.expense_reference = expenseRef;
     obj.supplier_id = selectedSupplier.value;
     obj.due_date = dueDate;
-    obj.item_array = itemArray
-    obj.tax = tax
-    obj.grand_total = grandTotal
+
+    // ✅ CAMBIO: mandamos detalle
+    obj.item_array = itemArray.map(it => ({
+      detalle: it.detalle,
+      quantity: toNumber(it.quantity),
+      rate: toNumber(it.rate),
+    }));
+
+    obj.tax = toNumber(tax)
+    obj.grand_total = toNumber(grandTotal)
 
     setSubmitButtonState(true)
 
@@ -148,21 +310,51 @@ function ExpenseAddNew() {
     setSubmitButtonState(false)
 
     if (body.operation === 'success') {
-      swal("¡Éxito!", "Gasto creado exitosamente", "success")
       window.dispatchEvent(new Event("caja_actualizada"));
 
+      // ✅ CAMBIO: tomar expense_id si backend lo devuelve
+      const expenseId = body?.info?.expense_id ?? body?.expense_id ?? "";
+
+      // ✅ CAMBIO: swal con botón IMPRIMIR (como proformas)
+      swal({
+        title: "¡Éxito!",
+        text: "Gasto creado exitosamente",
+        icon: "success",
+        buttons: {
+          imprimir: { text: "IMPRIMIR", value: "print", visible: true, closeModal: true },
+          ok: { text: "OK", value: "ok", visible: true, closeModal: true },
+        },
+      }).then((value) => {
+        if (value === "print") {
+          imprimirGasto({
+            // ✅ CAMBIO: Ref puede ser expenseId si existe, si no usa expenseRef
+            ref: expenseId ? String(expenseId) : String(expenseRef),
+            fecha: todayISO,
+            proveedor: selectedSupplier?.label || "",
+            vence: dueDate,
+            tax: toNumber(tax),
+            total: toNumber(grandTotal),
+            items: itemArray.map(it => ({
+              detalle: it.detalle,
+              quantity: toNumber(it.quantity),
+              rate: toNumber(it.rate),
+            })),
+          });
+        }
+      });
+
+      // Reset
       setExpenseRef('')
       setSelectedSupplier(null)
-      setDueDate(todayISO) // vuelve a hoy
-      setItemArray([{ product_id: null, product_name: null, quantity: 0, rate: 0 }])
+      setDueDate(todayISO)
+      setItemArray([{ detalle: "", quantity: 0, rate: 0 }])
       setTax(0)
-      setGrandTotal(0)
     } else {
       swal("¡Ups!", body.message, "error")
     }
   }
 
-  // CAMBIO: función para crear proveedor boton de acceso "Nuevo proveedor" 
+  // crear proveedor
   const createSupplier = async () => {
     if (!newSupplierName.trim()) {
       swal("¡Ups!", "El nombre del proveedor es obligatorio", "error");
@@ -189,7 +381,6 @@ function ExpenseAddNew() {
 
       if (body.operation === "success") {
         const supplierId = body.info?.supplier_id ?? body.supplier_id;
-
         setSelectedSupplier({ label: newSupplierName, value: supplierId });
 
         setShowSupplierModal(false);
@@ -236,7 +427,6 @@ function ExpenseAddNew() {
                       />
                     </div>
 
-                    {/* ✅ CAMBIO: envolvemos el Select de proveedor + botón "+ Nuevo" */}
                     <div style={{ flexGrow: "1", display: "flex", gap: "10px", alignItems: "center" }}>
                       <div style={{ flexGrow: 1 }}>
                         <Select
@@ -244,16 +434,8 @@ function ExpenseAddNew() {
                           value={selectedSupplier}
                           placeholder='Seleccionar proveedor...'
                           onChange={(val) => setSelectedSupplier(val)}
-
-                          // CARGA LISTA AL ABRIR
                           onMenuOpen={() => getSuppliers("")}
-
-                          // BUSCA AL ESCRIBIR (y devuelve string)
-                          onInputChange={(val) => {
-                            getSuppliers(val || "");
-                            return val;
-                          }}
-
+                          onInputChange={(val) => { getSuppliers(val || ""); return val; }}
                           onMenuClose={() => setSupplierList([])}
                           classNamePrefix="react-dropdown-dark"
                         />
@@ -295,30 +477,16 @@ function ExpenseAddNew() {
                     {itemArray.map((obj, ind) => (
                       <div key={ind} style={{ display: "flex", textAlign: "center", alignItems: "center", height: "2.5rem", margin: "0.3rem 0" }}>
                         <div style={{ minWidth: "30%", height: "100%" }}>
-                          <Select
-                            options={productList.map(x => ({ label: x.name, value: x.product_id }))}
-                            value={(obj.product_name && obj.product_id) ? { label: obj.product_name, value: obj.product_id } : null}
-                            placeholder='Elige un producto...'
-                            onChange={(val) => {
+                          <input
+                            className='my_input'
+                            style={{ width: "95%", height: "100%" }}
+                            
+                            value={obj.detalle}
+                            onChange={(e) => {
                               let t = itemArray.map(x => ({ ...x }))
-                              t[ind].product_id = val.value
-                              t[ind].product_name = val.label
-                              t[ind].quantity = 1
-                              t[ind].rate = parseFloat(productList.find(x => x.product_id === val.value).selling_price)
+                              t[ind].detalle = e.target.value
                               setItemArray(t)
                             }}
-
-                            // CARGA LISTA AL ABRIR
-                            onMenuOpen={() => getProducts("")}
-
-                            // BUSCA AL ESCRIBIR (y devuelve string)
-                            onInputChange={(val) => {
-                              getProducts(val || "");
-                              return val;
-                            }}
-
-                            onMenuClose={() => setProductList([])}
-                            classNamePrefix="react-dropdown-dark"
                           />
                         </div>
 
@@ -368,7 +536,7 @@ function ExpenseAddNew() {
                   <button className='btn info' style={{ maxWidth: "15%", margin: "0 15px" }}
                     onClick={() => {
                       let t = itemArray.map(x => ({ ...x }))
-                      t.push({ product_id: null, product_name: null, quantity: 0, rate: 0 })
+                      t.push({ detalle: "", quantity: 0, rate: 0 })
                       setItemArray(t)
                     }}
                   >Suma +</button>
@@ -376,9 +544,7 @@ function ExpenseAddNew() {
                   <div style={{ margin: "0 15px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", margin: "0.2rem 0" }}>
                       <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }} ><h4>Subtotal</h4></div>
-                      <div style={{ width: "20%", marginRight: "8%" }}>
-                        <p className='my_input'>{itemArray.reduce((p, o) => p + (o.quantity * o.rate), 0)}</p>
-                      </div>
+                      <div style={{ width: "20%", marginRight: "8%" }}><p className='my_input'>{subtotal}</p></div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", margin: "0.2rem 0" }}>
@@ -404,12 +570,10 @@ function ExpenseAddNew() {
                       onClick={() => {
                         swal({
                           title: "¿Estás seguro?",
-                          text: "Por favor revisa todos los detalles antes de enviar, ya que el gasto no se puede editar después de crearlo",
+                          text: "Revisa todo antes de enviar, el gasto no se puede editar después.",
                           icon: "warning",
                           buttons: true,
-                        }).then((val) => {
-                          if (val) insertExpense()
-                        });
+                        }).then((val) => { if (val) insertExpense() });
                       }}
                     >
                       {!submitButtonState ? <span>Enviar</span> : <span><div className="button-loader"></div></span>}
@@ -421,7 +585,7 @@ function ExpenseAddNew() {
               <Error />
         }
 
-        {/* CAMBIO: Modal "Nuevo proveedor" */}
+        {/* Modal "Nuevo proveedor" */}
         {showSupplierModal && (
           <div style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.35)",
@@ -439,6 +603,7 @@ function ExpenseAddNew() {
 
                 <input className="my_input" placeholder="Dirección" value={newSupplierAddress}
                   onChange={(e) => setNewSupplierAddress(e.target.value)} />
+
                 <input className="my_input" placeholder="Celular" value={newSupplierCelular}
                   onChange={(e) => setNewSupplierCelular(e.target.value.replace(/[^\d]/g, ""))} />
               </div>

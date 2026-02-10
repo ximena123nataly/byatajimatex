@@ -26,7 +26,7 @@ function ProformasAddNew() {
   const [pageState, setPageState] = useState(1);
   const [permission, setPermission] = useState(null);
 
-  // ✅ NOTAS (ahora sí dentro del componente)
+  
   const [notas, setNotas] = useState("");
 
   // Fecha/Hora local
@@ -335,7 +335,7 @@ function ProformasAddNew() {
       cliente: cliente.trim(),
       celular: celular.trim(),
 
-      //  ENVIAR NOTAS
+      
       notas: notas.trim() === "" ? null : notas.trim(),
 
       anticipo: toNumber(anticipo),
@@ -451,7 +451,7 @@ function ProformasAddNew() {
         <div className="card" style={{ maxHeight: "75vh", overflowY: "auto" }}>
           <div className="container" style={{ paddingBottom: "3rem" }}>
 
-            {/*  FILA 1: CLIENTE + FECHA + HORA (fecha/hora más chicos) */}
+            {/*  FILA 1: CLIENTE + FECHA + HORA */}
             <div style={topRow}>
               <div style={boxCliente}>
                 <label className="fw-bold">Cliente</label>
