@@ -16,9 +16,9 @@ function Caja() {
   const [cajas, setCajas] = useState([]);
   const [selectedCajaId, setSelectedCajaId] = useState("");
 
-  
+
   // TRASPASO DE SALDO
-  
+
   const [showTraspaso, setShowTraspaso] = useState(false);
   const [usuariosDestino, setUsuariosDestino] = useState([]);
   const [destino, setDestino] = useState("");
@@ -33,9 +33,9 @@ function Caja() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 2500);
   };
 
- 
+
   // EMPLEADO: caja propia
-  
+
   const cargarCajaMia = async () => {
     setLoading(true);
     setLoadingTx(true);
@@ -81,9 +81,9 @@ function Caja() {
     }
   };
 
-  
+
   // ADMIN: cargar lista de cajas
- 
+
   const cargarCajasAdmin = async () => {
     try {
       const res = await fetch(`${backend}/api/caja/get_cajas`, {
@@ -176,9 +176,9 @@ function Caja() {
     await cargarCajaMia();
   };
 
-  
+
   // TRASPASO: cargar destinos
-  
+
   const cargarDestinosTraspaso = async () => {
     try {
       const res = await fetch(`${backend}/api/caja/get_destinos_traspaso`, {
@@ -202,9 +202,9 @@ function Caja() {
     }
   };
 
- 
+
   // TRASPASO: abrir confirmación
-  
+
   const abrirConfirmacionTraspaso = () => {
     if (!destino) return showToast("err", "Selecciona un destino");
 
@@ -216,7 +216,7 @@ function Caja() {
     setShowConfirm(true);
   };
 
- 
+
   // TRASPASO: confirmar
 
   const confirmarTraspaso = async () => {
@@ -257,7 +257,7 @@ function Caja() {
     }
   };
 
-  
+
   useEffect(() => {
     (async () => {
       const esAdmin = await cargarCajasAdmin();
@@ -270,7 +270,7 @@ function Caja() {
     window.addEventListener("caja_actualizada", handler);
 
     return () => window.removeEventListener("caja_actualizada", handler);
-   
+
   }, []);
 
 
@@ -278,7 +278,7 @@ function Caja() {
     if (isAdmin && selectedCajaId) {
       cargarCajaPorId(selectedCajaId);
     }
-    
+
   }, [selectedCajaId, isAdmin]);
 
   const saldoNum = Number(caja?.saldo ?? 0);
@@ -290,7 +290,7 @@ function Caja() {
         className="caja-container"
         style={{ display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}
       >
-       
+
         <div className="caja-card">
           <div className="caja-header">
             <h2>CAJA</h2>
@@ -321,7 +321,7 @@ function Caja() {
                 <b className={saldoClass}>Bs {saldoNum.toFixed(2)}</b>
               </div>
 
-              
+
               <button
                 className="btn-traspaso"
                 onClick={async () => {
@@ -340,7 +340,7 @@ function Caja() {
           {msg && <div className="msg-error">{msg}</div>}
         </div>
 
-       
+
         {isAdmin && (
           <div
             className="caja-card"
@@ -374,38 +374,54 @@ function Caja() {
           </div>
         )}
 
-        
+
         <div style={{ width: "100%" }}>
           <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
         </div>
       </div>
 
-     
+
+      {/* =========================
+    MODAL TRASPASO
+========================= */}
       {showTraspaso && (
-        <div className="modal-backdrop">
-          <div className="modal-box">
+        <div className="caja-modal-backdrop">
+          <div className="caja-modal-box">
             <h3 style={{ marginTop: 0 }}>Traspasar saldo</h3>
 
-            <label>Destino</label>
-            <select className="my_form_control" value={destino} onChange={(e) => setDestino(e.target.value)}>
-              <option value="">Seleccionar usuario</option>
-              {usuariosDestino.map((u) => (
-                <option key={u.user_id} value={u.user_id}>
-                  {u.user_name}
-                </option>
-              ))}
-            </select>
+            <div className="caja-modal-grid">
+              <div>
+                <label>Destino</label>
+                <select
+                  className="my_form_control"
+                  value={destino}
+                  onChange={(e) => setDestino(e.target.value)}
+                >
+                  <option value="">Seleccionar usuario</option>
+                  {usuariosDestino.map((u) => (
+                    <option key={u.user_id} value={u.user_id}>
+                      {u.user_name} - Caja #{u.id_caja}
 
-            <label style={{ marginTop: "10px" }}>Monto</label>
-            <input
-              className="my_form_control"
-              type="number"
-              value={montoTraspaso}
-              onChange={(e) => setMontoTraspaso(e.target.value)}
-              placeholder="Monto a traspasar"
-            />
+                    </option>
+                  ))}
 
-            <div className="modal-actions">
+
+                </select>
+              </div>
+
+              <div>
+                <label>Monto</label>
+                <input
+                  className="my_form_control"
+                  type="number"
+                  value={montoTraspaso}
+                  onChange={(e) => setMontoTraspaso(e.target.value)}
+                  placeholder="Monto a traspasar"
+                />
+              </div>
+            </div>
+
+            <div className="caja-modal-actions">
               <button
                 onClick={() => {
                   setShowTraspaso(false);
@@ -416,7 +432,10 @@ function Caja() {
                 Cancelar
               </button>
 
-              <button onClick={abrirConfirmacionTraspaso} disabled={loadingTraspaso}>
+              <button
+                onClick={abrirConfirmacionTraspaso}
+                disabled={loadingTraspaso}
+              >
                 {loadingTraspaso ? "..." : "Confirmar"}
               </button>
             </div>
@@ -424,22 +443,29 @@ function Caja() {
         </div>
       )}
 
-      
+
       {showConfirm && (
-        <div className="modal-backdrop">
-          <div className="modal-box">
+        <div className="caja-modal-backdrop">
+          <div className="caja-modal-box">
             <h3 style={{ marginTop: 0 }}>Confirmar traspaso</h3>
 
             <p style={{ margin: "10px 0", color: "#333" }}>
-              ¿Seguro que quieres traspasar <b>Bs {Number(montoTraspaso || 0).toFixed(2)}</b>?
+              ¿Seguro que quieres traspasar{" "}
+              <b>Bs {Number(montoTraspaso || 0).toFixed(2)}</b>?
             </p>
 
-            <div className="modal-actions">
-              <button onClick={() => setShowConfirm(false)} disabled={loadingTraspaso}>
+            <div className="caja-modal-actions">
+              <button
+                onClick={() => setShowConfirm(false)}
+                disabled={loadingTraspaso}
+              >
                 Cancelar
               </button>
 
-              <button onClick={confirmarTraspaso} disabled={loadingTraspaso}>
+              <button
+                onClick={confirmarTraspaso}
+                disabled={loadingTraspaso}
+              >
                 {loadingTraspaso ? "..." : "Sí, traspasar"}
               </button>
             </div>
@@ -447,7 +473,8 @@ function Caja() {
         </div>
       )}
 
-      
+
+
       {toast.show && (
         <div className={`toast-msg ${toast.type === "ok" ? "toast-ok" : "toast-err"}`}>{toast.text}</div>
       )}

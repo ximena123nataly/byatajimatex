@@ -2,28 +2,6 @@ const db = require("../db/conn.js");
 const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
-// FECHA Y HORA 
-function nowLaPaz() {
-  const d = new Date();
-
-  const fecha = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/La_Paz",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d); // YYYY-MM-DD
-
-  const hora = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/La_Paz",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(d); // HH:mm:ss
-
-  return { fecha, hora };
-}
-
 class Caja {
   constructor() {}
 
@@ -278,8 +256,9 @@ class Caja {
 
       const nro = "trp_" + uniqid();
 
-      const { fecha, hora } = nowLaPaz();
-
+      const d = new Date();
+      const fecha = d.toISOString().slice(0, 10);
+      const hora = d.toTimeString().slice(0, 8);
 
      
       db.beginTransaction((err0) => {

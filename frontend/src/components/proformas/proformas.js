@@ -26,6 +26,8 @@ function Proformas() {
 
   const [viewModalShow, setViewModalShow] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [payCliente, setPayCliente] = useState("");
+  const [payCelular, setPayCelular] = useState("");
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
@@ -119,9 +121,13 @@ function Proformas() {
   const entregarProforma = async (id, saldoActual = 0) => {
     try {
       if (Number(saldoActual) > 0) {
+        const p = proformas.find((x) => Number(x.id) === Number(id));
+        const nombreCliente = p?.cliente || "";
+        const celularCliente = p?.celular || "";
+
         const input = await swal({
           title: "Cobro antes de entregar",
-          text: `Saldo pendiente: ${saldoActual}`,
+          text: `${nombreCliente}${celularCliente ? "   " + celularCliente : ""}\nSaldo pendiente: ${Number(saldoActual).toFixed(2)}`,
           content: {
             element: "input",
             attributes: {
@@ -201,9 +207,15 @@ function Proformas() {
       return;
     }
 
+    // ✅ NUEVO: buscamos la proforma para sacar nombre y celular
+    const p = proformas.find((x) => Number(x.id) === Number(id));
+    const nombreCliente = p?.cliente || "";
+    const celularCliente = p?.celular || "";
+
     const input = await swal({
       title: "Cobrar saldo",
-      text: `Saldo actual: ${saldoNum.toFixed(2)}`,
+      // ✅ NUEVO: mostramos nombre + celular + saldo
+      text: `${nombreCliente}${celularCliente ? "   " + celularCliente : ""}\nSaldo actual: ${saldoNum.toFixed(2)}`,
       content: {
         element: "input",
         attributes: {
@@ -287,7 +299,6 @@ function Proformas() {
     return entregado ? "row-entregado" : "row-no-entregado";
   };
 
-
   const imprimirProforma = (p) => {
     if (!p) return;
 
@@ -309,7 +320,6 @@ function Proformas() {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
-
 
     const items = Array.isArray(p.detalle) ? p.detalle : [];
 
@@ -339,14 +349,11 @@ function Proformas() {
         ? `<div class="small wrap" style="margin-top:8px;"><b>Notas:</b> ${safe(p.notas).replace(/\n/g, "<br/>")}</div>`
         : "";
 
-
-
     const fechaPrint = p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : "";
     const horaPrint = p.hora ? String(p.hora).slice(0, 8) : "";
 
     const fechaEntregaPrint = p.fecha_entrega ? moment.utc(p.fecha_entrega).format("YYYY-MM-DD") : "";
     const horaEntregaPrint = p.hora_entrega ? String(p.hora_entrega).slice(0, 5) : "";
-
 
     const html = `
 <!doctype html>
@@ -478,7 +485,6 @@ function Proformas() {
     w.document.close();
   };
 
-
   useEffect(() => {
     if (proformas.length !== 0) {
       const tArray = proformas.map((obj, i) => ({
@@ -580,14 +586,7 @@ function Proformas() {
           <Modal.Body>
             {selected && (
               <>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "1rem",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
                   <div>
                     <div>
                       <b>Proforma:</b> {formatProforma(selected.id)}
@@ -664,18 +663,7 @@ function Proformas() {
                   </table>
                 </div>
 
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end", 
-                    alignItems: "flex-end",
-                    marginTop: "1rem",
-                    gap: "12px",
-                    flexWrap: "wrap",
-                  }}
-                >
-
+                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", marginTop: "1rem", gap: "12px", flexWrap: "wrap" }}>
                   <button
                     className="btn btn-outline-primary"
                     onClick={() => imprimirProforma(selected)}
@@ -686,28 +674,21 @@ function Proformas() {
 
                   <div style={{ minWidth: "280px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        <b>Total:</b>
-                      </span>
+                      <span><b>Total:</b></span>
                       <span>{selected.total_general ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        <b>Anticipo / Monto pagado:</b>
-                      </span>
+                      <span><b>Anticipo / Monto pagado:</b></span>
                       <span>{selected.anticipo ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span>
-                        <b>Saldo:</b>
-                      </span>
+                      <span><b>Saldo:</b></span>
                       <span>{selected.saldo ?? 0}</span>
                     </div>
                   </div>
                 </div>
-
               </>
             )}
           </Modal.Body>
@@ -718,4 +699,3 @@ function Proformas() {
 }
 
 export default Proformas;
-

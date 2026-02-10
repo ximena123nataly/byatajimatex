@@ -175,7 +175,7 @@
 .btn-traspaso {
   margin-top: 12px;
   width: 100%;
-  background: #1d7522;
+  background: #111;
   color: #fff;
   border: none;
   padding: 10px;
@@ -189,7 +189,12 @@
   cursor: not-allowed;
 }
 
-.modal-backdrop {
+/* =========================
+   MODAL TRASPASO CAJA
+   (NO CHOCAR CON BOOTSTRAP)
+========================= */
+
+.caja-modal-backdrop {
   position: fixed;
   top: 0;
   left: 0;
@@ -202,22 +207,22 @@
   z-index: 9999;
 }
 
-.modal-box {
+.caja-modal-box {
   width: 340px;
   background: #fff;
   padding: 18px;
   border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(30, 199, 15, 0.25);
+  box-shadow: 0 10px 30px rgba(43, 214, 27, 0.25);
 }
 
-.modal-actions {
+.caja-modal-actions {
   margin-top: 14px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
 }
 
-.modal-actions button {
+.caja-modal-actions button {
   flex: 1;
   padding: 10px;
   border-radius: 6px;
