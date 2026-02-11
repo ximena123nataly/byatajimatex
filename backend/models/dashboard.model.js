@@ -2,7 +2,7 @@ const db = require('../db/conn.js');
 const jwt = require('jsonwebtoken');
 
 class Dashboard {
-  constructor() {}
+  constructor() { }
 
   getReportStats = (req, res) => {
     try {
@@ -16,6 +16,7 @@ class Dashboard {
           });
         });
 
+       
         let p2 = new Promise((rs, rj) => {
           let q = `
             SELECT
@@ -61,6 +62,7 @@ class Dashboard {
           });
         });
 
+        
         let p3 = new Promise((rs, rj) => {
           let q =
             'SELECT (SELECT SUM(grand_total) FROM expenses WHERE MONTH(timeStamp) = MONTH(CURDATE()) AND YEAR(timeStamp) = YEAR(CURDATE())) AS "current_month", (SELECT SUM(grand_total) FROM expenses WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH) AND YEAR(timeStamp) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)) AS "previous_month" FROM DUAL;';
@@ -70,12 +72,40 @@ class Dashboard {
           });
         });
 
-        Promise.all([p1, p2, p3])
+       
+        let p4 = new Promise((rs, rj) => {
+          let q = `
+    SELECT
+      IFNULL((
+        SELECT SUM(total_general)
+        FROM proformas
+        WHERE entregado = 0
+          AND MONTH(fecha) = MONTH(CURDATE())
+          AND YEAR(fecha) = YEAR(CURDATE())
+      ), 0) AS "current_month",
+      IFNULL((
+        SELECT SUM(total_general)
+        FROM proformas
+        WHERE entregado = 0
+          AND MONTH(fecha) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
+          AND YEAR(fecha) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
+      ), 0) AS "previous_month"
+    FROM DUAL;
+  `;
+          db.query(q, (err, result) => {
+            if (err) return rj(err);
+            rs(result[0]);
+          });
+        });
+
+
+       
+        Promise.all([p1, p2, p3, p4])
           .then((result) => {
             resolve({
               operation: 'success',
               message:
-                'data for user, customers, suppliers, order report, expense report',
+                'data for user, customers, suppliers, order report, expense report, proformas report',
               info: result,
             });
           })
@@ -92,7 +122,6 @@ class Dashboard {
     }
   };
 
-  
   getProductStats = (req, res) => {
     try {
       new Promise((resolve, reject) => {
@@ -147,7 +176,6 @@ class Dashboard {
               .slice(0, 5)
               .map((x) => x[0]);
 
-            
             if (!temp.length) return rs([]);
 
             let q2 = 'SELECT * FROM products WHERE product_id IN (?)';
@@ -158,7 +186,6 @@ class Dashboard {
           });
         });
 
-       
         let p5 = new Promise((rs, rj) => {
           let q = `
             SELECT COUNT(*) AS bordados_pendientes
@@ -171,7 +198,6 @@ class Dashboard {
           });
         });
 
-        
         Promise.all([p1, p2, p3, p4, p5])
           .then((result) => {
             resolve({ operation: 'success', message: 'data for products', info: result });

@@ -34,17 +34,17 @@ function Login() {
 
 	const login = async () => {
 		if (email === "") {
-			swal("Oops!", "Email can't be empty", "error")
+			swal("¡Ups!", "El correo electrónico no puede estar vacío", "error")
 			return;
 		}
 		let regex = /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-z]+)$/;
 		if (!regex.test(email)) {
-			swal("Oops!", "Please enter valid email", "error")
+			swal("¡Ups!", "Por favor ingrese un correo electrónico válido", "error")
 			return;
 		}
 
 		if (password === "") {
-			swal("Oops!", "Password can't be empty", "error")
+			swal("¡Ups!", "La contraseña no puede estar vacía", "error")
 			return;
 		}
 
@@ -101,7 +101,7 @@ function Login() {
 								<EmailOutlined/>
 							</div>
 							<div className="div">
-								<input type="email" placeholder='Email Id' name="email" value={email} onClick={() => enqueueSnackbar(msg, {style: {variant: 'error', whiteSpace: 'pre-line' }})} onChange={e => setEmail(e.target.value.trim())} />
+								<input type="email" placeholder='Correo electrónico' name="email" value={email} onClick={() => enqueueSnackbar(msg, {style: {variant: 'error', whiteSpace: 'pre-line' }})} onChange={e => setEmail(e.target.value.trim())} />
 							</div>
 						</div>
 						<div className="input-div pass">
@@ -109,7 +109,7 @@ function Login() {
 								<SecurityOutlined/>
 							</div>
 							<div className="div">
-								<input type="password" placeholder='Password' name="Password" value={password} onChange={e => setPassword(e.target.value.trim())} />
+								<input type="password" placeholder='Contraseña' name="Password" value={password} onChange={e => setPassword(e.target.value.trim())} />
 							</div>
 						</div>
 						<div className="d-flex justify-content-between">

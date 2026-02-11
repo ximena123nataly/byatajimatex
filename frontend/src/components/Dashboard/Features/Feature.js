@@ -7,23 +7,32 @@ import {
   PaidOutlined,
   AccountBalanceWalletOutlined,
 } from "@mui/icons-material";
+import DescriptionOutlined from "@mui/icons-material/DescriptionOutlined";
 import { Link } from "react-router-dom";
 
 export default function Feature({ reportStats }) {
-  let o1, o2, e1, e2;
+
+  let o1, o2, e1, e2, pf1, pf2;
+
+
   o1 = reportStats?.[1]?.current_month == null ? 0 : reportStats[1].current_month;
   o2 = reportStats?.[1]?.previous_month == null ? 0 : reportStats[1].previous_month;
+
   e1 = reportStats?.[2]?.current_month == null ? 0 : reportStats[2].current_month;
   e2 = reportStats?.[2]?.previous_month == null ? 0 : reportStats[2].previous_month;
+  pf1 = reportStats?.[3]?.current_month == null ? 0 : reportStats[3].current_month;
+  pf2 = reportStats?.[3]?.previous_month == null ? 0 : reportStats[3].previous_month;
 
   let porder = o2 === 0 ? 0 : ((o1 - o2) * 100) / o2;
   let pexpense = e2 === 0 ? 0 : ((e1 - e2) * 100) / e2;
+  let pproforma = pf2 === 0 ? 0 : ((pf1 - pf2) * 100) / pf2;
 
   let curr_rev = o1 - e1;
   let pre_rev = o2 - e2;
   let prevenue = pre_rev === 0 ? 0 : ((curr_rev - pre_rev) * 100) / pre_rev;
 
-  // ✅ Render de porcentaje: >0 verde ↑, <0 rojo ↓, =0 gris sin flecha
+  const currencySymbol = "Bs";
+
   const renderChange = (value) => {
     const v = Number(value) || 0;
     const shown = Math.round(v * 100) / 100;
@@ -53,11 +62,9 @@ export default function Feature({ reportStats }) {
     );
   };
 
-  // ⚠️ Si tu moneda no es Rupia, cambia aquí:
-  const currencySymbol = "Bs"; // ejemplo: "Bs" o "$"
-
   return (
     <div className="featured">
+
       {/* USUARIOS */}
       <div className="featuredItem">
         <span className="featuredTitle">Usuarios</span>
@@ -67,12 +74,10 @@ export default function Feature({ reportStats }) {
           style={{ margin: "0px 0px" }}
         >
           <div className="d-flex gap-2">
-            <div className="d-flex align-items-center">
-              <PersonOutlined
-                className="cardIcon"
-                style={{ backgroundColor: "rgb(255,0,0,0.3)" }}
-              />
-            </div>
+            <PersonOutlined
+              className="cardIcon"
+              style={{ backgroundColor: "rgb(255,0,0,0.3)" }}
+            />
             <Link to="/employees" className="link">
               <span className="text-hover-primary">Empleados:</span>
             </Link>
@@ -80,12 +85,10 @@ export default function Feature({ reportStats }) {
           </div>
 
           <div className="d-flex gap-2 my-1">
-            <div className="d-flex align-items-center">
-              <PersonOutlined
-                className="cardIcon"
-                style={{ backgroundColor: "rgb(0,255,0,0.3)" }}
-              />
-            </div>
+            <PersonOutlined
+              className="cardIcon"
+              style={{ backgroundColor: "rgb(0,255,0,0.3)" }}
+            />
             <Link to="/customers" className="link">
               <span className="text-hover-primary">Clientes:</span>
             </Link>
@@ -93,12 +96,10 @@ export default function Feature({ reportStats }) {
           </div>
 
           <div className="d-flex gap-2">
-            <div className="d-flex align-items-center">
-              <PersonOutlined
-                className="cardIcon"
-                style={{ backgroundColor: "rgb(0,0,255,0.3)" }}
-              />
-            </div>
+            <PersonOutlined
+              className="cardIcon"
+              style={{ backgroundColor: "rgb(0,0,255,0.3)" }}
+            />
             <Link to="/suppliers" className="link">
               <span className="text-hover-primary">Proveedores:</span>
             </Link>
@@ -106,7 +107,7 @@ export default function Feature({ reportStats }) {
           </div>
         </div>
 
-        <div className="d-flex justify-content-end align-items-center">
+        <div className="d-flex justify-content-end">
           <div
             style={{
               backgroundColor: "rgb(255, 102, 0, 0.3)",
@@ -120,9 +121,39 @@ export default function Feature({ reportStats }) {
         </div>
       </div>
 
-      {/* PEDIDOS */}
+      {/* PROFORMAS */}
       <div className="featuredItem">
-        <span className="featuredTitle">Pedidos</span>
+        <span className="featuredTitle">Proformas</span>
+
+        <div className="featuredMoneyContainer">
+          <span className="featuredMoney">
+            {currencySymbol}{Math.round(pf1)}
+          </span>
+          {renderChange(pproforma)}
+
+        </div>
+
+        <div className="d-flex justify-content-between align-items-center">
+          <Link to="/proformas" className="text-decoration-none">
+            <span className="featuredSub">Ver todas las proformas</span>
+          </Link>
+
+          <div
+            style={{
+              backgroundColor: "#d9b6cb",
+              borderRadius: "5px",
+              color: "#a30b66",
+              padding: "3px",
+            }}
+          >
+            <DescriptionOutlined />
+          </div>
+        </div>
+      </div>
+
+      {/* VENTAS */}
+      <div className="featuredItem">
+        <span className="featuredTitle">Ventas</span>
 
         <div className="featuredMoneyContainer">
           <span className="featuredMoney">
@@ -133,8 +164,9 @@ export default function Feature({ reportStats }) {
 
         <div className="d-flex justify-content-between align-items-center">
           <Link to="/orders" className="text-decoration-none">
-            <span className="featuredSub">Ver todos los pedidos</span>
+            <span className="featuredSub">Ver todas las ventas</span>
           </Link>
+
           <div
             style={{
               backgroundColor: "#e8e190",
@@ -163,6 +195,7 @@ export default function Feature({ reportStats }) {
           <Link to="/expenses" className="text-decoration-none">
             <span className="featuredSub">Ver todos los gastos</span>
           </Link>
+
           <div
             style={{
               backgroundColor: "#d9b6cb",
@@ -201,7 +234,7 @@ export default function Feature({ reportStats }) {
           </div>
         </div>
       </div>
+
     </div>
   );
 }
-
