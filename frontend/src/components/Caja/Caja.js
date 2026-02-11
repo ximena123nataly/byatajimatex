@@ -16,9 +16,7 @@ function Caja() {
   const [cajas, setCajas] = useState([]);
   const [selectedCajaId, setSelectedCajaId] = useState("");
 
-
   // TRASPASO DE SALDO
-
   const [showTraspaso, setShowTraspaso] = useState(false);
   const [usuariosDestino, setUsuariosDestino] = useState([]);
   const [destino, setDestino] = useState("");
@@ -33,9 +31,7 @@ function Caja() {
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 2500);
   };
 
-
   // EMPLEADO: caja propia
-
   const cargarCajaMia = async () => {
     setLoading(true);
     setLoadingTx(true);
@@ -81,9 +77,7 @@ function Caja() {
     }
   };
 
-
   // ADMIN: cargar lista de cajas
-
   const cargarCajasAdmin = async () => {
     try {
       const res = await fetch(`${backend}/api/caja/get_cajas`, {
@@ -103,7 +97,6 @@ function Caja() {
         if (!selectedCajaId && list.length > 0) {
           setSelectedCajaId(String(list[0].id_caja));
         }
-
         return true;
       }
 
@@ -117,9 +110,7 @@ function Caja() {
     }
   };
 
-
   // ADMIN: cargar caja por id
-
   const cargarCajaPorId = async (id_caja) => {
     if (!id_caja) return;
 
@@ -176,9 +167,7 @@ function Caja() {
     await cargarCajaMia();
   };
 
-
   // TRASPASO: cargar destinos
-
   const cargarDestinosTraspaso = async () => {
     try {
       const res = await fetch(`${backend}/api/caja/get_destinos_traspaso`, {
@@ -202,9 +191,7 @@ function Caja() {
     }
   };
 
-
   // TRASPASO: abrir confirmación
-
   const abrirConfirmacionTraspaso = () => {
     if (!destino) return showToast("err", "Selecciona un destino");
 
@@ -216,9 +203,7 @@ function Caja() {
     setShowConfirm(true);
   };
 
-
   // TRASPASO: confirmar
-
   const confirmarTraspaso = async () => {
     const montoNum = Number(montoTraspaso);
     setLoadingTraspaso(true);
@@ -241,7 +226,7 @@ function Caja() {
         return;
       }
 
-      showToast("ok", " Traspaso realizado");
+      showToast("ok", "Traspaso realizado");
 
       setShowConfirm(false);
       setShowTraspaso(false);
@@ -257,7 +242,6 @@ function Caja() {
     }
   };
 
-
   useEffect(() => {
     (async () => {
       const esAdmin = await cargarCajasAdmin();
@@ -270,120 +254,121 @@ function Caja() {
     window.addEventListener("caja_actualizada", handler);
 
     return () => window.removeEventListener("caja_actualizada", handler);
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   useEffect(() => {
     if (isAdmin && selectedCajaId) {
       cargarCajaPorId(selectedCajaId);
     }
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCajaId, isAdmin]);
 
   const saldoNum = Number(caja?.saldo ?? 0);
-  const saldoClass = saldoNum > 0 ? "saldo-positivo" : saldoNum < 0 ? "saldo-negativo" : "";
+  const saldoClass =
+    saldoNum > 0 ? "saldo-positivo" : saldoNum < 0 ? "saldo-negativo" : "";
 
   return (
     <div style={{ overflowY: "auto", height: "calc(100vh - 80px)" }}>
-      <div
-        className="caja-container"
-        style={{ display: "flex", gap: "18px", flexWrap: "wrap", alignItems: "flex-start" }}
-      >
-
-        <div className="caja-card">
-          <div className="caja-header">
-            <h2>CAJA</h2>
-
-            <button className="btn-refrescar" onClick={refrescar} disabled={loading}>
-              {loading ? "..." : "Refrescar"}
-            </button>
-          </div>
-
-          {loading ? (
-            <p className="muted">Cargando...</p>
-          ) : caja ? (
-            <>
-              <div className="row">
-                <span>ID Caja:</span>
-                <b>{caja.id_caja}</b>
-              </div>
-              <div className="row">
-                <span>ID Usuario:</span>
-                <b>{caja.id_usuario}</b>
-              </div>
-              <div className="row">
-                <span>Nombre:</span>
-                <b>{caja.nombre_caja}</b>
-              </div>
-              <div className="row saldo">
-                <span>Saldo:</span>
-                <b className={saldoClass}>Bs {saldoNum.toFixed(2)}</b>
-              </div>
-
-
-              <button
-                className="btn-traspaso"
-                onClick={async () => {
-                  await cargarDestinosTraspaso();
-                  setShowTraspaso(true);
-                }}
-                disabled={loading}
-              >
-                TRASPASAR SALDO
-              </button>
-            </>
-          ) : (
-            <p className="muted">No hay caja.</p>
-          )}
-
-          {msg && <div className="msg-error">{msg}</div>}
-        </div>
-
-
-        {isAdmin && (
+      {/* ✅ BORDE tipo Productos */}
+      <div className="card">
+        <div className="container">
           <div
-            className="caja-card"
+            className="caja-container"
             style={{
-              width: "420px",
-              minHeight: "230px",
-              border: "3px solid #111",
+              display: "flex",
+              gap: "18px",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
             }}
           >
-            <div style={{ fontWeight: 800, marginBottom: "12px" }}>Ver cajas</div>
+            <div className="caja-card">
+              <div className="caja-header">
+                <h2>CAJA</h2>
 
-            <label className="fw-bold" style={{ display: "block", marginBottom: "6px" }}>
-              Selecciona usuario/caja
-            </label>
+                <button className="btn-refrescar" onClick={refrescar} disabled={loading}>
+                  {loading ? "..." : "Refrescar"}
+                </button>
+              </div>
 
-            <select
-              className="my_form_control"
-              value={selectedCajaId}
-              onChange={(e) => setSelectedCajaId(e.target.value)}
-            >
-              {cajas.map((c) => (
-                <option key={c.id_caja} value={String(c.id_caja)}>
-                  {c.usuario_nombre || "Usuario"} - Caja #{c.id_caja}
-                </option>
-              ))}
-            </select>
+              {loading ? (
+                <p className="muted">Cargando...</p>
+              ) : caja ? (
+                <>
+                  <div className="row">
+                    <span>ID Caja:</span>
+                    <b>{caja.id_caja}</b>
+                  </div>
+                  <div className="row">
+                    <span>ID Usuario:</span>
+                    <b>{caja.id_usuario}</b>
+                  </div>
+                  <div className="row">
+                    <span>Nombre:</span>
+                    <b>{caja.nombre_caja}</b>
+                  </div>
+                  <div className="row saldo">
+                    <span>Saldo:</span>
+                    <b className={saldoClass}>Bs {saldoNum.toFixed(2)}</b>
+                  </div>
 
-            <div style={{ marginTop: "10px", fontSize: "13px", color: "#666" }}>
-              Al cambiar la caja se actualiza la tarjeta y los movimientos.
+                  <button
+                    className="btn-traspaso"
+                    onClick={async () => {
+                      await cargarDestinosTraspaso();
+                      setShowTraspaso(true);
+                    }}
+                    disabled={loading}
+                  >
+                    TRASPASAR SALDO
+                  </button>
+                </>
+              ) : (
+                <p className="muted">No hay caja.</p>
+              )}
+
+              {msg && <div className="msg-error">{msg}</div>}
+            </div>
+
+            {isAdmin && (
+              <div
+                className="caja-card"
+                style={{ width: "420px", minHeight: "230px", border: "3px solid #111" }}
+              >
+                <div style={{ fontWeight: 800, marginBottom: "12px" }}>Ver cajas</div>
+
+                <label className="fw-bold" style={{ display: "block", marginBottom: "6px" }}>
+                  Selecciona usuario/caja
+                </label>
+
+                <select
+                  className="my_form_control"
+                  value={selectedCajaId}
+                  onChange={(e) => setSelectedCajaId(e.target.value)}
+                >
+                  {cajas.map((c) => (
+                    <option key={c.id_caja} value={String(c.id_caja)}>
+                      {c.usuario_nombre || "Usuario"} - Caja #{c.id_caja}
+                    </option>
+                  ))}
+                </select>
+
+                <div style={{ marginTop: "10px", fontSize: "13px", color: "#666" }}>
+                  Al cambiar la caja se actualiza la tarjeta y los movimientos.
+                </div>
+              </div>
+            )}
+
+            <div style={{ width: "100%" }}>
+              <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
             </div>
           </div>
-        )}
-
-
-        <div style={{ width: "100%" }}>
-          <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
         </div>
       </div>
 
-
       {/* =========================
-    MODAL TRASPASO
-========================= */}
+          MODAL TRASPASO
+      ========================= */}
       {showTraspaso && (
         <div className="caja-modal-backdrop">
           <div className="caja-modal-box">
@@ -401,11 +386,8 @@ function Caja() {
                   {usuariosDestino.map((u) => (
                     <option key={u.user_id} value={u.user_id}>
                       {u.user_name} - Caja #{u.id_caja}
-
                     </option>
                   ))}
-
-
                 </select>
               </div>
 
@@ -432,17 +414,13 @@ function Caja() {
                 Cancelar
               </button>
 
-              <button
-                onClick={abrirConfirmacionTraspaso}
-                disabled={loadingTraspaso}
-              >
+              <button onClick={abrirConfirmacionTraspaso} disabled={loadingTraspaso}>
                 {loadingTraspaso ? "..." : "Confirmar"}
               </button>
             </div>
           </div>
         </div>
       )}
-
 
       {showConfirm && (
         <div className="caja-modal-backdrop">
@@ -455,17 +433,11 @@ function Caja() {
             </p>
 
             <div className="caja-modal-actions">
-              <button
-                onClick={() => setShowConfirm(false)}
-                disabled={loadingTraspaso}
-              >
+              <button onClick={() => setShowConfirm(false)} disabled={loadingTraspaso}>
                 Cancelar
               </button>
 
-              <button
-                onClick={confirmarTraspaso}
-                disabled={loadingTraspaso}
-              >
+              <button onClick={confirmarTraspaso} disabled={loadingTraspaso}>
                 {loadingTraspaso ? "..." : "Sí, traspasar"}
               </button>
             </div>
@@ -473,10 +445,10 @@ function Caja() {
         </div>
       )}
 
-
-
       {toast.show && (
-        <div className={`toast-msg ${toast.type === "ok" ? "toast-ok" : "toast-err"}`}>{toast.text}</div>
+        <div className={`toast-msg ${toast.type === "ok" ? "toast-ok" : "toast-err"}`}>
+          {toast.text}
+        </div>
       )}
     </div>
   );

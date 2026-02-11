@@ -549,34 +549,39 @@ function Proformas() {
         {pageState === 1 ? (
           <Loader />
         ) : pageState === 2 ? (
-          <Table
-            headers={["N°", "Proforma", "Cliente", "Total", "Saldo", "Fecha", "Fecha entrega", "Hora entrega", "Acción"]}
-            columnOriginalNames={[
-              ["sl", ""],
-              ["id", ""],
-              ["cliente", ""],
-              ["total_general", ""],
-              ["saldo", ""],
-              ["fecha", ""],
-              ["fecha_entrega", ""],
-              ["hora_entrega", ""],
-              ["action", ""],
-            ]}
-            data={data}
-            data_count={count}
-            searchInput={searchInput}
-            setSearchInput={setSearchInput}
-            current_page={tablePage}
-            tablePageChangeFunc={setTablePage}
-            rowClassNameKey="_rowClass"
-            setSortColumn={setSortColumn}
-            setSortOrder={setSortOrder}
-            sortColumn={sortColumn}
-            sortOrder={sortOrder}
-          />
+          <div className="card">
+            <div className="container">
+              <Table
+                headers={["N°", "Proforma", "Cliente", "Total", "Saldo", "Fecha", "Fecha entrega", "Hora entrega", "Acción"]}
+                columnOriginalNames={[
+                  ["sl", ""],
+                  ["id", ""],
+                  ["cliente", ""],
+                  ["total_general", ""],
+                  ["saldo", ""],
+                  ["fecha", ""],
+                  ["fecha_entrega", ""],
+                  ["hora_entrega", ""],
+                  ["action", ""],
+                ]}
+                data={data}
+                data_count={count}
+                searchInput={searchInput}
+                setSearchInput={setSearchInput}
+                current_page={tablePage}
+                tablePageChangeFunc={setTablePage}
+                rowClassNameKey="_rowClass"
+                setSortColumn={setSortColumn}
+                setSortOrder={setSortOrder}
+                sortColumn={sortColumn}
+                sortOrder={sortOrder}
+              />
+            </div>
+          </div>
         ) : (
           <Error />
         )}
+
 
         <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
           <Modal.Header closeButton>

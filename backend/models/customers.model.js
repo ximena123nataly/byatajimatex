@@ -201,7 +201,7 @@ class Customer {
 					if (err) {
 						return reject(err);
 					}
-					resolve({ operation: "success", message: 'customer deleted successfully' });
+					resolve({ operation: "success", message: 'cliente eliminado con éxito' });
 				})
 			})
 				.then((value) => {

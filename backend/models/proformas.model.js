@@ -466,7 +466,7 @@ class Proforma {
           if (err) return reject(err);
           resolve({
             operation: "success",
-            message: "Proforma deleted successfully",
+            message: "Proforma eliminada con éxito",
           });
         });
       })

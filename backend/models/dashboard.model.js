@@ -2,11 +2,12 @@ const db = require('../db/conn.js');
 const jwt = require('jsonwebtoken');
 
 class Dashboard {
-  constructor() { }
+  constructor() {}
 
   getReportStats = (req, res) => {
     try {
       new Promise((resolve, reject) => {
+        
         let p1 = new Promise((rs, rj) => {
           let q =
             'SELECT (SELECT COUNT(*) FROM user WHERE user_role="employee") AS employee_count, (SELECT COUNT(*) FROM customers) AS customer_count, (SELECT COUNT(*) FROM suppliers) AS supplier_count FROM dual';
@@ -16,44 +17,46 @@ class Dashboard {
           });
         });
 
-       
+        
         let p2 = new Promise((rs, rj) => {
           let q = `
             SELECT
-              (
-                IFNULL((
-                  SELECT SUM(grand_total)
-                  FROM orders
-                  WHERE MONTH(timeStamp) = MONTH(CURDATE())
-                    AND YEAR(timeStamp) = YEAR(CURDATE())
-                ), 0)
-                +
-                IFNULL((
-                  SELECT SUM(total_general)
-                  FROM proformas
-                  WHERE entregado = 1
-                    AND delivered_at IS NOT NULL
-                    AND MONTH(delivered_at) = MONTH(CURDATE())
-                    AND YEAR(delivered_at) = YEAR(CURDATE())
-                ), 0)
-              ) AS "current_month",
-              (
-                IFNULL((
-                  SELECT SUM(grand_total)
-                  FROM orders
-                  WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
-                    AND YEAR(timeStamp) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
-                ), 0)
-                +
-                IFNULL((
-                  SELECT SUM(total_general)
-                  FROM proformas
-                  WHERE entregado = 1
-                    AND delivered_at IS NOT NULL
-                    AND MONTH(delivered_at) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
-                    AND YEAR(delivered_at) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
-                ), 0)
-              ) AS "previous_month"
+              IFNULL((
+                SELECT SUM(grand_total)
+                FROM orders
+                WHERE MONTH(timeStamp) = MONTH(CURDATE())
+                  AND YEAR(timeStamp) = YEAR(CURDATE())
+              ), 0) AS "current_month",
+              IFNULL((
+                SELECT SUM(grand_total)
+                FROM orders
+                WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
+                  AND YEAR(timeStamp) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
+              ), 0) AS "previous_month"
+            FROM DUAL;
+          `;
+          db.query(q, (err, result) => {
+            if (err) return rj(err);
+            rs(result[0]);
+          });
+        });
+
+       
+        let p3 = new Promise((rs, rj) => {
+          let q = `
+            SELECT
+              IFNULL((
+                SELECT SUM(grand_total)
+                FROM expenses
+                WHERE MONTH(timeStamp) = MONTH(CURDATE())
+                  AND YEAR(timeStamp) = YEAR(CURDATE())
+              ), 0) AS "current_month",
+              IFNULL((
+                SELECT SUM(grand_total)
+                FROM expenses
+                WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
+                  AND YEAR(timeStamp) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
+              ), 0) AS "previous_month"
             FROM DUAL;
           `;
           db.query(q, (err, result) => {
@@ -63,43 +66,29 @@ class Dashboard {
         });
 
         
-        let p3 = new Promise((rs, rj) => {
-          let q =
-            'SELECT (SELECT SUM(grand_total) FROM expenses WHERE MONTH(timeStamp) = MONTH(CURDATE()) AND YEAR(timeStamp) = YEAR(CURDATE())) AS "current_month", (SELECT SUM(grand_total) FROM expenses WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH) AND YEAR(timeStamp) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)) AS "previous_month" FROM DUAL;';
-          db.query(q, (err, result) => {
-            if (err) return rj(err);
-            rs(result[0]);
-          });
-        });
-
-       
         let p4 = new Promise((rs, rj) => {
           let q = `
-    SELECT
-      IFNULL((
-        SELECT SUM(total_general)
-        FROM proformas
-        WHERE entregado = 0
-          AND MONTH(fecha) = MONTH(CURDATE())
-          AND YEAR(fecha) = YEAR(CURDATE())
-      ), 0) AS "current_month",
-      IFNULL((
-        SELECT SUM(total_general)
-        FROM proformas
-        WHERE entregado = 0
-          AND MONTH(fecha) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
-          AND YEAR(fecha) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
-      ), 0) AS "previous_month"
-    FROM DUAL;
-  `;
+            SELECT
+              IFNULL((
+                SELECT SUM(total_general)
+                FROM proformas
+                WHERE MONTH(fecha) = MONTH(CURDATE())
+                  AND YEAR(fecha) = YEAR(CURDATE())
+              ), 0) AS "current_month",
+              IFNULL((
+                SELECT SUM(total_general)
+                FROM proformas
+                WHERE MONTH(fecha) = MONTH(CURRENT_DATE - INTERVAL 1 MONTH)
+                  AND YEAR(fecha) = YEAR(CURRENT_DATE - INTERVAL 1 MONTH)
+              ), 0) AS "previous_month"
+            FROM DUAL;
+          `;
           db.query(q, (err, result) => {
             if (err) return rj(err);
             rs(result[0]);
           });
         });
 
-
-       
         Promise.all([p1, p2, p3, p4])
           .then((result) => {
             resolve({
@@ -149,6 +138,7 @@ class Dashboard {
           });
         });
 
+        
         let p4 = new Promise((rs, rj) => {
           let q =
             'SELECT * FROM orders WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE) AND YEAR(timeStamp) = YEAR(CURRENT_DATE);';
@@ -186,6 +176,7 @@ class Dashboard {
           });
         });
 
+       
         let p5 = new Promise((rs, rj) => {
           let q = `
             SELECT COUNT(*) AS bordados_pendientes
@@ -218,38 +209,29 @@ class Dashboard {
   getGraphStats = (req, res) => {
     try {
       new Promise((resolve, reject) => {
+        
         let q1 = `
           SELECT
-            SUM(Total) as Total,
-            YearMonth
-          FROM (
-            SELECT
-              IFNULL(SUM(grand_total),0) as Total,
-              DATE_FORMAT(timeStamp, '%Y-%m') as YearMonth
-            FROM \`orders\`
-            WHERE DATE_FORMAT(timeStamp, '%Y-%m') > DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH),'%Y-%m')
-            GROUP BY DATE_FORMAT(timeStamp, '%Y-%m')
-
-            UNION ALL
-
-            SELECT
-              IFNULL(SUM(total_general),0) as Total,
-              DATE_FORMAT(delivered_at, '%Y-%m') as YearMonth
-            FROM proformas
-            WHERE entregado = 1
-              AND delivered_at IS NOT NULL
-              AND DATE_FORMAT(delivered_at, '%Y-%m') > DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH),'%Y-%m')
-            GROUP BY DATE_FORMAT(delivered_at, '%Y-%m')
-          ) x
-          GROUP BY YearMonth
+            IFNULL(SUM(grand_total),0) as Total,
+            DATE_FORMAT(timeStamp, '%Y-%m') as YearMonth
+          FROM \`orders\`
+          WHERE DATE_FORMAT(timeStamp, '%Y-%m') > DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH),'%Y-%m')
+          GROUP BY DATE_FORMAT(timeStamp, '%Y-%m')
           ORDER BY YearMonth
         `;
 
         db.query(q1, (err1, result1) => {
           if (err1) return reject(err1);
 
-          let q2 =
-            "SELECT SUM(grand_total) as Total, DATE_FORMAT(timeStamp, '%Y-%m') as YearMonth FROM `expenses` WHERE DATE_FORMAT(timeStamp, '%Y-%m') > DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH),'%Y-%m') GROUP BY DATE_FORMAT(timeStamp, '%Y-%m') ORDER BY timeStamp";
+          let q2 = `
+            SELECT
+              IFNULL(SUM(grand_total),0) as Total,
+              DATE_FORMAT(timeStamp, '%Y-%m') as YearMonth
+            FROM \`expenses\`
+            WHERE DATE_FORMAT(timeStamp, '%Y-%m') > DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 12 MONTH),'%Y-%m')
+            GROUP BY DATE_FORMAT(timeStamp, '%Y-%m')
+            ORDER BY YearMonth
+          `;
 
           db.query(q2, (err2, result2) => {
             if (err2) return reject(err2);
@@ -266,7 +248,7 @@ class Dashboard {
               (new Date().getMonth() + 1).toString().padStart(2, '0');
 
             let t = new Date();
-            t.setMonth(new Date(endYearMonth).getMonth() - 11);
+            t.setMonth(new Date(endYearMonth + '-01').getMonth() - 11);
             let startYearMonth =
               t.getFullYear() + '-' + (t.getMonth() + 1).toString().padStart(2, '0');
 
@@ -293,8 +275,7 @@ class Dashboard {
 
             resolve({
               operation: 'success',
-              message:
-                'data for user, customers, suppliers, order report, expense report',
+              message: 'data for graph',
               info: out,
             });
           });

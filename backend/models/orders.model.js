@@ -291,7 +291,7 @@ class Order {
                       }
 
                       db.commit(() =>
-                        res.send({ operation: "success", message: "order deleted successfully" })
+                        res.send({ operation: "success", message: "Venta eliminada con éxito" })
                       );
                     });
                   };

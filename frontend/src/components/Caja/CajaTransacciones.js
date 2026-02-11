@@ -17,7 +17,7 @@ const fmtFecha = (v) => {
 
 const fmtHora = (v) => {
   if (!v) return "-";
-  if (typeof v === "string" && v.includes(":")) return v;
+  if (typeof v === "string" && v.includes(":")) return v.slice(0, 8);
   const d = new Date(v);
   return d.toLocaleTimeString("es-BO", { hour12: false });
 };
@@ -119,363 +119,479 @@ export default function CajaTransacciones({ transacciones, loading }) {
   };
 
   /** =========================
-   * PRINT HELPERS
-   * (abre ventana y manda a imprimir)
+   * PRINT ENGINE (popup / iframe fallback)
    * ========================= */
-  const abrirPrint = (html, title = "Imprimir") => {
+  const abrirPrint = (html) => {
+    // 1) intenta popup
     const w = window.open("", "_blank", "width=980,height=720");
-    if (!w) return;
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-    // el html ya trae window.print()
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+
+    // 2) fallback: iframe oculto (si popup bloqueado)
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe);
+      } catch { }
+    }, 2000);
+  };
+
+  const basePrintStyles = `
+<style>
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff; }
+  body { font-family: Arial, Helvetica, sans-serif; color:#111; }
+  .wrap { word-break: break-word; overflow-wrap: anywhere; }
+  .muted { color:#555; }
+  .row { display:flex; justify-content: space-between; gap: 14px; }
+  .col { flex: 1; }
+  .print-wrap { width: 100%; }
+  .print-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #111;
+    margin-bottom: 12px;
+  }
+  .brand{
+    display:flex;
+    gap: 12px;
+    align-items:flex-start;
+    min-width: 280px;
+  }
+  .brand img{
+    width: 125px;
+    height: auto;
+    object-fit: contain;
+  }
+  .brand .company{
+    font-size: 11px;
+    line-height: 1.25;
+  }
+  .brand .company b{ font-size: 12px; }
+  .docbox{ text-align:right; min-width: 260px; }
+  .doc-title{
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: .5px;
+  }
+  .doc-sub{
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .section-title{
+    font-size: 18px;
+    font-weight: 900;
+    margin: 12px 0 10px;
+  }
+  .kv{
+    display:grid;
+    grid-template-columns: 120px 1fr;
+    gap: 6px 10px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .k{ color:#333; font-weight: 800; }
+  .v{ color:#111; }
+  .badge{
+    display:inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 900;
+    border: 1px solid #111;
+    vertical-align: middle;
+  }
+  .badge-in{ background:#e8fff1; border-color:#16a34a; color:#166534; }
+  .badge-out{ background:#fff1f2; border-color:#ef4444; color:#991b1b; }
+  .hr{ border: 0; border-top: 1px solid #ddd; margin: 12px 0; }
+  .card{
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .card h4{ margin: 0 0 8px 0; font-size: 14px; }
+  table{ width:100%; border-collapse: collapse; margin-top: 10px; }
+  th, td{ font-size: 12px; padding: 8px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  th{ text-align:left; font-weight: 800; }
+  .right{ text-align:right; }
+  .center{ text-align:center; }
+  .totals{
+    width: 260px;
+    margin-left: auto;
+    margin-top: 10px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+  .totals .line{
+    display:flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 4px 0;
+  }
+  .totals .line b{ font-weight: 900; }
+</style>
+`;
+
+  const tituloPorTipo = (tipo) => {
+    const t = String(tipo || "").toUpperCase();
+    if (t === "PROFORMA") return "PROFORMA";
+    if (t === "GASTO") return "GASTO";
+    if (t === "VENTA") return "VENTA";
+    if (t === "TRASPASO") return "TRASPASO";
+    return "MOVIMIENTO";
+  };
+
+  const headerTajima = (titulo) => {
+    const logoUrl = `${window.location.origin}${process.env.PUBLIC_URL || ""}/tajima.png`;
+    return `
+      <div class="print-header">
+        <div class="brand">
+          <img src="${logoUrl}" alt="TAJIMA"/>
+          <div class="company">
+            <b>BORDADOS COMPUTARIZADOS</b><br/>
+            Y APLICACIONES TAJIMA TEXTIL<br/>
+            <span class="muted">E-mail:</span> byatajima@gmail.com<br/>
+            <span class="muted"></span> jhonfya@hotmail.com
+          </div>
+        </div>
+
+        <div class="docbox">
+          <div class="doc-title">${safe(titulo)}</div>
+          <div class="doc-sub">
+            Dir.: Av. Juan Pablo II Ceja<br/>
+            (El Alto lado Tránsito - Bolivia)<br/>
+            Cel: 75866135-75274747-77221750
+          </div>
+        </div>
+      </div>
+    `;
   };
 
   /** =========================
-   * PRINT: PROFORMA (Mismo formato que proformas.js)
+   * PRINT TEMPLATE: Detalle del movimiento (bonito)
+   * - sirve para PROFORMA / VENTA / GASTO / TRASPASO
    * ========================= */
-  const imprimirProformaLike = (p) => {
-    if (!p) return;
+  const buildHtmlMovimientoBonito = ({ mov, tipo_detalle, detalle }) => {
+    const titulo = tituloPorTipo(tipo_detalle);
 
-    // OJO: en proformas.js los items vienen como p.detalle (array)
-    // acá el backend puede devolver items en p.items (string JSON) o p.detalle
-    const itemsArr = Array.isArray(p.detalle)
-      ? p.detalle
-      : safeJson(p.items || p.detalle);
+    const badgeClass = mov?.tipo === "INGRESO" ? "badge badge-in" : "badge badge-out";
+    const now = new Date();
+    const impFecha = moment(now).format("DD/MM/YYYY");
+    const impHora = moment(now).format("HH:mm:ss");
 
-    const filas = itemsArr
-      .map((it) => {
-        const cant = toNumber(it.cantidad ?? it.quantity);
-        const pu = toNumber(it.precio_unitario ?? it.rate);
-        const tot = toNumber(it.total ?? cant * pu);
+    const bloqueGeneral = `
+      <div class="section-title">Detalle del movimiento</div>
 
-        const ofertaTxt =
-          it.oferta && it.oferta !== "Sin oferta" ? `(${safe(it.oferta)})` : "";
-        const det = safe(it.detalle || it.product_name || "").replace(/\n/g, "<br/>");
+      <div class="row">
+        <div class="col">
+          <div class="kv">
+            <div class="k">Tipo:</div>
+            <div class="v"><span class="${badgeClass}">${safe(mov?.tipo)}</span></div>
 
-        return `
-          <tr>
-            <td class="td-right" style="width:55px;">${cant}</td>
-            <td class="td-left wrap">${det}</td>
-            <td class="td-center" style="width:120px;">${ofertaTxt}</td>
-            <td class="td-right" style="width:80px;">${money(pu)}</td>
-            <td class="td-right" style="width:90px;">${money(tot)}</td>
-          </tr>
-        `;
-      })
-      .join("");
+            <div class="k">Monto:</div>
+            <div class="v">Bs ${money(mov?.monto)}</div>
 
-    const notasHTML =
-      p.notas && String(p.notas).trim() !== ""
-        ? `<div class="small wrap" style="margin-top:8px;"><b>Notas:</b> ${safe(p.notas).replace(
-            /\n/g,
-            "<br/>"
-          )}</div>`
-        : "";
+            <div class="k">Fecha:</div>
+            <div class="v">${safe(fmtFecha(mov?.fecha))}</div>
 
-    const fechaPrint = p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : "";
-    const horaPrint = p.hora ? String(p.hora).slice(0, 8) : "";
+            <div class="k">Caja:</div>
+            <div class="v">#${safe(mov?.id_caja)}</div>
+          </div>
+        </div>
 
-    const fechaEntregaPrint = p.fecha_entrega
-      ? moment.utc(p.fecha_entrega).format("YYYY-MM-DD")
-      : "";
-    const horaEntregaPrint = p.hora_entrega ? String(p.hora_entrega).slice(0, 5) : "";
+        <div class="col">
+          <div class="kv">
+            <div class="k">Origen:</div>
+            <div class="v">${safe(mov?.origen)}</div>
 
-    const entregadoTxt = Number(p.entregado) === 1 ? "SI" : "NO";
+            <div class="k">Referencia:</div>
+            <div class="v wrap">${safe(mov?.nro_registro || "-")}</div>
 
-    const nro = p.proforma_id || formatProforma(p.id);
+            <div class="k">Hora:</div>
+            <div class="v">${safe(fmtHora(mov?.hora))}</div>
+
+            <div class="k">Usuario:</div>
+            <div class="v">${safe(mov?.id_usuario)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // === TRASPASO: mostrar Origen/Destino
+    let extra = "";
+    if (String(tipo_detalle).toUpperCase() === "TRASPASO") {
+      const arr = Array.isArray(detalle) ? detalle : [];
+      const eg = arr.find((x) => x.tipo === "EGRESO");
+      const ing = arr.find((x) => x.tipo === "INGRESO");
+
+      extra = `
+        <div class="hr"></div>
+        <div class="row">
+          <div class="col card">
+            <h4>Origen (Sale)</h4>
+            <div class="kv">
+              <div class="k">Usuario:</div>
+              <div class="v">${safe(eg?.user_name || eg?.id_usuario || "-")}</div>
+              <div class="k">Caja:</div>
+              <div class="v">#${safe(eg?.id_caja || "-")}</div>
+              <div class="k">Monto:</div>
+              <div class="v">Bs ${money(eg?.monto)}</div>
+            </div>
+          </div>
+
+          <div class="col card">
+            <h4>Destino (Entra)</h4>
+            <div class="kv">
+              <div class="k">Usuario:</div>
+              <div class="v">${safe(ing?.user_name || ing?.id_usuario || "-")}</div>
+              <div class="k">Caja:</div>
+              <div class="v">#${safe(ing?.id_caja || "-")}</div>
+              <div class="k">Monto:</div>
+              <div class="v">Bs ${money(ing?.monto)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // === PROFORMA: imprimir como “mini proforma” + items
+    if (String(tipo_detalle).toUpperCase() === "PROFORMA" && detalle) {
+      const itemsArr = Array.isArray(detalle.detalle)
+        ? detalle.detalle
+        : safeJson(detalle.items || detalle.detalle);
+
+      const filas = itemsArr
+        .map((it) => {
+          const cant = toNumber(it.cantidad ?? it.quantity);
+          const pu = toNumber(it.precio_unitario ?? it.rate);
+          const tot = toNumber(it.total ?? cant * pu);
+          const det = safe(it.detalle || it.product_name || "").replace(/\n/g, "<br/>");
+          return `
+            <tr>
+              <td class="right">${cant}</td>
+              <td class="wrap">${det}</td>
+              <td class="right">${money(pu)}</td>
+              <td class="right">${money(tot)}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      const nro = detalle.proforma_id || formatProforma(detalle.id);
+      extra = `
+        <div class="hr"></div>
+        <div class="section-title">Proforma</div>
+
+        <div class="row">
+          <div class="col">
+            <div class="kv">
+              <div class="k">N°:</div><div class="v">${safe(nro)}</div>
+              <div class="k">Cliente:</div><div class="v">${safe(detalle.cliente || "-")}</div>
+              <div class="k">Celular:</div><div class="v">${safe(detalle.celular || "-")}</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="kv">
+              <div class="k">Estado:</div><div class="v">${safe(detalle.estado || "-")}</div>
+              <div class="k">Entregado:</div><div class="v">${Number(detalle.entregado) === 1 ? "SI" : "NO"}</div>
+              <div class="k">Entrega:</div><div class="v">${safe(detalle.fecha_entrega ? moment.utc(detalle.fecha_entrega).format("YYYY-MM-DD") : "-")} ${safe(detalle.hora_entrega ? String(detalle.hora_entrega).slice(0, 5) : "")}</div>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th class="right" style="width:70px;">Cant</th>
+              <th>Detalle</th>
+              <th class="right" style="width:90px;">P/U</th>
+              <th class="right" style="width:100px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas || `<tr><td colspan="4" class="muted">(Sin ítems)</td></tr>`}
+          </tbody>
+        </table>
+
+        <div class="totals">
+          <div class="line"><span>Anticipo</span><b>Bs ${money(detalle.anticipo)}</b></div>
+          <div class="line"><span>Total</span><b>Bs ${money(detalle.total_general)}</b></div>
+          <div class="line"><span>Saldo</span><b>Bs ${money(detalle.saldo)}</b></div>
+        </div>
+      `;
+    }
+
+    // === VENTA: detalle + items
+    if (String(tipo_detalle).toUpperCase() === "VENTA" && detalle) {
+      const items = safeJson(detalle.items);
+      const filas = items
+        .map((it) => {
+          const q = toNumber(it.quantity);
+          const r = toNumber(it.rate);
+          const t = q * r;
+          return `
+            <tr>
+              <td class="wrap">${safe(it.product_name || "-")}</td>
+              <td class="right">${q}</td>
+              <td class="right">${money(r)}</td>
+              <td class="right">${money(t)}</td>
+            </tr>
+          `;
+        })
+        .join("");
+
+      extra = `
+        <div class="hr"></div>
+        <div class="section-title">Venta</div>
+
+        <div class="row">
+          <div class="col">
+            <div class="kv">
+              <div class="k">Ref:</div><div class="v">${safe(detalle.order_ref || detalle.order_id || "-")}</div>
+              <div class="k">Cliente:</div><div class="v">${safe(detalle.customer_name || detalle.customer_id || "-")}</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="kv">
+              <div class="k">Fecha:</div><div class="v">${safe(fmtFecha(detalle.timeStamp))}</div>
+              <div class="k">Total:</div><div class="v">Bs ${money(detalle.grand_total)}</div>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="right" style="width:80px;">Cant</th>
+              <th class="right" style="width:90px;">P/U</th>
+              <th class="right" style="width:100px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas || `<tr><td colspan="4" class="muted">(Sin ítems)</td></tr>`}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // === GASTO: detalle bonito
+    if (String(tipo_detalle).toUpperCase() === "GASTO" && detalle) {
+      extra = `
+        <div class="hr"></div>
+        <div class="section-title">Gasto</div>
+
+        <div class="row">
+          <div class="col">
+            <div class="kv">
+              <div class="k">Ref:</div><div class="v">${safe(detalle.expense_ref || detalle.expense_id || "-")}</div>
+              <div class="k">Proveedor:</div><div class="v">${safe(detalle.supplier_name || detalle.supplier_id || "-")}</div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="kv">
+              <div class="k">Fecha:</div><div class="v">${safe(fmtFecha(detalle.timeStamp))}</div>
+              <div class="k">Total:</div><div class="v">Bs ${money(detalle.grand_total ?? detalle.total)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:10px;">
+          <h4>Descripción</h4>
+          <div class="wrap" style="font-size:12px; line-height:1.4;">
+            ${safe(detalle.description || detalle.expense_description || "-").replace(/\n/g, "<br/>")}
+          </div>
+        </div>
+      `;
+    }
 
     const html = `
 <!doctype html>
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Proforma ${safe(nro)}</title>
-  <style>
-    @page { size: letter portrait; margin: 0; }
-    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
-    .ticket { width: 8.5in; height: 5.5in; box-sizing: border-box; padding: 0.35in 0.45in; margin: 0 auto; overflow: hidden; }
-    .wrap { word-break: break-word; overflow-wrap: anywhere; }
-    .small { font-size: 11px; line-height: 1.25; }
-    .muted { color: #444; }
-    .title { font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
-    .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-    .col-left  { width: 33%; }
-    .col-center{ width: 34%; text-align: center; }
-    .col-right { width: 33%; text-align: right; }
-    .logo { width: 170px; height: auto; display: block; margin-bottom: 6px; }
-    hr { border: 0; border-top: 1px solid #ddd; margin: 10px 0; }
-    .mid { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-    .mid-left { width: 55%; }
-    .mid-right{ width: 45%; text-align: right; }
-    table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    thead th { font-size: 12px; text-align: left; border-bottom: 1px solid #ddd; padding: 7px 6px; }
-    tbody td { font-size: 12px; border-bottom: 1px dashed #eee; padding: 7px 6px; vertical-align: top; }
-    .td-right { text-align: right; }
-    .td-center { text-align: center; }
-    .td-left { text-align: left; }
-    .totals { width: 260px; margin-left: auto; margin-top: 10px; }
-    .totals table { width: 100%; border-collapse: collapse; margin-top: 0; }
-    .totals td { font-size: 12px; padding: 6px 6px; border: 0; }
-    .box-nro { border: 1px solid #ddd; border-radius: 6px; padding: 10px 12px; display: inline-block; }
-    .nro { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
-  </style>
+  <title>${safe(titulo)} - Movimiento ${safe(mov?.id_transaccion || "")}</title>
+  ${basePrintStyles}
 </head>
 <body>
-  <div class="ticket">
-    <div class="header">
-      <div class="col-left">
-        <img class="logo" src="/tajima.png" alt="logo"/>
-        <div class="small">
-          <b>BORDADOS COMPUTARIZADOS</b><br/>
-          Y APLICACIONES TAJIMA TEXTIL<br/>
-          <span class="muted">E-mail:</span> byatajima@gmail.com<br/>
-          <span class="muted"> </span> jhonfya@hotmail.com
-        </div>
-      </div>
-
-      <div class="col-center">
-        <div class="title">PROFORMA</div>
-        <div class="small muted" style="margin-top:8px;">
-          Dir.: Av. Juan Pablo II Ceja<br/>
-          (El Alto lado Tránsito - Bolivia)<br/>
-          Cel: 75866135-75274747-77221750
-        </div>
-      </div>
-
-      <div class="col-right">
-        <div class="box-nro">
-          <div class="small muted">N°</div>
-          <div class="nro">${safe(nro)}</div>
-          <div class="small muted">Fecha: ${safe(fechaPrint)}</div>
-          <div class="small muted">Hora: ${safe(horaPrint)}</div>
-        </div>
-      </div>
+  <div class="print-wrap">
+    ${headerTajima(titulo)}
+    <div class="muted" style="font-size:11px; display:flex; justify-content:flex-end; gap:12px;">
+      <div><b>Impreso:</b> ${safe(impFecha)} ${safe(impHora)}</div>
+      <div><b>ID Movimiento:</b> ${safe(mov?.id_transaccion || "-")}</div>
     </div>
 
-    <hr/>
+    ${bloqueGeneral}
+    ${extra}
 
-    <div class="mid">
-      <div class="mid-left small">
-        <div><b>Cliente:</b> ${safe(p.cliente)}</div>
-        <div><b>Celular:</b> ${safe(p.celular)}</div>
-        ${notasHTML}
-      </div>
-
-      <div class="mid-right small">
-        <div><b>Entregado:</b> ${entregadoTxt}</div>
-        <div><b>Fecha de entrega:</b> ${safe(fechaEntregaPrint)} ${safe(horaEntregaPrint)}</div>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="width:55px;" class="td-right">Cant</th>
-          <th>Detalle</th>
-          <th style="width:120px;" class="td-center"></th>
-          <th style="width:80px;" class="td-right">P/U</th>
-          <th style="width:90px;" class="td-right">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${filas || `<tr><td colspan="Heading>i;">(Sin ítems)</td></tr>`}
-      </tbody>
-    </table>
-
-    <div class="totals">
-      <table>
-        <tr>
-          <td class="td-left"><b>Anticipo</b></td>
-          <td class="td-right">${money(p.anticipo)}</td>
-        </tr>
-        <tr>
-          <td class="td-left"><b>Total</b></td>
-          <td class="td-right">${money(p.total_general)}</td>
-        </tr>
-        <tr>
-          <td class="td-left"><b>Saldo</b></td>
-          <td class="td-right">${money(p.saldo)}</td>
-        </tr>
-      </table>
-    </div>
   </div>
 
   <script>
-    window.onload = function() { window.print(); window.close(); };
+    window.onload = function(){
+      window.print();
+      window.close();
+    };
   </script>
 </body>
 </html>
     `;
-
-    abrirPrint(html, `Proforma ${nro}`);
+    return html;
   };
 
   /** =========================
-   * PRINT: VENTA (simple, pero ya “bonito”)
-   * Si quieres 100% igual a Orders.js, dime y lo clonamos exacto.
+   * PRINT: por fila (bonito)
    * ========================= */
-  const imprimirVentaLike = (o) => {
-    if (!o) return;
-    const items = safeJson(o.items);
-
-    const rows = items
-      .map((it) => {
-        const q = toNumber(it.quantity);
-        const r = toNumber(it.rate);
-        const total = q * r;
-        return `
-          <tr>
-            <td>${safe(it.product_name)}</td>
-            <td class="right">${q}</td>
-            <td class="right">${money(r)}</td>
-            <td class="right">${money(total)}</td>
-          </tr>
-        `;
-      })
-      .join("");
-
-    const html = `
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Venta ${safe(o.order_ref || "")}</title>
-  <style>
-    @page { size: letter portrait; margin: 16mm; }
-    body { font-family: Arial, sans-serif; color:#111; }
-    .head { display:flex; justify-content:space-between; margin-bottom:10px; }
-    h2 { margin:0; }
-    table { width:100%; border-collapse:collapse; margin-top:12px; }
-    th, td { border-bottom:1px solid #ddd; padding:8px 6px; font-size:12px; }
-    .right { text-align:right; }
-  </style>
-</head>
-<body>
-  <div class="head">
-    <div>
-      <h2>VENTA</h2>
-      <div><b>Ref:</b> ${safe(o.order_ref || "")}</div>
-      <div><b>Cliente:</b> ${safe(o.customer_name || "")}</div>
-    </div>
-    <div style="text-align:right;">
-      <div><b>Fecha:</b> ${safe(fmtFecha(o.timeStamp))}</div>
-      <div><b>Total:</b> Bs ${money(o.grand_total)}</div>
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Producto</th>
-        <th class="right">Cant</th>
-        <th class="right">P/U</th>
-        <th class="right">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${rows || `<tr><td colspan="4">(Sin ítems)</td></tr>`}
-    </tbody>
-  </table>
-
-  <script>
-    window.onload = function(){ window.print(); window.close(); };
-  </script>
-</body>
-</html>
-    `;
-    abrirPrint(html, "Venta");
+  const imprimirMovimientoBonito = async (id_transaccion) => {
+    try {
+      const b = await fetchDetalleMovimiento(id_transaccion);
+      const html = buildHtmlMovimientoBonito({
+        mov: b.mov,
+        tipo_detalle: b.tipo_detalle || "",
+        detalle: b.detalle,
+      });
+      abrirPrint(html);
+    } catch (e) {
+      alert(e.message || "No se pudo imprimir el movimiento");
+    }
   };
 
   /** =========================
-   * PRINT: GASTO
-   * ========================= */
-  const imprimirGastoLike = (e) => {
-    if (!e) return;
-
-    const html = `
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Gasto ${safe(e.expense_ref || "")}</title>
-  <style>
-    @page { size: letter portrait; margin: 16mm; }
-    body { font-family: Arial, sans-serif; color:#111; }
-    h2 { margin:0 0 10px 0; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size:12px; }
-  </style>
-</head>
-<body>
-  <h2>GASTO</h2>
-  <div class="grid">
-    <div><b>Ref:</b> ${safe(e.expense_ref || "")}</div>
-    <div><b>Fecha:</b> ${safe(fmtFecha(e.timeStamp))}</div>
-    <div><b>Proveedor:</b> ${safe(e.supplier_name || "")}</div>
-    <div><b>Total:</b> Bs ${money(e.grand_total)}</div>
-    <div style="grid-column:1/-1;"><b>Descripción:</b> ${safe(e.description || "")}</div>
-  </div>
-
-  <script>
-    window.onload = function(){ window.print(); window.close(); };
-  </script>
-</body>
-</html>
-    `;
-    abrirPrint(html, "Gasto");
-  };
-
-  /** =========================
-   * PRINT: decide según tipo
+   * (Opcional) imprimir desde modal (ya cargado)
    * ========================= */
   const imprimirDesdeModal = () => {
     if (!mov) return;
-
-    const t = String(tipoDetalle || "").toUpperCase();
-
-    // Si el movimiento trae detalle proforma/venta/gasto, usamos el formato correspondiente
-    if (t === "PROFORMA") return imprimirProformaLike(detalle);
-    if (t === "VENTA") return imprimirVentaLike(detalle);
-    if (t === "GASTO") return imprimirGastoLike(detalle);
-
-    // TRASPASO u otros: simple
-    const html = `
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>Movimiento ${safe(mov?.id_transaccion || "")}</title>
-  <style>
-    @page { size: letter portrait; margin: 16mm; }
-    body { font-family: Arial, sans-serif; color:#111; }
-    h2 { margin:0 0 10px 0; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size:12px; }
-  </style>
-</head>
-<body>
-  <h2>Detalle del movimiento</h2>
-  <div class="grid">
-    <div><b>Tipo:</b> ${safe(mov.tipo)}</div>
-    <div><b>Origen:</b> ${safe(mov.origen)}</div>
-    <div><b>Monto:</b> Bs ${money(mov.monto)}</div>
-    <div><b>Referencia:</b> ${safe(mov.nro_registro || "-")}</div>
-    <div><b>Fecha:</b> ${safe(fmtFecha(mov.fecha))}</div>
-    <div><b>Hora:</b> ${safe(fmtHora(mov.hora))}</div>
-    <div><b>Caja:</b> #${safe(mov.id_caja)}</div>
-    <div><b>Usuario:</b> ${safe(mov.id_usuario)}</div>
-  </div>
-
-  <script>
-    window.onload = function(){ window.print(); window.close(); };
-  </script>
-</body>
-</html>
-    `;
-    abrirPrint(html, "Movimiento");
+    const html = buildHtmlMovimientoBonito({
+      mov,
+      tipo_detalle: tipoDetalle || "",
+      detalle,
+    });
+    abrirPrint(html);
   };
 
   /** =========================
-   * Render Detalle (modal)
+   * Render detalle (modal)
    * ========================= */
   const renderGeneral = () => {
     if (!mov) return null;
@@ -637,7 +753,13 @@ export default function CajaTransacciones({ transacciones, loading }) {
                       <td>{it.cantidad ?? it.quantity ?? "-"}</td>
                       <td>{it.detalle ?? it.product_name ?? "-"}</td>
                       <td>{it.precio_unitario ?? it.rate ?? "-"}</td>
-                      <td>{it.total ?? (toNumber(it.cantidad ?? it.quantity) * toNumber(it.precio_unitario ?? it.rate)).toFixed(2)}</td>
+                      <td>
+                        {it.total ??
+                          (
+                            toNumber(it.cantidad ?? it.quantity) *
+                            toNumber(it.precio_unitario ?? it.rate)
+                          ).toFixed(2)}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -770,7 +892,7 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
   return (
     <div className="caja-card caja-tx-card">
-      <div className="caja-tx-header">
+      <div className="caja-tx-header" style={{ display: "flex", justifyContent: "space-between" }}>
         <h3>Movimientos</h3>
       </div>
 
@@ -810,16 +932,20 @@ export default function CajaTransacciones({ transacciones, loading }) {
                   </td>
 
                   <td>{t.origen}</td>
-                  <td>{t.nro_registro || "-"}</td>
+                  <td className="wrap">{t.nro_registro || "-"}</td>
                   <td>Bs {Number(t.monto || 0).toFixed(2)}</td>
                   <td>{fmtFecha(t.fecha)}</td>
                   <td>{fmtHora(t.hora)}</td>
 
-                  {/* SOLO VER (sin imprimir aquí) */}
-                  <td>
-                    <button className="btn-ver" onClick={() => verDetalle(t.id_transaccion)}>
-                      Ver
-                    </button>
+                  {/* ✅ VER + IMPRIMIR (POR CADA FILA) */}
+                  <td style={{ textAlign: "center" }}>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                      <button className="btn-ver" onClick={() => verDetalle(t.id_transaccion)}>
+                        Ver
+                      </button>
+
+
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -868,18 +994,40 @@ export default function CajaTransacciones({ transacciones, loading }) {
               <h3 style={{ margin: 0 }}>Detalle del movimiento</h3>
 
               <div style={{ display: "flex", gap: 8 }}>
-                {!!mov && (
-                  <button className="btn-ver" onClick={imprimirDesdeModal}>
-                    Imprimir
-                  </button>
-                )}
                 <button className="btn btn-outline-danger" onClick={cerrar}>
                   X
                 </button>
               </div>
+
             </div>
 
-            <div style={{ marginTop: 12 }}>{renderDetalle()}</div>
+            <div style={{ marginTop: 12 }}>
+              {renderDetalle()}
+
+              {!!mov && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: 20,
+                    borderTop: "1px solid #eee",
+                    paddingTop: 12,
+                  }}
+                >
+                  <button
+                    className="btn-ver"
+                    onClick={imprimirDesdeModal}
+                    style={{
+                      padding: "10px 18px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Imprimir
+                  </button>
+                </div>
+              )}
+            </div>
+
           </div>
         </div>
       )}
