@@ -3,18 +3,16 @@ const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
 class Caja {
-  constructor() { }
+  constructor() {}
 
   test = (req, res) => {
     return res.send({ ok: true, msg: "Caja funcionando" });
   };
 
-
   getUserIdFromToken = (req) => {
     const d = jwt.decode(req.cookies.accessToken, { complete: true });
     return d?.payload?.user_id || null;
   };
-
 
   getRoleFromToken = (req) => {
     const d = jwt.decode(req.cookies.accessToken, { complete: true });
@@ -26,7 +24,6 @@ class Caja {
     const role = this.getRoleFromToken(req);
     return role === "admin" || role === "administrador";
   };
-
 
   ensureCaja = (user_id) => {
     return new Promise((resolve, reject) => {
@@ -70,7 +67,6 @@ class Caja {
     });
   };
 
-
   getCaja = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
@@ -83,7 +79,6 @@ class Caja {
       return res.send({ ok: false, msg: "Error cargando caja" });
     }
   };
-
 
   getTransacciones = async (req, res) => {
     try {
@@ -113,7 +108,6 @@ class Caja {
     }
   };
 
-
   getCajas = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
@@ -139,7 +133,6 @@ class Caja {
       return res.send({ ok: false, msg: "Error cargando cajas" });
     }
   };
-
 
   getCajaById = async (req, res) => {
     try {
@@ -171,7 +164,6 @@ class Caja {
     }
   };
 
-
   getTransaccionesByCaja = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
@@ -200,23 +192,21 @@ class Caja {
     }
   };
 
-
   getDestinosTraspaso = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
       if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
 
-
       db.query(
         `SELECT 
-      u.user_id,
-      u.user_name,
-      u.email,
-      IFNULL(c.id_caja, '') AS id_caja
-   FROM \`user\` u
-   LEFT JOIN caja c ON c.id_usuario = u.user_id
-   WHERE u.user_id <> ?
-   ORDER BY u.user_name ASC`,
+           u.user_id,
+           u.user_name,
+           u.email,
+           IFNULL(c.id_caja, '') AS id_caja
+         FROM \`user\` u
+         LEFT JOIN caja c ON c.id_usuario = u.user_id
+         WHERE u.user_id <> ?
+         ORDER BY u.user_name ASC`,
         [user_id],
         (err, rows) => {
           if (err) {
@@ -232,14 +222,12 @@ class Caja {
     }
   };
 
-
   traspasoSaldo = async (req, res) => {
     try {
       const id_usuario_origen = this.getUserIdFromToken(req);
       if (!id_usuario_origen) return res.send({ ok: false, msg: "No autorizado" });
 
       const { id_usuario_destino, monto } = req.body;
-
       const montoNum = parseFloat(monto);
 
       if (!id_usuario_destino) return res.send({ ok: false, msg: "Falta usuario destino" });
@@ -253,7 +241,6 @@ class Caja {
       const cajaOrigen = await this.ensureCaja(id_usuario_origen);
       const cajaDestino = await this.ensureCaja(id_usuario_destino);
 
-
       const saldoOrigen = parseFloat(cajaOrigen.saldo || 0);
       if (saldoOrigen < montoNum) {
         return res.send({ ok: false, msg: "Saldo insuficiente" });
@@ -265,13 +252,11 @@ class Caja {
       const fecha = d.toISOString().slice(0, 10);
       const hora = d.toTimeString().slice(0, 8);
 
-
       db.beginTransaction((err0) => {
         if (err0) {
           console.log(err0);
           return res.send({ ok: false, msg: "Error iniciando transacción" });
         }
-
 
         db.query(
           `INSERT INTO caja_transacciones
@@ -286,7 +271,6 @@ class Caja {
               );
             }
 
-
             db.query(
               `INSERT INTO caja_transacciones
                (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -300,7 +284,6 @@ class Caja {
                   );
                 }
 
-
                 db.query(
                   `UPDATE caja SET saldo = saldo - ? WHERE id_caja=?`,
                   [montoNum, cajaOrigen.id_caja],
@@ -312,7 +295,6 @@ class Caja {
                       );
                     }
 
-
                     db.query(
                       `UPDATE caja SET saldo = saldo + ? WHERE id_caja=?`,
                       [montoNum, cajaDestino.id_caja],
@@ -323,7 +305,6 @@ class Caja {
                             res.send({ ok: false, msg: "Error actualizando saldo destino" })
                           );
                         }
-
 
                         db.commit((err5) => {
                           if (err5) {
@@ -347,6 +328,146 @@ class Caja {
           }
         );
       });
+    } catch (e) {
+      console.log(e);
+      return res.send({ ok: false, msg: "Error servidor" });
+    }
+  };
+
+  // ✅ ESTE MÉTODO YA ESTÁ DENTRO DE LA CLASE (IMPORTANTE)
+  getMovimientoDetalle = async (req, res) => {
+    try {
+      const user_id = this.getUserIdFromToken(req);
+      if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
+
+      const { id_transaccion } = req.body;
+      if (!id_transaccion) return res.send({ ok: false, msg: "Falta id_transaccion" });
+
+      db.query(
+        `SELECT id_transaccion, id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora
+         FROM caja_transacciones
+         WHERE id_transaccion=? LIMIT 1`,
+        [id_transaccion],
+        async (err, rows) => {
+          if (err) {
+            console.log(err);
+            return res.send({ ok: false, msg: "Error leyendo movimiento" });
+          }
+          if (!rows || rows.length === 0) {
+            return res.send({ ok: false, msg: "Movimiento no encontrado" });
+          }
+
+          const mov = rows[0];
+
+          // Seguridad: si NO es admin, solo puede ver su caja
+          if (!this.isAdmin(req)) {
+            const cajaMia = await this.ensureCaja(user_id);
+            if (String(cajaMia.id_caja) !== String(mov.id_caja)) {
+              return res.send({ ok: false, msg: "No autorizado a ver este movimiento" });
+            }
+          }
+
+          const ref = mov.nro_registro || "";
+
+          // TRASPASO: devuelve los 2 movimientos (egreso e ingreso)
+          if (mov.origen === "TRASPASO") {
+            return db.query(
+              `SELECT ct.id_transaccion, ct.id_caja, ct.id_usuario, ct.tipo, ct.origen, ct.nro_registro, ct.monto, ct.fecha, ct.hora,
+                      c.nombre_caja,
+                      u.user_name
+               FROM caja_transacciones ct
+               LEFT JOIN caja c ON c.id_caja = ct.id_caja
+               LEFT JOIN \`user\` u ON u.user_id = ct.id_usuario
+               WHERE ct.origen='TRASPASO' AND ct.nro_registro=?
+               ORDER BY ct.tipo DESC`,
+              [ref],
+              (e2, det) => {
+                if (e2) {
+                  console.log(e2);
+                  return res.send({ ok: false, msg: "Error detalle traspaso" });
+                }
+                return res.send({ ok: true, mov, tipo_detalle: "TRASPASO", detalle: det || [] });
+              }
+            );
+          }
+
+          // PROFORMA
+          if (String(mov.origen || "").startsWith("PROFORMA")) {
+            return db.query(
+              `SELECT *
+               FROM proformas
+               WHERE proforma_id=? OR CAST(id AS CHAR)=?
+               LIMIT 1`,
+              [ref, ref],
+              (e2, prows) => {
+                if (e2) {
+                  console.log(e2);
+                  return res.send({ ok: false, msg: "Error detalle proforma" });
+                }
+                return res.send({
+                  ok: true,
+                  mov,
+                  tipo_detalle: "PROFORMA",
+                  detalle: (prows && prows[0]) ? prows[0] : null,
+                });
+              }
+            );
+          }
+
+          // VENTA
+          if (mov.origen === "VENTA") {
+            return db.query(
+              `SELECT o.*,
+                      c.name AS customer_name, c.email AS customer_email
+               FROM orders o
+               LEFT JOIN customers c ON c.customer_id = o.customer_id
+               WHERE o.order_id=? OR o.order_ref=?
+               LIMIT 1`,
+              [ref, ref],
+              (e2, orows) => {
+                if (e2) {
+                  console.log(e2);
+                  return res.send({ ok: false, msg: "Error detalle venta" });
+                }
+                return res.send({
+                  ok: true,
+                  mov,
+                  tipo_detalle: "VENTA",
+                  detalle: (orows && orows[0]) ? orows[0] : null,
+                });
+              }
+            );
+          }
+
+          // GASTO
+          if (mov.origen === "GASTO") {
+            return db.query(
+              `SELECT e.*,
+                      s.name AS supplier_name
+               FROM expenses e
+               LEFT JOIN suppliers s ON s.supplier_id = e.supplier_id
+               WHERE e.expense_id=? OR e.expense_ref=?
+               LIMIT 1`,
+              [ref, ref],
+              (e2, erows) => {
+                if (e2) {
+                  console.log(e2);
+                  return res.send({ ok: false, msg: "Error detalle gasto" });
+                }
+                return res.send({
+                  ok: true,
+                  mov,
+                  tipo_detalle: "GASTO",
+                  detalle: (erows && erows[0]) ? erows[0] : null,
+                });
+              }
+            );
+          }
+
+          // Default
+          return res.send({ ok: true, mov, tipo_detalle: "BASICO", detalle: null });
+        }
+      );
     } catch (e) {
       console.log(e);
       return res.send({ ok: false, msg: "Error servidor" });

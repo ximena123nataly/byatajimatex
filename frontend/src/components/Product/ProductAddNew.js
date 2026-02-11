@@ -12,7 +12,8 @@ function ProductAddNew() {
 	const [permission, setPermission] = useState(null)
 
 	const [name, setName] = useState('')
-	const [gender, setGender] = useState("male")
+	const [gender, setGender] = useState("")
+
 	const [size, setSize] = useState('')
 	const [material, setMaterial] = useState('')
 	const [category, setCategory] = useState('')
@@ -28,34 +29,34 @@ function ProductAddNew() {
 	const [imageData, setImageData] = useState(null)
 
 	useEffect(() => {
-			//moment.locale("es");
-		  fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
+		//moment.locale("es");
+		fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
 			method: 'POST',
 			credentials: 'include'
-		  })
+		})
 			.then(res => res.json())
 			.then(body => {
-			  if (body.operation === 'success') {
-				fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-				  method: 'POST',
-				  credentials: 'include'
-				})
-				  .then(res => res.json())
-				  .then(body => {
-					const p = body.permissions?.find(x => x.page === 'products');
-		
-					if (p?.view && p?.create) {
-					  setPermission(p);
-					} else {
-					  window.location.href = '/unauthorized';
-					}
-				  });
-			  } else {
-				window.location.href = '/login';
-			  }
+				if (body.operation === 'success') {
+					fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+						method: 'POST',
+						credentials: 'include'
+					})
+						.then(res => res.json())
+						.then(body => {
+							const p = body.permissions?.find(x => x.page === 'products');
+
+							if (p?.view && p?.create) {
+								setPermission(p);
+							} else {
+								window.location.href = '/unauthorized';
+							}
+						});
+				} else {
+					window.location.href = '/login';
+				}
 			})
 			.catch(console.log);
-		}, [])
+	}, [])
 
 	useEffect(() => {
 		if (permission !== null) {
@@ -191,12 +192,23 @@ function ProductAddNew() {
 												<input className='my_input' type='text' value={name} onChange={(e) => { setName(e.target.value) }} />
 											</div>
 											<div className='col'>
-												<label className='fw-bold'>Género</label>
-												<div className='d-flex gap-2'>
-													<div className="rounded-pill px-2 py-1" style={{ cursor: "pointer", backgroundColor: gender === "male" ? "#a6eda6" : "" }} onClick={() => { setGender("male") }} >Masculino</div>
-													<div className="rounded-pill px-2 py-1" style={{ cursor: "pointer", backgroundColor: gender === "female" ? "#a6eda6" : "" }} onClick={() => { setGender("female") }} >Femenino</div>
-													<div className="rounded-pill px-2 py-1" style={{ cursor: "pointer", backgroundColor: gender === "others" ? "#a6eda6" : "" }} onClick={() => { setGender("others") }} >Otro</div>
-												</div>
+												<label className='fw-bold'>Talla</label>
+												<select
+													className='my_input'
+													value={gender}
+													onChange={(e) => setGender(e.target.value)}
+												>
+													<option value="">Seleccionar talla</option>
+													<option value="XS">XS</option>
+													<option value="S">S</option>
+													<option value="M">M</option>
+													<option value="L">L</option>
+													<option value="XL">XL</option>
+													<option value="XXL">XXL</option>
+													<option value="XXXL">XXXL</option>
+													<option value="VARIAS">Sin talla</option>
+												</select>
+
 											</div>
 										</div>
 
@@ -214,7 +226,20 @@ function ProductAddNew() {
 										<div className="row" style={{ display: 'flex', marginTop: "0.5rem" }}>
 											<div className='col'>
 												<label className='fw-bold'>Categoría</label>
-												<input className='my_input' type='text' value={category} onChange={(e) => { setCategory(e.target.value) }} />
+												<select
+													className='my_input'
+													value={category}
+													onChange={(e) => setCategory(e.target.value)}
+												>
+													<option value="">Seleccionar categoría</option>
+													<option value="Uniformes">Uniformes</option>
+													<option value="Chamarras">Chamarras</option>
+													<option value="Parkas">Parkas</option>
+													<option value="Panocas">Panocas</option>
+													<option value="Accesorios">Accesorios</option>
+													<option value="Otro">Otro</option>
+												</select>
+
 											</div>
 											<div className='col'>
 												<label className='fw-bold'>Descripción</label>

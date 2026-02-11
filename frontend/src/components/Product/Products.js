@@ -30,7 +30,8 @@ function Products() {
 
   const [editProductId, setEditProductId] = useState(null)
   const [editName, setEditName] = useState('')
-  const [editGender, setEditGender] = useState("male")
+  const [editGender, setEditGender] = useState("")
+
   const [editSize, setEditSize] = useState('')
   const [editMaterial, setEditMaterial] = useState('')
   const [editCategory, setEditCategory] = useState('')
@@ -47,34 +48,34 @@ function Products() {
 
   const [editModalSubmitButton, setEditModalSubmitButton] = useState(false)
 
-useEffect(() => {
+  useEffect(() => {
     moment.locale("es");
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
-    method: 'POST',
-    credentials: 'include'
+      method: 'POST',
+      credentials: 'include'
     })
-    .then(res => res.json())
-    .then(body => {
-      if (body.operation === 'success') {
-      fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-        .then(res => res.json())
-        .then(body => {
-        const p = body.permissions?.find(x => x.page === 'products');
-  
-        if (p?.view && p?.create) {
-          setPermission(p);
+      .then(res => res.json())
+      .then(body => {
+        if (body.operation === 'success') {
+          fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
+            method: 'POST',
+            credentials: 'include'
+          })
+            .then(res => res.json())
+            .then(body => {
+              const p = body.permissions?.find(x => x.page === 'products');
+
+              if (p?.view && p?.create) {
+                setPermission(p);
+              } else {
+                window.location.href = '/unauthorized';
+              }
+            });
         } else {
-          window.location.href = '/unauthorized';
+          window.location.href = '/login';
         }
-        });
-      } else {
-      window.location.href = '/login';
-      }
-    })
-    .catch(console.log);
+      })
+      .catch(console.log);
   }, [])
 
   const getProducts = async (sv, sc, so, scv) => {
@@ -131,14 +132,12 @@ useEffect(() => {
   }
 
   // Para mostrar género en español en la tabla
-  const genderToES = (g) => {
-    if (!g) return "";
-    const v = String(g).toLowerCase();
-    if (v === "male") return "Masculino";
-    if (v === "female") return "Femenino";
-    if (v === "others") return "Otros";
-    return g;
+  const tallaLabel = (t) => {
+    if (!t) return "";
+    const v = String(t).trim().toUpperCase();
+    return v; // XS, S, M, L, XL, XXL, XXXL, VARIAS
   };
+
 
   useEffect(() => {
     if (products.length !== 0) {
@@ -146,8 +145,9 @@ useEffect(() => {
         let tObj = {}
         tObj.sl = i + 1;
         tObj.name = obj.name;
-        tObj.gender = genderToES(obj.gender);
-        tObj.size = obj.size;
+        tObj.gender = tallaLabel(obj.gender);
+
+        tObj.category = obj.category;
         tObj.stock = obj.product_stock;
         tObj.addedon = moment(obj.timeStamp).format('D [de] MMMM, YYYY');
         tObj.action =
@@ -328,8 +328,11 @@ useEffect(() => {
               <div className="card">
                 <div className="container">
                   <Table
-                    headers={['N°', 'Nombre', 'Género', 'Talla', 'Stock actual', 'Fecha', 'Acción']}
-                    columnOriginalNames={["name", "gender", "size", "product_stock", "timeStamp"]}
+                    headers={['N°', 'Nombre', 'Talla', 'Categoría', 'Stock actual', 'Fecha', 'Acción']}
+                    columnOriginalNames={["name", "gender", "category", "product_stock", "timeStamp"]}
+
+
+
                     sortColumn={sortColumn}
                     setSortColumn={setSortColumn}
                     sortOrder={sortOrder}
@@ -365,18 +368,24 @@ useEffect(() => {
                   </div>
 
                   <div className='form-group mb-2'>
-                    <label className='fst-italic fw-bold'>Género</label>
-                    <div className='d-flex gap-2'>
-                      <div className="rounded-pill px-2 py-1" style={{ cursor: "pointer", backgroundColor: editGender === "male" ? "#a6eda6" : "" }} onClick={() => { setEditGender("male") }} >
-                        Masculino
-                      </div>
-                      <div className="rounded-pill px-2 py-1" style={{ cursor: "pointer", backgroundColor: editGender === "female" ? "#a6eda6" : "" }} onClick={() => { setEditGender("female") }} >
-                        Femenino
-                      </div>
-                      <div className="rounded-pill px-2 py-1" style={{ cursor: "pointer", backgroundColor: editGender === "others" ? "#a6eda6" : "" }} onClick={() => { setEditGender("others") }} >
-                        Otros
-                      </div>
-                    </div>
+                    <label className='fst-italic fw-bold'>Talla</label>
+                    <select
+                      className='my_form_control'
+                      value={editGender}
+                      onChange={(e) => setEditGender(e.target.value)}
+                    >
+                      <option value="">Seleccionar talla</option>
+                      <option value="XS">XS</option>
+                      <option value="S">S</option>
+                      <option value="M">M</option>
+                      <option value="L">L</option>
+                      <option value="XL">XL</option>
+                      <option value="XXL">XXL</option>
+                      <option value="XXXL">XXXL</option>
+                      <option value="VARIAS">Varias</option>
+                    </select>
+
+
                   </div>
 
                   <div className='form-group mb-2'>
@@ -389,7 +398,20 @@ useEffect(() => {
                   </div>
                   <div className='form-group mb-2'>
                     <label className='fst-italic fw-bold'>Categoría</label>
-                    <input className='my_form_control' type='text' value={editCategory} onChange={(e) => { setEditCategory(e.target.value) }} />
+                    <select
+                      className='my_form_control'
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value)}
+                    >
+                      <option value="">Seleccionar categoría</option>
+                      <option value="Uniformes">Uniformes</option>
+                      <option value="Chamarras">Chamarras</option>
+                      <option value="Parkas">Parkas</option>
+                      <option value="Panocas">Panocas</option>
+                      <option value="Accesorios">Accesorios</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+
                   </div>
                   <div className='form-group mb-2'>
                     <label className='fst-italic fw-bold'>Descripción</label>

@@ -15,6 +15,7 @@ router.post("/api/caja/get_transacciones_by_caja", verifyJwt, caja.getTransaccio
 
 router.post("/api/caja/get_destinos_traspaso", verifyJwt, caja.getDestinosTraspaso);
 router.post("/api/caja/traspaso_saldo", verifyJwt, caja.traspasoSaldo);
+router.post("/api/caja/get_movimiento_detalle", verifyJwt, caja.getMovimientoDetalle);
 
 module.exports = router;
 

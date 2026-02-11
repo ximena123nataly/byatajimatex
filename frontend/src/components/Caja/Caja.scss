@@ -1,8 +1,16 @@
-.caja-container {
+.caja-container{
   padding: 20px;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-.caja-card {
+/* -------------------- CARD CAJA -------------------- */
+
+.caja-card{
   background: white;
   padding: 20px;
   border-radius: 10px;
@@ -10,112 +18,71 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
 
-.row {
+.row{
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
 }
 
-.saldo {
+.saldo{
   font-size: 20px;
   font-weight: bold;
 }
 
-.saldo-positivo {
+.saldo-positivo{
   color: #2ecc71;
 }
 
-.saldo-negativo {
+.saldo-negativo{
   color: #e74c3c;
 }
-.caja-tx-card {
+
+/* -------------------- MOVIMIENTOS -------------------- */
+
+.caja-tx-card{
   margin-top: 20px;
   width: 100%;
+  flex: 1 1 100%;
+  overflow: visible;
 }
 
-.caja-tx-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tabla-wrap {
-  overflow-x: auto;
-  margin-top: 10px;
-}
-
-.tabla-caja {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.tabla-caja th,
-.tabla-caja td {
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.tabla-caja th {
-  font-weight: 800;
-  font-size: 13px;
-  opacity: 0.8;
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.badge-in {
-  background: rgba(46, 204, 113, 0.15);
-  border: 1px solid rgba(46, 204, 113, 0.35);
-}
-
-.badge-out {
-  background: rgba(231, 76, 60, 0.12);
-  border: 1px solid rgba(231, 76, 60, 0.30);
-}
-.caja-tx-card {
-  margin-top: 20px;
-  width: 100%;
-}
-
-.caja-tx-header {
+.caja-tx-header{
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.tabla-wrap {
-  overflow-x: auto;
+/* SOLO scroll horizontal si se necesita */
+.tabla-wrap{
   margin-top: 10px;
+  overflow-x: auto;
+  overflow-y: visible;
+  max-height: none;
+  height: auto;
 }
 
-.tabla-caja {
+.tabla-caja{
   width: 100%;
   border-collapse: collapse;
 }
 
 .tabla-caja th,
-.tabla-caja td {
+.tabla-caja td{
   padding: 10px;
   border-bottom: 1px solid #42ca86;
   text-align: left;
   white-space: nowrap;
 }
 
-.tabla-caja th {
+.tabla-caja th{
   font-weight: 800;
   font-size: 12px;
   opacity: 0.75;
 }
 
-.badge {
+/* -------------------- BADGES -------------------- */
+
+.badge{
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
@@ -123,56 +90,21 @@
   font-size: 12px;
 }
 
-.badge-out {
+.badge-out{
   background: #ffe5e5;
   border: 1px solid #ff6b6b;
   color: #c0392b;
 }
-.badge-in {
+
+.badge-in{
   background: #e6fff1;
   border: 1px solid #2ecc71;
   color: #1e8449;
 }
-.caja-container { height: 100%; overflow: auto; }
 
-.caja-tx-card .tabla-wrap {
-  max-height: 60vh;
-  overflow-y: auto;
-  overflow-x: auto;
-}
+/* -------------------- BOTONES -------------------- */
 
-.caja-container{
-  padding: 20px;
-  min-height: 100vh;
-  height: auto;
-  overflow: visible;  
-  display: block;      
-}
-
-
-.caja-tx-card{
-  margin-top: 20px;
-  width: 100%;
-  flex: initial;
-  min-height: auto;
-  overflow: visible;
-}
-
-
-.tabla-wrap{
-  margin-top: 10px;
-  overflow-x: auto;
-  overflow-y: visible;  
-  max-height: none;     
-  height: auto;
-}
-
-.caja-container{
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-.btn-traspaso {
+.btn-traspaso{
   margin-top: 12px;
   width: 100%;
   background: #0a831a;
@@ -184,28 +116,44 @@
   border-radius: 6px;
 }
 
-.btn-traspaso:disabled {
+.btn-traspaso:disabled{
   opacity: 0.6;
   cursor: not-allowed;
 }
 
+/* BOTON VER (amarillo) */
+.btn-ver{
+  border: 2px solid #ff9900;
+  background: #fff;
+  color: #ff9900;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
 
+.btn-ver:hover{
+  background: #ff9900;
+  color: #fff;
+}
 
+/* -------------------- MODAL -------------------- */
 
-.caja-modal-backdrop {
+.caja-modal-backdrop{
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0,0,0,0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
 }
 
-.caja-modal-box {
+.caja-modal-box{
   width: 340px;
   background: #fff;
   padding: 18px;
@@ -213,14 +161,14 @@
   box-shadow: 0 10px 30px rgba(43, 214, 27, 0.25);
 }
 
-.caja-modal-actions {
+.caja-modal-actions{
   margin-top: 14px;
   display: flex;
   justify-content: space-between;
   gap: 10px;
 }
 
-.caja-modal-actions button {
+.caja-modal-actions button{
   flex: 1;
   padding: 10px;
   border-radius: 6px;
