@@ -140,16 +140,16 @@
   overflow-y: auto;
   overflow-x: auto;
 }
-/* ===== Scroll de TODA la página (no solo la tabla) ===== */
+
 .caja-container{
   padding: 20px;
   min-height: 100vh;
   height: auto;
-  overflow: visible;   /* clave: no ocultar */
-  display: block;      /* no flex forzado */
+  overflow: visible;  
+  display: block;      
 }
 
-/* tarjeta movimientos normal */
+
 .caja-tx-card{
   margin-top: 20px;
   width: 100%;
@@ -158,12 +158,12 @@
   overflow: visible;
 }
 
-/* la tabla solo scrollea horizontal si es muy ancha */
+
 .tabla-wrap{
   margin-top: 10px;
   overflow-x: auto;
-  overflow-y: visible;  /* sin scroll vertical interno */
-  max-height: none;     /* sin límite */
+  overflow-y: visible;  
+  max-height: none;     
   height: auto;
 }
 
@@ -175,7 +175,7 @@
 .btn-traspaso {
   margin-top: 12px;
   width: 100%;
-  background: #111;
+  background: #0a831a;
   color: #fff;
   border: none;
   padding: 10px;
@@ -189,10 +189,8 @@
   cursor: not-allowed;
 }
 
-/* =========================
-   MODAL TRASPASO CAJA
-   (NO CHOCAR CON BOOTSTRAP)
-========================= */
+
+
 
 .caja-modal-backdrop {
   position: fixed;

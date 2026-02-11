@@ -3,19 +3,19 @@ const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
 class Caja {
-  constructor() {}
+  constructor() { }
 
   test = (req, res) => {
     return res.send({ ok: true, msg: "Caja funcionando" });
   };
 
-  
+
   getUserIdFromToken = (req) => {
     const d = jwt.decode(req.cookies.accessToken, { complete: true });
     return d?.payload?.user_id || null;
   };
 
- 
+
   getRoleFromToken = (req) => {
     const d = jwt.decode(req.cookies.accessToken, { complete: true });
     const role = d?.payload?.role || "";
@@ -27,7 +27,7 @@ class Caja {
     return role === "admin" || role === "administrador";
   };
 
-  
+
   ensureCaja = (user_id) => {
     return new Promise((resolve, reject) => {
       if (!user_id) return reject(new Error("user_id no encontrado"));
@@ -70,7 +70,7 @@ class Caja {
     });
   };
 
- 
+
   getCaja = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
@@ -84,7 +84,7 @@ class Caja {
     }
   };
 
-  
+
   getTransacciones = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
@@ -113,7 +113,7 @@ class Caja {
     }
   };
 
- 
+
   getCajas = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
@@ -140,7 +140,7 @@ class Caja {
     }
   };
 
-  
+
   getCajaById = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
@@ -171,7 +171,7 @@ class Caja {
     }
   };
 
-  
+
   getTransaccionesByCaja = async (req, res) => {
     try {
       if (!this.isAdmin(req)) return res.send({ ok: false, msg: "Solo admin" });
@@ -200,18 +200,23 @@ class Caja {
     }
   };
 
-  
+
   getDestinosTraspaso = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
       if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
 
-     
+
       db.query(
-        `SELECT user_id, user_name, email
-         FROM \`user\`
-         WHERE user_id <> ?
-         ORDER BY user_name ASC`,
+        `SELECT 
+      u.user_id,
+      u.user_name,
+      u.email,
+      IFNULL(c.id_caja, '') AS id_caja
+   FROM \`user\` u
+   LEFT JOIN caja c ON c.id_usuario = u.user_id
+   WHERE u.user_id <> ?
+   ORDER BY u.user_name ASC`,
         [user_id],
         (err, rows) => {
           if (err) {
@@ -227,7 +232,7 @@ class Caja {
     }
   };
 
-  
+
   traspasoSaldo = async (req, res) => {
     try {
       const id_usuario_origen = this.getUserIdFromToken(req);
@@ -248,7 +253,7 @@ class Caja {
       const cajaOrigen = await this.ensureCaja(id_usuario_origen);
       const cajaDestino = await this.ensureCaja(id_usuario_destino);
 
-      
+
       const saldoOrigen = parseFloat(cajaOrigen.saldo || 0);
       if (saldoOrigen < montoNum) {
         return res.send({ ok: false, msg: "Saldo insuficiente" });
@@ -260,14 +265,14 @@ class Caja {
       const fecha = d.toISOString().slice(0, 10);
       const hora = d.toTimeString().slice(0, 8);
 
-     
+
       db.beginTransaction((err0) => {
         if (err0) {
           console.log(err0);
           return res.send({ ok: false, msg: "Error iniciando transacción" });
         }
 
-       
+
         db.query(
           `INSERT INTO caja_transacciones
            (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -281,7 +286,7 @@ class Caja {
               );
             }
 
-            
+
             db.query(
               `INSERT INTO caja_transacciones
                (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -295,7 +300,7 @@ class Caja {
                   );
                 }
 
-               
+
                 db.query(
                   `UPDATE caja SET saldo = saldo - ? WHERE id_caja=?`,
                   [montoNum, cajaOrigen.id_caja],
@@ -307,7 +312,7 @@ class Caja {
                       );
                     }
 
-                    
+
                     db.query(
                       `UPDATE caja SET saldo = saldo + ? WHERE id_caja=?`,
                       [montoNum, cajaDestino.id_caja],
@@ -319,7 +324,7 @@ class Caja {
                           );
                         }
 
-                       
+
                         db.commit((err5) => {
                           if (err5) {
                             console.log(err5);
