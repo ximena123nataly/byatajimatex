@@ -259,8 +259,7 @@ function Products() {
     f.append('material', editMaterial)
     f.append('category', editCategory)
     f.append('description', editDescription)
-    f.append('product_stock', parseInt(editStock))
-    f.append('image', editImage)
+    //    f.append('image', editImage)
     f.append('selling_price', parseFloat(editSellingPrice))
     f.append('purchase_price', parseFloat(editPurchasePrice))
 
@@ -427,8 +426,9 @@ function Products() {
                   </div>
                   <div className='form-group mb-2'>
                     <label className='fst-italic fw-bold'>Stock</label>
-                    <input className='my_form_control' type='number' value={editStock} onChange={(e) => { setEditStock(e.target.value) }} />
+                    <input className='my_form_control' type='number' value={editStock} disabled />
                   </div>
+
                 </div>
               </div>
 
