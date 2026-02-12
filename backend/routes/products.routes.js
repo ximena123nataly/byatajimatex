@@ -20,4 +20,16 @@ router.post('/get_products_details_by_id', verifyJwt, product.getProductsDetails
 router.post('/update_product', verifyJwt, upload("/uploads").single("image"), product.updateProduct)
 router.post('/delete_product_image', verifyJwt, product.deleteProductImage)
 
+// Rutas GET adicionales
+router.get('/products', verifyJwt, (req, res) => {
+  // Convertir query params a body para usar la misma función
+  req.body = {
+    search_value: req.query.search || "",
+    sort_column: req.query.sort || "",
+    sort_order: req.query.order || "",
+    start_value: parseInt(req.query.start) || 0
+  };
+  product.getProducts(req, res);
+});
+
 module.exports = router

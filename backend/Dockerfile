@@ -11,7 +11,7 @@ RUN npm install
 # Copiar el resto de la aplicación
 COPY . .
 
-ENV NODE_ENV development
+ENV NODE_ENV=development
 
 EXPOSE 5000
 

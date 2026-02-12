@@ -1,0 +1,67 @@
+#EJECUTAR SOLO BACKEND Y FRONTEND CON DB EXTERNO
+# EN LA MISMA CARPETA AGREGAR EL ARCHIVO DE VARIABLES DE ENTORNO .ENV
+
+services:
+  # Backend Node.js
+  backend:
+    build: ./backend
+    container_name: inventarios-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - inventarios-network
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0 #para Docker en modo development
+      - DB_HOST=148.163.122.9
+      - DB_USER=bordados_prueba
+      - DB_PASSWORD=Bordados*123*bodados
+      - DB_NAME=bordados_inventory
+      - DB_PORT=3306
+      - PORT=5000
+    restart: unless-stopped
+
+  # Frontend (React/Node.js)
+  frontend:
+    build: ./frontend
+    container_name: inventarios-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - inventarios-network
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://backend:5000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # PHPMyAdmin (opcional, solo si quieres conectarte al servidor externo)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: inventarios-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: 148.163.122.9
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      UPLOAD_LIMIT: 128M
+    networks:
+      - inventarios-network
+    depends_on:
+      - backend
+
+networks:
+  inventarios-network:
+    driver: bridge

@@ -1,5 +1,5 @@
 
-
+# EJECUTAR TODO DENTRO DEL CONTENEDOR
 services:
   # Backend Node.js
   backend:

@@ -1,14 +1,16 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Api Backend de inventarios",
+  "main": "app.js",
   "engines": {
     "node": "18.x"
   },
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "prod": "NODE_ENV=production node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -28,4 +30,6 @@
     "uniqid": "^5.4.0",
     "uuid": "^9.0.1"
   }
+  
+  
 }
