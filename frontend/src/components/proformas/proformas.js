@@ -22,6 +22,9 @@ function Proformas() {
   const [searchInput, setSearchInput] = useState("");
   const [sortColumn, setSortColumn] = useState("");
   const [sortOrder, setSortOrder] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [applyDateFilter, setApplyDateFilter] = useState(false);
   const [tablePage, setTablePage] = useState(1);
   const [data, setData] = useState([]);
 
@@ -87,7 +90,11 @@ function Proformas() {
         sort_column: sc,
         sort_order: so,
         search_value: scv,
-        only_pendientes: onlyPendientes, 
+        only_pendientes: onlyPendientes,
+
+
+        desde: applyDateFilter ? desde : "",
+        hasta: applyDateFilter ? hasta : "",
       }),
 
       credentials: "include",
@@ -214,14 +221,14 @@ function Proformas() {
       return;
     }
 
-    // ✅ NUEVO: buscamos la proforma para sacar nombre y celular
+
     const p = proformas.find((x) => Number(x.id) === Number(id));
     const nombreCliente = p?.cliente || "";
     const celularCliente = p?.celular || "";
 
     const input = await swal({
       title: "Cobrar saldo",
-      // ✅ NUEVO: mostramos nombre + celular + saldo
+
       text: `${nombreCliente}${celularCliente ? "   " + celularCliente : ""}\nSaldo actual: ${saldoNum.toFixed(2)}`,
       content: {
         element: "input",
@@ -305,7 +312,88 @@ function Proformas() {
     const entregado = Number(obj?.entregado) === 1;
     return entregado ? "row-entregado" : "row-no-entregado";
   };
+  const filtrarPorFechas = () => {
+    setApplyDateFilter(true);
+    setTablePage(1);
+  };
 
+  const limpiarFechas = () => {
+    setDesde("");
+    setHasta("");
+    setApplyDateFilter(false);
+    setTablePage(1);
+  };
+  const imprimirReporteProformas = () => {
+    const filas = (proformas || [])
+      .map((p, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${formatProforma(p.id)}</td>
+        <td>${String(p.cliente || "")}</td>
+        <td style="text-align:right;">${Number(p.total_general || 0).toFixed(2)}</td>
+        <td style="text-align:right;">${Number(p.saldo || 0).toFixed(2)}</td>
+        <td>${p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : ""}</td>
+      </tr>
+    `)
+      .join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Reporte Proformas</title>
+  <style>
+    @page { size: letter portrait; margin: 12mm; }
+    body { font-family: Arial, sans-serif; color:#111; }
+    h2 { margin: 0 0 6px; }
+    .meta { font-size: 12px; color:#444; margin-bottom: 10px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
+    th { background: #f3f3f3; }
+  </style>
+</head>
+<body>
+  <h2>Reporte de Proformas</h2>
+  <div class="meta">
+    Rango: <b>${desde || "-"}</b> a <b>${hasta || "-"}</b> |
+    Filas: <b>${(proformas || []).length}</b>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Proforma</th>
+        <th>Cliente</th>
+        <th>Total</th>
+        <th>Saldo</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filas || `<tr><td colspan="6">Sin datos</td></tr>`}
+    </tbody>
+  </table>
+
+  <script>
+    window.onload = function(){
+      window.print();
+      window.onafterprint = function(){ window.close(); }
+    }
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank", "width=1000,height=700");
+    if (!w) {
+      swal("Bloqueado", "Permite pop-ups para imprimir.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
   const imprimirProforma = (p) => {
     if (!p) return;
 
@@ -544,169 +632,205 @@ function Proformas() {
   return (
     <div className="products">
       <div className="products-scroll">
-        <div className="product-header">
-          <div className="title">Proformas</div>
-          {permission?.create && (
-            <Link to="/proformas/addnew" className="btn success">
-              Agregar nueva
-            </Link>
-          )}
-        </div>
+        <div className="proformas-header">
 
-        {pageState === 1 ? (
-          <Loader />
-        ) : pageState === 2 ? (
-          <div className="card">
-            <div className="container">
-              <Table
-                headers={["N°", "Proforma", "Cliente", "Total", "Saldo", "Fecha", "Fecha entrega", "Hora entrega", "Acción"]}
-                columnOriginalNames={[
-                  ["sl", ""],
-                  ["id", ""],
-                  ["cliente", ""],
-                  ["total_general", ""],
-                  ["saldo", ""],
-                  ["fecha", ""],
-                  ["fecha_entrega", ""],
-                  ["hora_entrega", ""],
-                  ["action", ""],
-                ]}
-                data={data}
-                data_count={count}
-                searchInput={searchInput}
-                setSearchInput={setSearchInput}
-                current_page={tablePage}
-                tablePageChangeFunc={setTablePage}
-                rowClassNameKey="_rowClass"
-                setSortColumn={setSortColumn}
-                setSortOrder={setSortOrder}
-                sortColumn={sortColumn}
-                sortOrder={sortOrder}
-              />
+          {/* FILTROS */}
+          <div className="filters-bar">
+            <div className="filters-left">
+              <label>
+                Desde:
+                <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+              </label>
+
+              <label>
+                Hasta:
+                <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+              </label>
+
+              <button className="btn warning" onClick={filtrarPorFechas}>
+                Filtrar
+              </button>
+
+              {(applyDateFilter || desde || hasta) && (
+                <button className="btn danger" onClick={limpiarFechas}>
+                  Limpiar
+                </button>
+              )}
+
+              <button className="btn warning" onClick={imprimirReporteProformas}>
+                Imprimir reporte
+              </button>
             </div>
-          </div>
-        ) : (
-          <Error />
-        )}
+          
 
+          {/* TITULO + BOTON */}
+          <div className="title-row">
+            <div className="title">Proformas</div>
 
-        <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
-          <Modal.Header closeButton>
-            <Modal.Title>Detalle de Proforma</Modal.Title>
-          </Modal.Header>
-
-          <Modal.Body>
-            {selected && (
-              <>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-                  <div>
-                    <div>
-                      <b>Proforma:</b> {formatProforma(selected.id)}
-                    </div>
-                    <div>
-                      <b>Cliente:</b> {selected.cliente || "-"}
-                    </div>
-                    <div>
-                      <b>Celular:</b> {selected.celular || "-"}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div>
-                      <b>Fecha:</b>{" "}
-                      {selected.fecha ? moment.utc(selected.fecha).format("D [de] MMMM, YYYY") : "-"}
-                    </div>
-                    <div>
-                      <b>Hora:</b> {selected.hora || "-"}
-                    </div>
-
-                    <div>
-                      <b>Fecha entrega:</b>{" "}
-                      {selected.fecha_entrega ? moment.utc(selected.fecha_entrega).format("D [de] MMMM, YYYY") : "-"}
-                    </div>
-                    <div>
-                      <b>Hora entrega:</b> {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
-                    </div>
-
-                    <div>
-                      <b>Estado:</b> {selected.estado || "-"}
-                    </div>
-                    <div>
-                      <b>Entregado:</b> {selected.entregado ? "Sí" : "No"}
-                    </div>
-                  </div>
-                </div>
-
-                <hr />
-
-                <div style={{ overflowX: "auto" }}>
-                  <table className="table table-bordered" style={{ width: "100%", minWidth: "650px" }}>
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Cant.</th>
-                        <th>Detalle</th>
-                        <th>Oferta</th>
-                        <th>Precio</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {(selected.detalle || []).length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ textAlign: "center" }}>
-                            Sin ítems
-                          </td>
-                        </tr>
-                      ) : (
-                        (selected.detalle || []).map((it, idx) => (
-                          <tr key={idx}>
-                            <td>{idx + 1}</td>
-                            <td>{it.cantidad ?? "-"}</td>
-                            <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
-                            <td>{it.oferta ?? "Sin oferta"}</td>
-                            <td>{it.precio_unitario ?? "-"}</td>
-                            <td>{it.total ?? "-"}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", marginTop: "1rem", gap: "12px", flexWrap: "wrap" }}>
-                  <button
-                    className="btn btn-outline-primary"
-                    onClick={() => imprimirProforma(selected)}
-                    style={{ minWidth: "120px" }}
-                  >
-                    Imprimir
-                  </button>
-
-                  <div style={{ minWidth: "280px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span><b>Total:</b></span>
-                      <span>{selected.total_general ?? 0}</span>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span><b>Anticipo / Monto pagado:</b></span>
-                      <span>{selected.anticipo ?? 0}</span>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <span><b>Saldo:</b></span>
-                      <span>{selected.saldo ?? 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </>
+            {permission?.create && (
+              <Link to="/proformas/addnew" className="btn success">
+                Agregar nueva
+              </Link>
             )}
-          </Modal.Body>
-        </Modal>
+          </div>
+
+        </div>
       </div>
+
+      {pageState === 1 ? (
+        <Loader />
+      ) : pageState === 2 ? (
+        <div className="card">
+          <div className="container">
+            <Table
+              headers={["N°", "Proforma", "Cliente", "Total", "Saldo", "Fecha", "Fecha entrega", "Hora entrega", "Acción"]}
+              columnOriginalNames={[
+                ["sl", ""],
+                ["id", ""],
+                ["cliente", ""],
+                ["total_general", ""],
+                ["saldo", ""],
+                ["fecha", ""],
+                ["fecha_entrega", ""],
+                ["hora_entrega", ""],
+                ["action", ""],
+              ]}
+              data={data}
+              data_count={count}
+              searchInput={searchInput}
+              setSearchInput={setSearchInput}
+              current_page={tablePage}
+              tablePageChangeFunc={setTablePage}
+              rowClassNameKey="_rowClass"
+              setSortColumn={setSortColumn}
+              setSortOrder={setSortOrder}
+              sortColumn={sortColumn}
+              sortOrder={sortOrder}
+            />
+          </div>
+        </div>
+      ) : (
+        <Error />
+      )}
+
+
+      <Modal show={viewModalShow} onHide={closeViewModal} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Detalle de Proforma</Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          {selected && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+                <div>
+                  <div>
+                    <b>Proforma:</b> {formatProforma(selected.id)}
+                  </div>
+                  <div>
+                    <b>Cliente:</b> {selected.cliente || "-"}
+                  </div>
+                  <div>
+                    <b>Celular:</b> {selected.celular || "-"}
+                  </div>
+                </div>
+
+                <div>
+                  <div>
+                    <b>Fecha:</b>{" "}
+                    {selected.fecha ? moment.utc(selected.fecha).format("D [de] MMMM, YYYY") : "-"}
+                  </div>
+                  <div>
+                    <b>Hora:</b> {selected.hora || "-"}
+                  </div>
+
+                  <div>
+                    <b>Fecha entrega:</b>{" "}
+                    {selected.fecha_entrega ? moment.utc(selected.fecha_entrega).format("D [de] MMMM, YYYY") : "-"}
+                  </div>
+                  <div>
+                    <b>Hora entrega:</b> {selected.hora_entrega ? String(selected.hora_entrega).slice(0, 5) : "-"}
+                  </div>
+
+                  <div>
+                    <b>Estado:</b> {selected.estado || "-"}
+                  </div>
+                  <div>
+                    <b>Entregado:</b> {selected.entregado ? "Sí" : "No"}
+                  </div>
+                </div>
+              </div>
+
+              <hr />
+
+              <div style={{ overflowX: "auto" }}>
+                <table className="table table-bordered" style={{ width: "100%", minWidth: "650px" }}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Cant.</th>
+                      <th>Detalle</th>
+                      <th>Oferta</th>
+                      <th>Precio</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {(selected.detalle || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ textAlign: "center" }}>
+                          Sin ítems
+                        </td>
+                      </tr>
+                    ) : (
+                      (selected.detalle || []).map((it, idx) => (
+                        <tr key={idx}>
+                          <td>{idx + 1}</td>
+                          <td>{it.cantidad ?? "-"}</td>
+                          <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
+                          <td>{it.oferta ?? "Sin oferta"}</td>
+                          <td>{it.precio_unitario ?? "-"}</td>
+                          <td>{it.total ?? "-"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "flex-end", marginTop: "1rem", gap: "12px", flexWrap: "wrap" }}>
+                <button
+                  className="btn btn-outline-primary"
+                  onClick={() => imprimirProforma(selected)}
+                  style={{ minWidth: "120px" }}
+                >
+                  Imprimir
+                </button>
+
+                <div style={{ minWidth: "280px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span><b>Total:</b></span>
+                    <span>{selected.total_general ?? 0}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span><b>Anticipo / Monto pagado:</b></span>
+                    <span>{selected.anticipo ?? 0}</span>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span><b>Saldo:</b></span>
+                    <span>{selected.saldo ?? 0}</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
     </div>
+    </div >
   );
 }
 

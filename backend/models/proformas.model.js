@@ -43,7 +43,14 @@ class Proforma {
 
       new Promise((resolve, reject) => {
         let whereParts = [];
-
+       
+        if (req.body.desde && req.body.hasta) {
+          whereParts.push(`DATE(fecha) BETWEEN "${req.body.desde}" AND "${req.body.hasta}"`);
+        } else if (req.body.desde) {
+          whereParts.push(`DATE(fecha) >= "${req.body.desde}"`);
+        } else if (req.body.hasta) {
+          whereParts.push(`DATE(fecha) <= "${req.body.hasta}"`);
+        }
 
         if (req.body.only_pendientes) {
           whereParts.push(`entregado = 0`);
@@ -64,7 +71,7 @@ class Proforma {
           : "";
 
 
-       
+
         let tso = "";
         if (req.body.sort_column && req.body.sort_order) {
           tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
