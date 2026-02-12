@@ -34,7 +34,7 @@ function getUserIdFromCookie(req) {
 }
 
 class Proforma {
-  constructor() {}
+  constructor() { }
 
   // GET PROFORMAS (tabla)
   getProformas = (req, res) => {
@@ -42,17 +42,29 @@ class Proforma {
       jwt.decode(req.cookies.accessToken, { complete: true });
 
       new Promise((resolve, reject) => {
-        let tsa = "";
+        let whereParts = [];
+
+
+        if (req.body.only_pendientes) {
+          whereParts.push(`entregado = 0`);
+        }
+
 
         if (req.body.search_value && req.body.search_value !== "") {
           const sv = req.body.search_value;
-          tsa = `
-            WHERE CAST(id AS CHAR) LIKE "%${sv}%"
-               OR cliente LIKE "%${sv}%"
-               OR celular LIKE "%${sv}%"
-          `;
+          whereParts.push(`
+    (CAST(id AS CHAR) LIKE "%${sv}%"
+      OR cliente LIKE "%${sv}%"
+      OR celular LIKE "%${sv}%")
+  `);
         }
 
+        const tsa = whereParts.length
+          ? `WHERE ${whereParts.join(" AND ")}`
+          : "";
+
+
+       
         let tso = "";
         if (req.body.sort_column && req.body.sort_order) {
           tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
@@ -87,15 +99,13 @@ class Proforma {
         db.query(q, [req.body.start_value], (err, result) => {
           if (err) return reject(err);
 
-          if (req.body.search_value && req.body.search_value !== "") {
-            return resolve({
-              operation: "success",
-              message: "search proformas got",
-              info: { proformas: result, count: result.length },
-            });
-          }
 
-          const q2 = "SELECT COUNT(*) AS val FROM proformas";
+          const q2 = `
+  SELECT COUNT(*) AS val
+  FROM proformas
+  ${tsa}
+`;
+
           db.query(q2, (err2, result2) => {
             if (err2) return reject(err2);
 

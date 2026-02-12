@@ -4,6 +4,7 @@ import Feature from './Features/Feature'
 import Chart from './chart/Chart'
 import Loader from '../PageStates/Loader'
 import Error from '../PageStates/Error'
+import { Link } from "react-router-dom";
 
 function Dashboard() {
   const [pageState, setPageState] = useState(1)
@@ -127,14 +128,21 @@ function Dashboard() {
                     <div className='itme_stats'>
                       <div style={{ flex: "1" }}>
                         {/*  Bordados que faltan bordar */}
-                        <div className="row mb-1">
-                          <div className='col-9 text-danger fw-bold'>
-                            Trabajos que faltan bordar 
+                        <div className="row mb-1 align-items-center">
+                          <div className="col-9">
+                            <Link
+                              to="/proformas?pendientes=1"
+                              className="dashboard-pendientes-link"
+                            >
+                              Trabajos que faltan bordar
+                            </Link>
                           </div>
-                          <div className='col-3 fw-bold text-end'>
+
+                          <div className="col-3 fw-bold text-end">
                             {productStats?.[4]?.bordados_pendientes ?? 0}
                           </div>
                         </div>
+
 
                         <div className="row mb-1">
                           <div className='col-9'>Número total de artículos:</div>
@@ -157,7 +165,7 @@ function Dashboard() {
                           })
                         }
 
-                        
+
 
                       </div>
 
@@ -259,6 +267,8 @@ function Dashboard() {
       </div>
     </div>
   )
+
+
 }
 
 export default Dashboard

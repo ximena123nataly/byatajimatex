@@ -34,23 +34,42 @@ function getUserIdFromCookie(req) {
 }
 
 class Expense {
-  constructor() {}
+  constructor() { }
 
   getExpenses = (req, res) => {
     try {
-      const sv = req.body.search_value || "";
-      const sortCol = req.body.sort_column || "";
-      const sortOrd = req.body.sort_order || "";
+      const sv = (req.body.search_value || "").trim();
+      const sortCol = (req.body.sort_column || "").trim();
+      const sortOrd = (req.body.sort_order || "").trim().toUpperCase();
       const startVal = Number(req.body.start_value || 0);
 
-      let where = "";
+      // ✅ NUEVO
+      const dateFrom = (req.body.date_from || "").trim(); // "YYYY-MM-DD"
+      const dateTo = (req.body.date_to || "").trim();     // "YYYY-MM-DD"
+      const exportAll = !!req.body.export_all;
+
+      let whereParts = [];
       const params = [];
 
-      if (sv.trim() !== "") {
-        where = `WHERE (s.name LIKE ? OR e.expense_ref LIKE ?)`;
+      // buscar (seguro con placeholders)
+      if (sv !== "") {
+        whereParts.push(`(s.name LIKE ? OR e.expense_ref LIKE ?)`);
         params.push(`%${sv}%`, `%${sv}%`);
       }
 
+      // ✅ filtro fechas (por timeStamp)
+      if (dateFrom) {
+        whereParts.push(`DATE(e.timeStamp) >= ?`);
+        params.push(dateFrom);
+      }
+      if (dateTo) {
+        whereParts.push(`DATE(e.timeStamp) <= ?`);
+        params.push(dateTo);
+      }
+
+      const where = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+
+      // sort seguro (evita SQL injection por ORDER BY)
       const allowedSort = new Set(["expense_ref", "due_date", "grand_total", "timeStamp"]);
       let orderBy = "";
       if (allowedSort.has(sortCol) && (sortOrd === "ASC" || sortOrd === "DESC")) {
@@ -59,30 +78,33 @@ class Expense {
         orderBy = `ORDER BY e.timeStamp DESC`;
       }
 
+      // ✅ LIMIT solo si NO export_all
+      const limitSql = exportAll ? "" : "LIMIT ?,10";
+      const qParams = exportAll ? [...params] : [...params, startVal];
+
       const q = `
-        SELECT e.*, s.name as supplier_name
-        FROM expenses e
-        LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
-        ${where}
-        ${orderBy}
-        LIMIT ?,10
-      `;
-      const qParams = [...params, startVal];
+      SELECT e.*, s.name as supplier_name
+      FROM expenses e
+      LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
+      ${where}
+      ${orderBy}
+      ${limitSql}
+    `;
 
       db.query(q, qParams, (err, result) => {
         if (err) return res.send({ operation: "error", message: err.message });
 
         const q2 = `
-          SELECT COUNT(*) AS val
-          FROM expenses e
-          LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
-          ${where}
-        `;
+        SELECT COUNT(*) AS val
+        FROM expenses e
+        LEFT JOIN suppliers s ON e.supplier_id=s.supplier_id
+        ${where}
+      `;
 
         db.query(q2, params, (err2, result2) => {
           if (err2) return res.send({ operation: "error", message: err2.message });
 
-          res.send({
+          return res.send({
             operation: "success",
             info: {
               expenses: result,
@@ -95,6 +117,7 @@ class Expense {
       res.send({ operation: "error", message: e?.message || "Error cargando gastos" });
     }
   };
+
 
   addExpense = (req, res) => {
     try {
@@ -119,13 +142,13 @@ class Expense {
 
       const expense_id = uniqid();
 
-    
+
       const { fecha, hora } = nowDateTimeTZ("America/La_Paz");
 
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-        
+
         const q = `
           INSERT INTO expenses
           (expense_id, expense_ref, supplier_id, due_date, items, tax, grand_total, user_id)
@@ -147,7 +170,7 @@ class Expense {
           (err) => {
             if (err) return db.rollback(() => res.send({ operation: "error", message: err.message }));
 
-          
+
             const tasks = req.body.item_array.map((prod) => {
               return new Promise((resolve, reject) => {
                 db.query(
@@ -160,7 +183,7 @@ class Expense {
 
             Promise.all(tasks)
               .then(() => {
-                
+
                 db.query(
                   `SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1`,
                   [id_usuario],
@@ -183,7 +206,7 @@ class Expense {
 
                     const id_caja = cajaRes[0].id_caja;
 
-                   
+
                     const qtx = `
                       INSERT INTO caja_transacciones
                       (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -200,7 +223,7 @@ class Expense {
                           );
                         }
 
-                      
+
                         db.query(
                           `UPDATE caja SET saldo = saldo - ? WHERE id_caja = ?`,
                           [grandTotal, id_caja],
@@ -250,7 +273,7 @@ class Expense {
         db.beginTransaction((txErr) => {
           if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-          
+
           const tasks = items.map((p) => {
             return new Promise((resolve, reject) => {
               db.query(

@@ -22,6 +22,9 @@ function Orders() {
   const [sortOrder, setSortOrder] = useState("")
   const [tablePage, setTablePage] = useState(1)
   const [data, setData] = useState([])
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
 
   // Modal
   const [viewModalShow, setViewModalShow] = useState(false)
@@ -61,7 +64,15 @@ function Orders() {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_orders`, {
       method: 'POST',
       headers: { 'Content-type': 'application/json; charset=UTF-8' },
-      body: JSON.stringify({ start_value: sv, sort_column: sc, sort_order: so, search_value: scv }),
+      body: JSON.stringify({
+        start_value: sv,
+        sort_column: sc,
+        sort_order: so,
+        search_value: scv,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+      }),
+
       credentials: 'include'
     })
 
@@ -74,14 +85,10 @@ function Orders() {
     if (permission !== null) {
       getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput)
         .then(() => setPageState(2))
-        .catch(() => setPageState(3))
+        .catch(() => setPageState(3));
     }
-  }, [permission])
+  }, [permission, tablePage, sortColumn, sortOrder, searchInput]);
 
-  useEffect(() => {
-    if (permission !== null)
-      getOrders((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-  }, [tablePage, sortColumn, sortOrder, searchInput])
 
   const deleteOrder = async (id) => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_order`, {
@@ -319,16 +326,150 @@ function Orders() {
     w.document.write(html);
     w.document.close();
   };
+  const imprimirVentasFiltradas = async () => {
+    const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_orders`, {
+      method: "POST",
+      headers: { "Content-type": "application/json; charset=UTF-8" },
+      credentials: "include",
+      body: JSON.stringify({
+        start_value: 0,
+        sort_column: sortColumn,
+        sort_order: sortOrder,
+        search_value: searchInput,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+        export_all: true,
+      }),
+    });
+
+    const body = await result.json();
+    const rows = body.info?.orders || [];
+
+    const safe = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const filas = rows.map((o, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${safe(o.order_ref || "")}</td>
+      <td>${safe(o.customer_name || "")}</td>
+      <td>${o.due_date ? moment(o.due_date).format("YYYY-MM-DD") : ""}</td>
+      <td style="text-align:right;">${money(o.grand_total)}</td>
+      <td>${o.timeStamp ? moment(o.timeStamp).format("YYYY-MM-DD") : ""}</td>
+    </tr>
+  `).join("");
+
+    const totalSum = rows.reduce((acc, o) => acc + toNumber(o.grand_total), 0);
+
+    const html = `
+  <html><head><meta charset="utf-8"/>
+  <title>Reporte Ventas</title>
+  <style>
+    body{font-family:Arial; color:#111; padding:18px}
+    table{width:100%; border-collapse:collapse; margin-top:10px}
+    th,td{border:1px solid #ddd; padding:6px; font-size:12px}
+    th{background:#f3f3f3}
+    .right{text-align:right}
+  </style>
+  </head>
+  <body>
+    <h3>Reporte de Ventas</h3>
+    <div>Desde: <b>${dateFrom || "-"}</b> &nbsp; Hasta: <b>${dateTo || "-"}</b></div>
+    <div>Total ventas: <b>${money(totalSum)}</b></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Ref</th><th>Cliente</th><th>Vence</th><th>Total</th><th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="6">Sin datos</td></tr>`}
+      </tbody>
+    </table>
+
+    <script>
+      window.onload=()=>{window.print(); window.onafterprint=()=>window.close();}
+    </script>
+  </body></html>`;
+
+    const w = window.open("", "_blank", "width=900,height=650");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
 
   return (
     <div className='orders'>
       <div style={{ overflow: "scroll", height: "100%" }} >
-        <div className='order-header'>
-          <div className='title'>Ventas</div>
-          <Link to={"/orders/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
-            Agregar nuevo
-          </Link>
+        <div className="order-header">
+
+          {/* ===== FILTROS (PRIMERA FILA) ===== */}
+          <div className="filters-bar">
+            <div className="filters-left">
+
+              <label>
+                <span>Desde:</span>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>Hasta:</span>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </label>
+
+              <button
+                className="btn primary"
+                onClick={() => {
+                  setTablePage(1);
+                  getOrders(0, sortColumn, sortOrder, searchInput);
+                }}
+              >
+                Filtrar
+              </button>
+
+              <button
+                className="btn warning"
+                onClick={imprimirVentasFiltradas}
+              >
+                Imprimir reporte
+              </button>
+
+            </div>
+          </div>
+
+          {/* ===== TITULO + BOTON (SEGUNDA FILA) ===== */}
+          <div className="title-row">
+            <div className="title">Ventas</div>
+
+            <Link
+              to={"/orders/addnew"}
+              className="btn success"
+              style={{ textDecoration: "none" }}
+            >
+              Agregar nuevo
+            </Link>
+          </div>
+
         </div>
+
 
         {
           pageState === 1 ? <Loader /> :

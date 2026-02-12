@@ -22,7 +22,11 @@ function Expenses() {
   const [tablePage, setTablePage] = useState(1)
   const [data, setData] = useState([])
 
+  // ✅ filtros fecha
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
 
+  // Modal
   const [viewModalShow, setViewModalShow] = useState(false)
   const [viewExpenseDetails, setViewExpenseDetails] = useState(null)
   const [productDetails, setProductDetails] = useState([])
@@ -42,12 +46,8 @@ function Expenses() {
             .then(res => res.json())
             .then(body => {
               const p = body.permissions?.find(x => x.page === 'expenses');
-
-              if (p?.view && p?.create) {
-                setPermission(p);
-              } else {
-                window.location.href = '/unauthorized';
-              }
+              if (p?.view && p?.create) setPermission(p);
+              else window.location.href = '/unauthorized';
             });
         } else {
           window.location.href = '/login';
@@ -59,10 +59,15 @@ function Expenses() {
   const getExpenses = async (sv, sc, so, scv) => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_expenses`, {
       method: 'POST',
-      headers: {
-        'Content-type': 'application/json; charset=UTF-8'
-      },
-      body: JSON.stringify({ start_value: sv, sort_column: sc, sort_order: so, search_value: scv }),
+      headers: { 'Content-type': 'application/json; charset=UTF-8' },
+      body: JSON.stringify({
+        start_value: sv,
+        sort_column: sc,
+        sort_order: so,
+        search_value: scv,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+      }),
       credentials: 'include'
     })
 
@@ -74,9 +79,7 @@ function Expenses() {
   const getProductsDetailsById = async (value) => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_details_by_id`, {
       method: 'POST',
-      headers: {
-        'Content-type': 'application/json; charset=UTF-8'
-      },
+      headers: { 'Content-type': 'application/json; charset=UTF-8' },
       body: JSON.stringify({ product_id_list: value }),
       credentials: 'include'
     })
@@ -85,31 +88,19 @@ function Expenses() {
     setProductDetails(body.info.products);
   }
 
+  // ✅ igual que Ventas: una sola recarga controlada
   useEffect(() => {
     if (permission !== null) {
-      let p1 = getExpenses((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-      Promise.all([p1])
-        .then(() => {
-          setPageState(2);
-        })
-        .catch((err) => {
-          console.log(err)
-          setPageState(3)
-        })
+      getExpenses((tablePage - 1) * 10, sortColumn, sortOrder, searchInput)
+        .then(() => setPageState(2))
+        .catch(() => setPageState(3))
     }
-  }, [permission])
-
-  useEffect(() => {
-    if (permission !== null)
-      getExpenses((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
-  }, [tablePage, sortColumn, sortOrder, searchInput])
+  }, [permission, tablePage, sortColumn, sortOrder, searchInput])
 
   const deleteExpense = async (id) => {
     let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_expense`, {
       method: 'POST',
-      headers: {
-        'Content-type': 'application/json; charset=UTF-8'
-      },
+      headers: { 'Content-type': 'application/json; charset=UTF-8' },
       body: JSON.stringify({ expense_id: id }),
       credentials: 'include'
     })
@@ -130,16 +121,16 @@ function Expenses() {
         tObj.sl = i + 1;
         tObj.expense_ref = obj.expense_ref;
         tObj.supplier_name = obj.supplier_name;
-        tObj.due_date = moment(obj.due_date).format('MMMM Do, YYYY');
+        tObj.due_date = moment(obj.due_date).format('D [de] MMMM, YYYY');
         tObj.grand_total = obj.grand_total;
-        tObj.addedon = moment(obj.timeStamp).format('MMMM Do, YYYY');
+        tObj.addedon = moment(obj.timeStamp).format('D [de] MMMM, YYYY');
         tObj.action =
           <>
             <button className='btn warning' style={{ marginRight: '0.5rem' }} onClick={() => { viewModalInit(obj.expense_id) }} >
               Ver
             </button>
             {
-              permission.delete &&
+              permission?.delete &&
               <button className='btn danger' style={{ marginLeft: '0.5rem' }}
                 onClick={() => {
                   swal({
@@ -150,9 +141,7 @@ function Expenses() {
                     dangerMode: true,
                   })
                     .then((willDelete) => {
-                      if (willDelete) {
-                        deleteExpense(obj.expense_id)
-                      }
+                      if (willDelete) deleteExpense(obj.expense_id)
                     });
                 }}
               >
@@ -166,14 +155,12 @@ function Expenses() {
     } else {
       setData([])
     }
-  }, [expenses])
+  }, [expenses, permission])
 
   const viewModalInit = (id) => {
     let p = expenses.find(x => x.expense_id === id)
-
     setViewExpenseDetails(p)
-    setViewModalShow(true);
-
+    setViewModalShow(true)
 
     try {
       getProductsDetailsById(JSON.parse(p.items).map(x => x.product_id))
@@ -183,12 +170,12 @@ function Expenses() {
   }
 
   const handleViewModalClose = () => {
-    setViewModalShow(false);
+    setViewModalShow(false)
     setViewExpenseDetails(null)
     setProductDetails([])
   }
 
-
+  // ---------- helpers ----------
   const toNumber = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
@@ -200,16 +187,13 @@ function Expenses() {
     return num.toFixed(2);
   };
 
+  // ---------- imprimir detalle gasto ----------
   const imprimirGasto = (gasto) => {
     if (!gasto) return;
     const pad7 = (n) => String(n ?? "").padStart(7, "0");
 
     let items = [];
-    try {
-      items = gasto.items ? JSON.parse(gasto.items) : [];
-    } catch (e) {
-      items = [];
-    }
+    try { items = gasto.items ? JSON.parse(gasto.items) : []; } catch (e) { items = []; }
 
     const filas = (items || [])
       .map((it) => {
@@ -287,13 +271,7 @@ function Expenses() {
       </div>
 
       <div class="col-right small" style="margin-top:14px;">
-        <div>
-  N°:
-  <span style="font-size:18px; font-weight:800;">
-    ${pad7(gasto.expense_id)}
-  </span>
-</div>
-
+        <div>N°: <span style="font-size:18px; font-weight:800;">${pad7(gasto.expense_id)}</span></div>
         <div>Fecha: <b>${moment(gasto.timeStamp).format("YYYY-MM-DD")}</b></div>
       </div>
     </div>
@@ -355,25 +333,139 @@ function Expenses() {
     w.document.close();
   };
 
+  // ✅ imprimir reporte (filtrado)
+  const imprimirGastosFiltrados = async () => {
+    const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_expenses`, {
+      method: "POST",
+      headers: { "Content-type": "application/json; charset=UTF-8" },
+      credentials: "include",
+      body: JSON.stringify({
+        start_value: 0,
+        sort_column: sortColumn,
+        sort_order: sortOrder,
+        search_value: searchInput,
+        date_from: dateFrom || null,
+        date_to: dateTo || null,
+        export_all: true,
+      }),
+    });
+
+    const body = await result.json();
+    const rows = body.info?.expenses || [];
+
+    const safe = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const filas = rows.map((e, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${safe(e.expense_ref || "")}</td>
+        <td>${safe(e.supplier_name || "")}</td>
+        <td>${e.due_date ? moment(e.due_date).format("YYYY-MM-DD") : ""}</td>
+        <td style="text-align:right;">${money(e.grand_total)}</td>
+        <td>${e.timeStamp ? moment(e.timeStamp).format("YYYY-MM-DD") : ""}</td>
+      </tr>
+    `).join("");
+
+    const totalSum = rows.reduce((acc, e) => acc + toNumber(e.grand_total), 0);
+
+    const html = `
+    <html><head><meta charset="utf-8"/>
+    <title>Reporte Gastos</title>
+    <style>
+      body{font-family:Arial; color:#111; padding:18px}
+      table{width:100%; border-collapse:collapse; margin-top:10px}
+      th,td{border:1px solid #ddd; padding:6px; font-size:12px}
+      th{background:#f3f3f3}
+    </style>
+    </head>
+    <body>
+      <h3>Reporte de Gastos</h3>
+      <div>Desde: <b>${dateFrom || "-"}</b> &nbsp; Hasta: <b>${dateTo || "-"}</b></div>
+      <div>Total gastos: <b>${money(totalSum)}</b></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Ref</th><th>Proveedor</th><th>Vence</th><th>Total</th><th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filas || `<tr><td colspan="6">Sin datos</td></tr>`}
+        </tbody>
+      </table>
+
+      <script>
+        window.onload=()=>{window.print(); window.onafterprint=()=>window.close();}
+      </script>
+    </body></html>`;
+
+    const w = window.open("", "_blank", "width=900,height=650");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className='expenses'>
       <div style={{ overflow: "scroll", height: "100%" }} >
+
+        {/* ✅ HEADER IGUAL A VENTAS */}
         <div className='expense-header'>
-          <div className='title'>Gastos</div>
-          <Link to={"/expenses/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
-            Agregar nuevo gasto
-          </Link>
+
+          <div className="filters-bar">
+            <div className="filters-left">
+              <label>
+                Desde:
+                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              </label>
+
+              <label>
+                Hasta:
+                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              </label>
+
+              <button
+                className="btn primary"
+                onClick={() => {
+                  setTablePage(1);
+                  getExpenses(0, sortColumn, sortOrder, searchInput);
+                }}
+              >
+                Filtrar
+              </button>
+
+              <button className="btn warning" onClick={imprimirGastosFiltrados}>
+                Imprimir reporte
+              </button>
+            </div>
+          </div>
+
+          <div className="title-row">
+            <div className='title'>Gastos</div>
+            <Link to={"/expenses/addnew"} className='btn success' style={{ margin: "0 0.5rem", textDecoration: "none" }}>
+              Agregar nuevo
+            </Link>
+          </div>
         </div>
 
         {
-          pageState === 1 ?
-            <Loader />
-            : pageState === 2 ?
+          pageState === 1 ? <Loader /> :
+            pageState === 2 ?
               <div className="card">
                 <div className="container">
                   <Table
                     headers={['N°', 'Ref. Gasto', 'Proveedor', 'Vence', 'Total', 'Fecha', 'Acción']}
-                    columnOriginalNames={["expense_ref", "name", "due_date", "grand_total", "timeStamp"]}
+                    columnOriginalNames={["expense_ref", "supplier_name", "due_date", "grand_total", "timeStamp"]}
                     sortColumn={sortColumn}
                     setSortColumn={setSortColumn}
                     sortOrder={sortOrder}
@@ -392,14 +484,12 @@ function Expenses() {
               <Error />
         }
 
-        <Modal show={viewModalShow} onHide={() => { handleViewModalClose() }} size="lg" centered >
-
+        <Modal show={viewModalShow} onHide={handleViewModalClose} size="lg" centered >
           <Modal.Header>
             <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
               <Modal.Title className='fs-4 fw-bold' style={{ color: "#2cd498" }}>
                 Ver gasto
               </Modal.Title>
-
 
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                 <button className="btn-close" onClick={handleViewModalClose}></button>
@@ -408,28 +498,32 @@ function Expenses() {
           </Modal.Header>
 
           <Modal.Body style={{ backgroundColor: "#fafafa" }} >
+            {/* tu modal se queda igual */}
             <div className='container d-flex gap-2'>
               <div className='card my_card' style={{ flex: 1 }}>
                 <div className='card-body'>
-                  {
-                    viewExpenseDetails !== null &&
+                  {viewExpenseDetails !== null && (
                     <>
                       <div className='form-group mb-2'>
                         <label className='fst-italic fw-bold'>Referencia de gasto</label>
                         <input className='my_form_control' type='text' value={viewExpenseDetails.expense_ref} readOnly />
                       </div>
+
                       <div className='form-group mb-2'>
                         <label className='fst-italic fw-bold'>Proveedor</label>
                         <input className='my_form_control' type='text' value={viewExpenseDetails.supplier_name} readOnly />
                       </div>
+
                       <div className='form-group mb-2'>
                         <label className='fst-italic fw-bold'>Fecha de vencimiento</label>
-                        <input className='my_form_control' type='text' value={moment(viewExpenseDetails.due_date).format('MMMM Do, YYYY')} readOnly />
+                        <input className='my_form_control' type='text' value={moment(viewExpenseDetails.due_date).format('D [de] MMMM, YYYY')} readOnly />
                       </div>
+
                       <div className='form-group mb-2'>
                         <label className='fst-italic fw-bold'>Impuesto</label>
                         <input className='my_form_control' type='text' value={`${viewExpenseDetails.tax}%`} readOnly />
                       </div>
+
                       <div className='form-group mb-2'>
                         <label className='fst-italic fw-bold'>Total</label>
                         <input className='my_form_control' type='text' value={viewExpenseDetails.grand_total} readOnly />
@@ -438,63 +532,53 @@ function Expenses() {
                       <div className='form-group mb-2'>
                         <label className='fst-italic fw-bold mb-2'>Detalle de ítems:</label>
                         <div className='p-2 border rounded'>
-                          <div className='mb-2 row gx-0'>
-                            <div className='fw-bold text-secondary col-2 d-flex align-items-center text-uppercase justify-content-center' style={{ fontSize: "smaller" }}>Imagen</div>
-                            <div className='fw-bold text-secondary col-4 d-flex align-items-center text-uppercase justify-content-start' style={{ fontSize: "smaller" }}>Producto</div>
-                            <div className='fw-bold text-secondary col-2 d-flex align-items-center text-uppercase justify-content-center' style={{ fontSize: "smaller" }}>Cantidad</div>
-                            <div className='fw-bold text-secondary col-2 d-flex align-items-center text-uppercase justify-content-center' style={{ fontSize: "smaller" }}>Precio</div>
-                            <div className='fw-bold text-secondary col-2 d-flex align-items-center text-uppercase justify-content-center' style={{ fontSize: "smaller" }}>Total</div>
-                          </div>
-
-                          {
-                            productDetails.length > 0 && JSON.parse(viewExpenseDetails.items).map((viewItem, ind) => {
-                              let img = productDetails.find(x => x.product_id === viewItem.product_id)?.image
-                              return (
-                                <div key={ind} className='py-2 row gx-0' style={{ borderBottom: "1px dashed lightgray" }}>
-                                  <div className='col-2 d-flex align-items-center justify-content-center'>
-                                    <OverlayTrigger
-                                      trigger={['hover', 'focus']}
-                                      placement="left"
-                                      overlay={
-                                        (<Popover id="popover-basic" style={{ backgroundColor: "#ebf4ee", boxShadow: "rgb(0 0 0 / 75%) 0px 0px 16px -5px" }}>
-                                          <Popover.Body style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px" }}>
-                                            {
-                                              img === null || img === undefined ?
-                                                <div className='d-flex align-items-center text-dark fs-5 text-center' style={{ width: "10rem", height: "10rem" }}>
-                                                  No hay imagen disponible
-                                                </div> :
-                                                <img style={{ width: "14rem", borderRadius: "5px" }} src={`${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${img}`} alt="product" />
-                                            }
-                                          </Popover.Body>
-                                        </Popover>)
-                                      }
-                                    >
-                                      <img
-                                        style={{ width: "60px", height: "60px", borderRadius: "5px", objectFit: "cover", cursor: "pointer" }}
-                                        src={img === null || img === undefined
-                                          ? "https://lh3.googleusercontent.com/SMKEdK_g-LuC3ero8vP9d4lPJBKyzc4t91-GYLQ1vEkhv87KyaxFmWFeEb6ZcyRNet0"
-                                          : `${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${img}`}
-                                        alt="product"
-                                      />
-                                    </OverlayTrigger>
-                                  </div>
-                                  <div className='col-4 d-flex align-items-center justify-content-start'>{viewItem.product_name}</div>
-                                  <div className='col-2 d-flex align-items-center justify-content-center'>{viewItem.quantity}</div>
-                                  <div className='col-2 d-flex align-items-center justify-content-center'>{viewItem.rate}</div>
-                                  <div className='col-2 d-flex align-items-center justify-content-center'>{viewItem.rate * viewItem.quantity}</div>
+                          {/* ... aquí tu código de items igual ... */}
+                          {productDetails.length > 0 && JSON.parse(viewExpenseDetails.items).map((viewItem, ind) => {
+                            let img = productDetails.find(x => x.product_id === viewItem.product_id)?.image
+                            return (
+                              <div key={ind} className='py-2 row gx-0' style={{ borderBottom: "1px dashed lightgray" }}>
+                                <div className='col-2 d-flex align-items-center justify-content-center'>
+                                  <OverlayTrigger
+                                    trigger={['hover', 'focus']}
+                                    placement="left"
+                                    overlay={
+                                      (<Popover id="popover-basic" style={{ backgroundColor: "#ebf4ee", boxShadow: "rgb(0 0 0 / 75%) 0px 0px 16px -5px" }}>
+                                        <Popover.Body style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "3px" }}>
+                                          {
+                                            img === null || img === undefined ?
+                                              <div className='d-flex align-items-center text-dark fs-5 text-center' style={{ width: "10rem", height: "10rem" }}>
+                                                No hay imagen disponible
+                                              </div> :
+                                              <img style={{ width: "14rem", borderRadius: "5px" }} src={`${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${img}`} alt="product" />
+                                          }
+                                        </Popover.Body>
+                                      </Popover>)
+                                    }
+                                  >
+                                    <img
+                                      style={{ width: "60px", height: "60px", borderRadius: "5px", objectFit: "cover", cursor: "pointer" }}
+                                      src={img === null || img === undefined
+                                        ? "https://lh3.googleusercontent.com/SMKEdK_g-LuC3ero8vP9d4lPJBKyzc4t91-GYLQ1vEkhv87KyaxFmWFeEb6ZcyRNet0"
+                                        : `${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${img}`}
+                                      alt="product"
+                                    />
+                                  </OverlayTrigger>
                                 </div>
-                              )
-                            })
-                          }
+                                <div className='col-4 d-flex align-items-center justify-content-start'>{viewItem.product_name}</div>
+                                <div className='col-2 d-flex align-items-center justify-content-center'>{viewItem.quantity}</div>
+                                <div className='col-2 d-flex align-items-center justify-content-center'>{viewItem.rate}</div>
+                                <div className='col-2 d-flex align-items-center justify-content-center'>{viewItem.rate * viewItem.quantity}</div>
+                              </div>
+                            )
+                          })}
                         </div>
                       </div>
                     </>
-                  }
+                  )}
                 </div>
               </div>
             </div>
           </Modal.Body>
-
 
           <Modal.Footer className="d-flex justify-content-end gap-2">
             <button
@@ -505,15 +589,12 @@ function Expenses() {
               Imprimir
             </button>
 
-            <button
-              className='btn btn-outline-danger'
-              style={{ transition: "color 0.4s, background-color 0.4s" }}
-              onClick={handleViewModalClose}
-            >
+            <button className='btn btn-outline-danger' onClick={handleViewModalClose}>
               Cerrar
             </button>
           </Modal.Footer>
         </Modal>
+
       </div>
     </div>
   )

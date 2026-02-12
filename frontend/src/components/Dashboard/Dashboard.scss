@@ -96,5 +96,21 @@
     color: #111;
   }
 }
+.dashboard-pendientes-link{
+  display: block;              
+  width: 100%;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(220,53,69,0.35);
+  background: rgba(220,53,69,0.08);
+  color: #dc3545;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.dashboard-pendientes-link:hover{
+  background: rgba(220,53,69,0.14);
+  text-decoration: none;
+}
 
 }

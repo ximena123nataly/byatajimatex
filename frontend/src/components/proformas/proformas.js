@@ -10,6 +10,7 @@ import swal from "sweetalert";
 
 import Loader from "../PageStates/Loader";
 import Error from "../PageStates/Error";
+import { useLocation } from "react-router-dom";
 
 function Proformas() {
   const [pageState, setPageState] = useState(1);
@@ -28,6 +29,9 @@ function Proformas() {
   const [selected, setSelected] = useState(null);
   const [payCliente, setPayCliente] = useState("");
   const [payCelular, setPayCelular] = useState("");
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const onlyPendientes = params.get("pendientes") === "1";
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
@@ -83,7 +87,9 @@ function Proformas() {
         sort_column: sc,
         sort_order: so,
         search_value: scv,
+        only_pendientes: onlyPendientes, 
       }),
+
       credentials: "include",
     });
 
@@ -98,7 +104,8 @@ function Proformas() {
         .then(() => setPageState(2))
         .catch(() => setPageState(3));
     }
-  }, [permission, tablePage, sortColumn, sortOrder, searchInput]);
+  }, [permission, tablePage, sortColumn, sortOrder, searchInput, onlyPendientes]);
+
 
   const deleteProforma = async (id) => {
     const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/delete_proforma`, {

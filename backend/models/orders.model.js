@@ -34,23 +34,43 @@ function getUserIdFromCookie(req) {
 }
 
 class Order {
-  constructor() {}
+  constructor() { }
 
   getOrders = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
 
       new Promise((resolve, reject) => {
-        let tsa = "";
-        if (req.body.search_value != "") {
-          tsa = `WHERE c.name LIKE "%${req.body.search_value}%"
-                 OR o.order_ref LIKE "%${req.body.search_value}%"`
+        let whereParts = [];
+
+
+        if (req.body.search_value && req.body.search_value !== "") {
+          const sv = req.body.search_value;
+          whereParts.push(`(c.name LIKE "%${sv}%" OR o.order_ref LIKE "%${sv}%")`);
         }
 
-        let tso = "";
-        if (req.body.sort_column != "" && req.body.sort_order != "") {
-          tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
+
+        if (req.body.date_from) {
+          whereParts.push(`o.timeStamp >= "${req.body.date_from} 00:00:00"`);
         }
+        if (req.body.date_to) {
+          whereParts.push(`o.timeStamp <= "${req.body.date_to} 23:59:59"`);
+        }
+
+
+
+        const tsa = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+
+
+        let tso = "";
+        if (req.body.sort_column && req.body.sort_order) {
+          tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
+        } else {
+          tso = "ORDER BY o.timeStamp DESC";
+        }
+
+
+        const useLimit = !req.body.export_all;
 
         let q =
           "SELECT o.*, c.name as customer_name FROM orders o " +
@@ -58,20 +78,22 @@ class Order {
           tsa +
           " " +
           tso +
-          " LIMIT ?, 10";
+          (useLimit ? " LIMIT ?, 10" : "");
 
-        db.query(q, [req.body.start_value], (err, result) => {
+
+        const params = useLimit ? [req.body.start_value] : [];
+
+        db.query(q, params, (err, result) => {
+
           if (err) return reject(err);
 
-          if (req.body.search_value != "") {
-            return resolve({
-              operation: "success",
-              message: "search orders got",
-              info: { orders: result, count: result.length },
-            });
-          }
 
-          let q2 = "SELECT COUNT(*) AS val FROM `orders`";
+
+          let q2 =
+            "SELECT COUNT(*) AS val FROM orders o " +
+            "INNER JOIN customers c ON o.customer_id=c.customer_id " +
+            tsa;
+
           db.query(q2, (err2, result2) => {
             if (err2) return reject(err2);
 
@@ -94,7 +116,7 @@ class Order {
     }
   };
 
-  
+
   addOrder = (req, res) => {
     try {
       const id_usuario = getUserIdFromCookie(req);
@@ -117,7 +139,7 @@ class Order {
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-        
+
         const q1 =
           "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`, `grand_total`, `user_id`) " +
           "VALUES (?,?,?,?,?,?,?,?)";
@@ -141,7 +163,7 @@ class Order {
               );
             }
 
-            
+
             const parr = req.body.item_array.map((prod) => {
               return new Promise((resolve, reject) => {
                 const q2 = "UPDATE `products` SET product_stock = product_stock - ? WHERE `product_id`= ?";
@@ -154,7 +176,7 @@ class Order {
 
             Promise.all(parr)
               .then(() => {
-                
+
                 const qcaja = "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1";
                 db.query(qcaja, [id_usuario], (errCaja, cajaRes) => {
                   if (errCaja) {
@@ -163,7 +185,7 @@ class Order {
                     );
                   }
 
-                  
+
                   if (!cajaRes || cajaRes.length === 0) {
                     return db.commit(() =>
                       res.send({ operation: "success", message: "Order added (sin caja)" })
@@ -172,7 +194,7 @@ class Order {
 
                   const id_caja = cajaRes[0].id_caja;
 
-                  
+
                   const qtx = `
                     INSERT INTO caja_transacciones
                     (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
@@ -189,7 +211,7 @@ class Order {
                         );
                       }
 
-                  
+
                       const qup = "UPDATE caja SET saldo = saldo + ? WHERE id_caja=?";
                       db.query(qup, [grandTotal, id_caja], (errUp) => {
                         if (errUp) {
@@ -221,7 +243,7 @@ class Order {
     }
   };
 
-  
+
   deleteOrder = (req, res) => {
     try {
       const id_usuario = getUserIdFromCookie(req);
@@ -237,7 +259,7 @@ class Order {
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
-        
+
         db.query("SELECT * FROM orders WHERE order_id=?", [order_id], (e1, rows) => {
           if (e1) {
             return db.rollback(() => res.send({ operation: "error", message: e1.message }));
@@ -255,7 +277,7 @@ class Order {
             items = [];
           }
 
-         
+
           const stockTasks = items.map((p) => {
             return new Promise((resolve, reject) => {
               db.query(
@@ -268,7 +290,7 @@ class Order {
 
           Promise.all(stockTasks)
             .then(() => {
-              
+
               db.query(
                 "SELECT id_caja, monto FROM caja_transacciones WHERE origen='VENTA' AND nro_registro=? LIMIT 1",
                 [order_id],
@@ -282,7 +304,7 @@ class Order {
                   const hasTx = txRows && txRows.length > 0;
 
                   const proceedDeleteOrder = () => {
-                   
+
                     db.query("DELETE FROM orders WHERE order_id=?", [order_id], (e4) => {
                       if (e4) {
                         return db.rollback(() =>
@@ -300,7 +322,7 @@ class Order {
 
                   const { id_caja, monto } = txRows[0];
 
-                  
+
                   db.query(
                     "DELETE FROM caja_transacciones WHERE origen='VENTA' AND nro_registro=?",
                     [order_id],
@@ -311,7 +333,7 @@ class Order {
                         );
                       }
 
-                  
+
                       db.query(
                         "UPDATE caja SET saldo = saldo - ? WHERE id_caja=?",
                         [monto, id_caja],
