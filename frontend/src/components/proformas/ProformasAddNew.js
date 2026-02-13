@@ -26,7 +26,7 @@ function ProformasAddNew() {
   const [pageState, setPageState] = useState(1);
   const [permission, setPermission] = useState(null);
 
-  
+
   const [notas, setNotas] = useState("");
 
   // Fecha/Hora local
@@ -335,7 +335,7 @@ function ProformasAddNew() {
       cliente: cliente.trim(),
       celular: celular.trim(),
 
-      
+
       notas: notas.trim() === "" ? null : notas.trim(),
 
       anticipo: toNumber(anticipo),
@@ -436,7 +436,7 @@ function ProformasAddNew() {
   const boxCel = { flex: "0 0 220px", minWidth: 200 };
 
   return (
-    <div className="productaddnew" style={{ overflowY: "auto", paddingBottom: "2rem" }}>
+    <div className="productaddnew proformas-add">
       <div className="product-header">
         <div className="title">Agregar nueva proforma</div>
 

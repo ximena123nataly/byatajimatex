@@ -45,7 +45,7 @@ class Proforma {
         let whereParts = [];
         const params = [];
 
-        
+
         if (req.body.desde) {
           whereParts.push(`fecha >= ?`);
           params.push(req.body.desde);
@@ -55,12 +55,12 @@ class Proforma {
           params.push(req.body.hasta);
         }
 
-      
+
         if (req.body.only_pendientes) {
           whereParts.push(`entregado = 0`);
         }
 
-        
+
         if (req.body.search_value && req.body.search_value !== "") {
           const sv = String(req.body.search_value).trim();
           whereParts.push(`(CAST(id AS CHAR) LIKE ? OR cliente LIKE ? OR celular LIKE ?)`);
@@ -69,7 +69,7 @@ class Proforma {
 
         const tsa = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
-        
+
         let tso = "";
         if (req.body.sort_column && req.body.sort_order) {
           tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
@@ -177,11 +177,19 @@ class Proforma {
           ],
           (err, result) => {
             if (err) {
+
+              let mensaje = "Ocurrió un error al guardar la proforma";
+
+              if (err.code === "ER_BAD_NULL_ERROR") {
+                if (err.message.includes("celular")) {
+                  mensaje = "El campo celular es obligatorio";
+                }
+              }
+
               return db.rollback(() =>
-                res.send({ operation: "error", message: err.message })
+                res.send({ operation: "error", message: mensaje })
               );
             }
-
             const newId = result.insertId;
             const proforma_id = String(newId).padStart(7, "0");
 

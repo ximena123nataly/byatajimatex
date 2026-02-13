@@ -1,4 +1,5 @@
-//* NO ENTREGADO */
+
+/* NO ENTREGADO */
 .mytable tbody tr.row-no-entregado {
   background: rgba(220, 53, 69, 0.25) !important;
 }
@@ -8,7 +9,6 @@
   background: transparent !important;
 }
 
-
 .actionGrid {
   display: flex;
   justify-content: flex-end;
@@ -16,7 +16,6 @@
   align-items: center;
   flex-wrap: nowrap;
 }
-
 
 input[type="date"],
 input[type="time"] {
@@ -26,19 +25,18 @@ input[type="time"] {
 }
 
 
+
 .proformas-header {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-/* ===== FILTROS (CUADRO COMO GASTOS Y VENTAS) ===== */
 .proformas-header .filters-bar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-
   padding: 8px 12px;
   background: #f7f7f7;
   border-radius: 6px;
@@ -58,7 +56,6 @@ input[type="time"] {
   margin: 0;
 }
 
-/* ===== TITULO + BOTON ===== */
 .proformas-header .title-row {
   display: flex;
   align-items: center;
@@ -72,7 +69,6 @@ input[type="time"] {
   opacity: 0.8;
 }
 
-
 @media (max-width: 900px) {
   .proformas-header .title-row {
     flex-direction: column;
@@ -81,39 +77,34 @@ input[type="time"] {
 }
 
 
-body.dark .filters-bar,
-html.dark .filters-bar,
-.dark .filters-bar,
-.dark-mode .filters-bar,
-[data-theme="dark"] .filters-bar {
-  background: #1f252c !important;
-  border: 1px solid rgba(255, 255, 255, 0.10) !important;
-  border-radius: 6px !important;
+
+:root {
+  --bg-input-dark: #171a1f;
+  --bg-input-dark-focus: #1d2128;
+  --text-input-dark: #e8e8e8;
+  --border-input-dark: rgba(255, 255, 255, 0.18);
+  --border-focus-dark: rgba(255, 255, 255, 0.35);
 }
 
-body.dark .filters-bar label,
-html.dark .filters-bar label,
-.dark .filters-bar label,
-.dark-mode .filters-bar label,
-[data-theme="dark"] .filters-bar label {
-  color: #e6edf5 !important;
+
+
+.productaddnew .my_input {
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid rgba(0, 0, 0, 0.18);
 }
 
-body.dark .filters-bar input[type="date"],
-html.dark .filters-bar input[type="date"],
-.dark .filters-bar input[type="date"],
-.dark-mode .filters-bar input[type="date"],
-[data-theme="dark"] .filters-bar input[type="date"] {
-  background: #0f141a !important;
-  color: #e6edf5 !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+.productaddnew .my_input::placeholder {
+  color: rgba(0, 0, 0, 0.45);
 }
 
-body.dark .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
-html.dark .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
-.dark .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
-.dark-mode .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
-[data-theme="dark"] .filters-bar input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1) !important;
-  opacity: 0.85 !important;
+
+.meta {
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid #000;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
 }
+
+

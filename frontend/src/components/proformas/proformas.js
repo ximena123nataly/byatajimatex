@@ -318,17 +318,42 @@ function Proformas() {
 
 
   const imprimirReporteProformas = () => {
-    const filas = (proformas || [])
-      .map((p, i) => `
+    const filasData = (proformas || []);
+
+    // ===== SUMAS =====
+    const totalGeneralSum = filasData.reduce((acc, p) => acc + Number(p.total_general || 0), 0);
+    const totalSaldoSum = filasData.reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+
+    // ===== RANGO EN TEXTO (del ... al ...) =====
+    const fmtLargo = (v) => {
+      if (!v) return "";
+      // v viene como "YYYY-MM-DD"
+      return moment(v, "YYYY-MM-DD").format("D [de] MMMM [de] YYYY");
+    };
+
+    const rangoTexto =
+      desde && hasta
+        ? `del ${fmtLargo(desde)} al ${fmtLargo(hasta)}`
+        : desde && !hasta
+          ? `del ${fmtLargo(desde)} al ${fmtLargo(moment().format("YYYY-MM-DD"))}`
+          : !desde && hasta
+            ? `del ${fmtLargo(moment().subtract(30, "days").format("YYYY-MM-DD"))} al ${fmtLargo(hasta)}`
+            : `del ${fmtLargo(moment().startOf("month").format("YYYY-MM-DD"))} al ${fmtLargo(moment().format("YYYY-MM-DD"))}`;
+
+    // ===== FILAS HTML =====
+    const filas = filasData
+      .map(
+        (p, i) => `
       <tr>
-        <td>${i + 1}</td>
-        <td>${formatProforma(p.id)}</td>
-        <td>${String(p.cliente || "")}</td>
-        <td style="text-align:right;">${Number(p.total_general || 0).toFixed(2)}</td>
-        <td style="text-align:right;">${Number(p.saldo || 0).toFixed(2)}</td>
-        <td>${p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : ""}</td>
+        <td class="c-center">${i + 1}</td>
+        <td class="c-center">${String(p.id ?? "").padStart(7, "0")}</td>
+        <td class="c-left">${String(p.cliente || "")}</td>
+        <td class="c-right">${Number(p.total_general || 0).toFixed(2)}</td>
+        <td class="c-right">${Number(p.saldo || 0).toFixed(2)}</td>
+        <td class="c-center">${p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : ""}</td>
       </tr>
-    `)
+    `
+      )
       .join("");
 
     const html = `
@@ -336,39 +361,196 @@ function Proformas() {
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Reporte Proformas</title>
+  <title>Historial de Proformas</title>
   <style>
-    @page { size: letter portrait; margin: 12mm; }
-    body { font-family: Arial, sans-serif; color:#111; }
-    h2 { margin: 0 0 6px; }
-    .meta { font-size: 12px; color:#444; margin-bottom: 10px; }
+    @page { size: letter portrait; margin: 0; }
+
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      font-family: Arial, sans-serif;
+      color: #111;
+    }
+
+    .page{
+      padding: 12mm;
+      box-sizing: border-box;
+    }
+
+    /* ===== HEADER ===== */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .col-left  { width: 33%; }
+    .col-center{ width: 34%; text-align: center; }
+    .col-right { width: 33%; }
+
+    .logo {
+      width: 130px !important;
+      max-width: 130px !important;
+      height: auto !important;
+      display:block;
+      margin: 0 0 6px 0 !important;
+    }
+
+    .small { font-size: 11px; line-height: 1.25; }
+    .muted { color:#444; }
+    .title { font-size: 18px; font-weight: 800; letter-spacing: .4px; margin: 0; }
+
+    /* Columna derecha alineada como tu ejemplo */
+    .rightBox{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;  /* ← izquierda */
+  text-align: left;         /* ← izquierda */
+  gap: 2px;
+  font-size: 11px;
+  margin-top: 18px;
+}
+  .rline{
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.lbl{
+  width: 70px;        /* ancho fijo para alinear */
+  font-weight: 700;
+  text-align: left;
+}
+
+.val{
+  text-align: left;
+}
+
+    /* Línea separadora debajo del header */
+    .sep {
+      border: 0;
+      border-top: 1px solid #d9d9d9;
+      margin: 10px 0 10px;
+    }
+
+    /* ===== META (rango / filas) ===== */
+    .meta {
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin: 0 0 6px;
+    }
+
+    /* ===== TABLE (solo líneas horizontales) ===== */
     table { width:100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 6px; font-size: 12px; }
-    th { background: #f3f3f3; }
+
+    thead th{
+      font-size: 12px;
+      padding: 8px 6px;
+      border-top: 2px solid #000;     /* línea gruesa arriba */
+      border-bottom: 2px solid #000;  /* línea gruesa abajo */
+    }
+
+    tbody td{
+      font-size: 12px;
+      padding: 8px 6px;
+      border-bottom: 1px solid #cfcfcf; /* solo horizontal */
+    }
+
+    /* sin líneas verticales */
+    th, td { border-left: none !important; border-right: none !important; }
+
+    /* última línea gruesa al final de la tabla */
+    tbody tr:last-child td{
+      border-bottom: 2px solid #000;
+    }
+
+    /* alineaciones */
+    .c-left{ text-align:left; }
+    .c-center{ text-align:center; }
+    .c-right{ text-align:right; }
+
+    /* ===== TOTALES ABAJO (como tu ejemplo) ===== */
+    .totals{
+      margin-top: 12px;
+      border-top: 2px solid #000;
+      padding-top: 8px;
+      font-size: 12px;
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
   </style>
 </head>
 <body>
-  <h2>Reporte de Proformas</h2>
-  <div class="meta">
-    Rango: <b>${desde || "-"}</b> a <b>${hasta || "-"}</b> |
-    Filas: <b>${(proformas || []).length}</b>
-  </div>
+  <div class="page">
 
-  <table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>Proforma</th>
-        <th>Cliente</th>
-        <th>Total</th>
-        <th>Saldo</th>
-        <th>Fecha</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${filas || `<tr><td colspan="6">Sin datos</td></tr>`}
-    </tbody>
-  </table>
+    <div class="header">
+      <div class="col-left">
+        <img class="logo" src="/tajima.png" alt="TAJIMA" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="col-center">
+        <div class="title">HISTORIAL DE PROFORMAS</div>
+        <div class="small" style="margin-top:6px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135 - 75274747 - 77221750</div>
+        </div>
+      </div>
+
+      <div class="col-right">
+  <div class="rightBox">
+    <div class="rline"><span class="lbl">página:</span><span class="val">1 de 1</span></div>
+    <div class="rline"><span class="lbl">Fecha:</span><span class="val">${moment().format("YYYY-MM-DD")}</span></div>
+    <div class="rline"><span class="lbl">Hora:</span><span class="val">${moment().format("HH:mm:ss")}</span></div>
+  </div>
+</div>
+        
+    </div>
+
+    <hr class="sep" />
+
+    <div class="meta">
+      <div>${rangoTexto}</div>
+      <div>Filas: <b>${filasData.length}</b></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:45px;" class="c-center">#</th>
+          <th style="width:120px;" class="c-center">Proforma</th>
+          <th class="c-left">Cliente</th>
+          <th style="width:110px;" class="c-right">Total</th>
+          <th style="width:110px;" class="c-right">Saldo</th>
+          <th style="width:120px;" class="c-center">Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="6" class="c-center" style="padding:10px;">Sin datos</td></tr>`}
+      </tbody>
+    </table>
+
+    <!--  AQUI VA TU BLOQUE DE TOTALES -->
+    <div class="totals">
+      <div><b>TOTAL PROFORMAS:</b> ${filasData.length}</div>
+      <div><b>SALDO TOTAL:</b> ${totalSaldoSum.toFixed(2)}</div>
+      <div><b>MONTO TOTAL:</b> ${totalGeneralSum.toFixed(2)}</div>
+    </div>
+
+  </div>
 
   <script>
     window.onload = function(){
