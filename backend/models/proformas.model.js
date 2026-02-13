@@ -2,7 +2,7 @@ const db = require("../db/conn.js");
 const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
-// ===== Helpers fecha/hora Bolivia (sin tocar docker) =====
+
 function nowDateTimeTZ(tz = "America/La_Paz") {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
@@ -36,42 +36,40 @@ function getUserIdFromCookie(req) {
 class Proforma {
   constructor() { }
 
-  // GET PROFORMAS (tabla)
+
   getProformas = (req, res) => {
     try {
       jwt.decode(req.cookies.accessToken, { complete: true });
 
       new Promise((resolve, reject) => {
         let whereParts = [];
-       
-        if (req.body.desde && req.body.hasta) {
-          whereParts.push(`DATE(fecha) BETWEEN "${req.body.desde}" AND "${req.body.hasta}"`);
-        } else if (req.body.desde) {
-          whereParts.push(`DATE(fecha) >= "${req.body.desde}"`);
-        } else if (req.body.hasta) {
-          whereParts.push(`DATE(fecha) <= "${req.body.hasta}"`);
+        const params = [];
+
+        
+        if (req.body.desde) {
+          whereParts.push(`fecha >= ?`);
+          params.push(req.body.desde);
+        }
+        if (req.body.hasta) {
+          whereParts.push(`fecha <= ?`);
+          params.push(req.body.hasta);
         }
 
+      
         if (req.body.only_pendientes) {
           whereParts.push(`entregado = 0`);
         }
 
-
+        
         if (req.body.search_value && req.body.search_value !== "") {
-          const sv = req.body.search_value;
-          whereParts.push(`
-    (CAST(id AS CHAR) LIKE "%${sv}%"
-      OR cliente LIKE "%${sv}%"
-      OR celular LIKE "%${sv}%")
-  `);
+          const sv = String(req.body.search_value).trim();
+          whereParts.push(`(CAST(id AS CHAR) LIKE ? OR cliente LIKE ? OR celular LIKE ?)`);
+          params.push(`%${sv}%`, `%${sv}%`, `%${sv}%`);
         }
 
-        const tsa = whereParts.length
-          ? `WHERE ${whereParts.join(" AND ")}`
-          : "";
+        const tsa = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
-
-
+        
         let tso = "";
         if (req.body.sort_column && req.body.sort_order) {
           tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`;
@@ -80,40 +78,39 @@ class Proforma {
         }
 
         const q = `
-          SELECT
-            id,
-            proforma_id,
-            fecha,
-            hora,
-            fecha_entrega,
-            hora_entrega,
-            customer_id,
-            cliente,
-            celular,
-            notas,
-            detalle,
-            total_general,
-            anticipo,
-            saldo,
-            estado,
-            entregado
-          FROM proformas
-          ${tsa}
-          ${tso}
-          LIMIT ?, 10
-        `;
+        SELECT
+          id,
+          proforma_id,
+          fecha,
+          hora,
+          fecha_entrega,
+          hora_entrega,
+          customer_id,
+          cliente,
+          celular,
+          notas,
+          detalle,
+          total_general,
+          anticipo,
+          saldo,
+          estado,
+          entregado
+        FROM proformas
+        ${tsa}
+        ${tso}
+        LIMIT ?, 10
+      `;
 
-        db.query(q, [req.body.start_value], (err, result) => {
+        db.query(q, [...params, req.body.start_value], (err, result) => {
           if (err) return reject(err);
 
-
           const q2 = `
-  SELECT COUNT(*) AS val
-  FROM proformas
-  ${tsa}
-`;
+          SELECT COUNT(*) AS val
+          FROM proformas
+          ${tsa}
+        `;
 
-          db.query(q2, (err2, result2) => {
+          db.query(q2, params, (err2, result2) => {
             if (err2) return reject(err2);
 
             resolve({
@@ -135,7 +132,7 @@ class Proforma {
     }
   };
 
-  // ADD PROFORMA (si anticipo > 0 => mueve caja)
+
   addProforma = (req, res) => {
     try {
       const user_id = getUserIdFromCookie(req);

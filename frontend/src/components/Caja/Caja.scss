@@ -1,3 +1,7 @@
+/* =====================================================
+   CONTENEDOR GENERAL
+   ===================================================== */
+
 .caja-container{
   padding: 20px;
   min-height: 100vh;
@@ -8,7 +12,9 @@
   flex-wrap: wrap;
 }
 
-/* -------------------- CARD CAJA -------------------- */
+/* =====================================================
+   TARJETAS
+   ===================================================== */
 
 .caja-card{
   background: white;
@@ -37,7 +43,9 @@
   color: #e74c3c;
 }
 
-/* -------------------- MOVIMIENTOS -------------------- */
+/* =====================================================
+   MOVIMIENTOS
+   ===================================================== */
 
 .caja-tx-card{
   margin-top: 20px;
@@ -52,7 +60,6 @@
   align-items: center;
 }
 
-/* SOLO scroll horizontal si se necesita */
 .tabla-wrap{
   margin-top: 10px;
   overflow-x: auto;
@@ -80,7 +87,9 @@
   opacity: 0.75;
 }
 
-/* -------------------- BADGES -------------------- */
+/* =====================================================
+   BADGES
+   ===================================================== */
 
 .badge{
   display: inline-block;
@@ -102,7 +111,9 @@
   color: #1e8449;
 }
 
-/* -------------------- BOTONES -------------------- */
+/* =====================================================
+   BOTONES
+   ===================================================== */
 
 .btn-traspaso{
   margin-top: 12px;
@@ -121,7 +132,6 @@
   cursor: not-allowed;
 }
 
-/* BOTON VER (amarillo) */
 .btn-ver{
   border: 2px solid #ff9900;
   background: #fff;
@@ -138,7 +148,9 @@
   color: #fff;
 }
 
-/* -------------------- MODAL -------------------- */
+/* =====================================================
+   MODAL
+   ===================================================== */
 
 .caja-modal-backdrop{
   position: fixed;
@@ -175,4 +187,110 @@
   border: 2px solid #2fbb4d;
   font-weight: 700;
   cursor: pointer;
+}
+
+/* =====================================================
+   DARK MODE - CAJAS
+   Compatible con cualquier dark mode
+   ===================================================== */
+
+body.dark,
+body.dark-mode,
+.dark,
+.dark-mode,
+[data-theme="dark"] {
+
+  .caja-card,
+  .caja-tx-card{
+    background: #1f252c !important;
+    color: #e6edf5 !important;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  }
+
+  .tabla-caja th,
+  .tabla-caja td{
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+    color: #e6edf5;
+  }
+
+  .tabla-caja th{
+    opacity: 0.75;
+  }
+
+  .badge-out{
+    background: rgba(231, 76, 60, 0.18);
+    border: 1px solid rgba(231, 76, 60, 0.6);
+    color: #ff7675;
+  }
+
+  .badge-in{
+    background: rgba(46, 204, 113, 0.18);
+    border: 1px solid rgba(46, 204, 113, 0.6);
+    color: #2ecc71;
+  }
+
+  .btn-traspaso{
+    background: #0f9d2a;
+  }
+
+  .btn-traspaso:hover{
+    background: #12b133;
+  }
+
+  .btn-ver{
+    background: transparent;
+    color: #ffb347;
+    border-color: #ffb347;
+  }
+
+  .btn-ver:hover{
+    background: #ff9900;
+    color: #fff;
+  }
+
+  .caja-modal-box{
+    background: #1f252c;
+    color: #e6edf5;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  }
+
+  .caja-modal-actions button{
+    background: transparent;
+    color: #2ecc71;
+    border-color: #2ecc71;
+  }
+}
+/* =====================================================
+   FIX FONDO BLANCO / GRIS EN MODO OSCURO (CAJAS)
+   Pegar al FINAL del Caja.scss
+   ===================================================== */
+
+body.dark,
+body.dark-mode,
+.dark,
+.dark-mode,
+[data-theme="dark"] {
+
+  /* Fondo general de la página (el blanco/gris que ves) */
+  .products,
+  .products-scroll,
+  .card,
+  .container,
+  .caja-container {
+    background: transparent !important; /* deja que se vea el fondo oscuro global */
+  }
+
+  /* Si tu layout tiene un wrapper blanco, cúbrelo también */
+  .page,
+  .page-content,
+  .content,
+  .main,
+  .main-content {
+    background: transparent !important;
+  }
+
+  /* Opcional: si quieres que CAJAS tenga su propio fondo oscuro */
+  .caja-container {
+    background: rgba(0,0,0,0) !important;
+  }
 }

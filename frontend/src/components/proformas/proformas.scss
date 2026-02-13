@@ -1,15 +1,18 @@
+//* NO ENTREGADO */
 .mytable tbody tr.row-no-entregado {
-  background: #faa3aa !important; 
+  background: rgba(220, 53, 69, 0.25) !important;
 }
 
+/* ENTREGADO */
 .mytable tbody tr.row-entregado {
-  background:  #FFFFFF !important; 
+  background: transparent !important;
 }
+
 
 .actionGrid {
   display: flex;
-  justify-content: flex-end; 
-  gap: 6px;                  
+  justify-content: flex-end;
+  gap: 6px;
   align-items: center;
   flex-wrap: nowrap;
 }
@@ -23,3 +26,94 @@ input[type="time"] {
 }
 
 
+.proformas-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ===== FILTROS (CUADRO COMO GASTOS Y VENTAS) ===== */
+.proformas-header .filters-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+
+  padding: 8px 12px;
+  background: #f7f7f7;
+  border-radius: 6px;
+}
+
+.proformas-header .filters-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.proformas-header .filters-left label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* ===== TITULO + BOTON ===== */
+.proformas-header .title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.proformas-header .title-row .title {
+  font-size: 28px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+
+@media (max-width: 900px) {
+  .proformas-header .title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+
+body.dark .filters-bar,
+html.dark .filters-bar,
+.dark .filters-bar,
+.dark-mode .filters-bar,
+[data-theme="dark"] .filters-bar {
+  background: #1f252c !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 6px !important;
+}
+
+body.dark .filters-bar label,
+html.dark .filters-bar label,
+.dark .filters-bar label,
+.dark-mode .filters-bar label,
+[data-theme="dark"] .filters-bar label {
+  color: #e6edf5 !important;
+}
+
+body.dark .filters-bar input[type="date"],
+html.dark .filters-bar input[type="date"],
+.dark .filters-bar input[type="date"],
+.dark-mode .filters-bar input[type="date"],
+[data-theme="dark"] .filters-bar input[type="date"] {
+  background: #0f141a !important;
+  color: #e6edf5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+body.dark .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
+.dark .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
+.dark-mode .filters-bar input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] .filters-bar input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) !important;
+  opacity: 0.85 !important;
+}

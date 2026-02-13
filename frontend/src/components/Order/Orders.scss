@@ -122,3 +122,39 @@
     color: white;
   }
 }
+/* ===== DARK MODE SOLO FILTROS (VENTAS) ===== */
+body.dark .orders .filters-bar,
+html.dark .orders .filters-bar,
+.dark .orders .filters-bar,
+.dark-mode .orders .filters-bar,
+[data-theme="dark"] .orders .filters-bar{
+  background: #1f252c !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+}
+
+body.dark .orders .filters-left label,
+html.dark .orders .filters-left label,
+.dark .orders .filters-left label,
+.dark-mode .orders .filters-left label,
+[data-theme="dark"] .orders .filters-left label{
+  color: #cfd8e3 !important;
+}
+
+body.dark .orders .filters-left input[type="date"],
+html.dark .orders .filters-left input[type="date"],
+.dark .orders .filters-left input[type="date"],
+.dark-mode .orders .filters-left input[type="date"],
+[data-theme="dark"] .orders .filters-left input[type="date"]{
+  background: #11161c !important;
+  color: #e6edf5 !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+}
+
+body.dark .orders .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark .orders .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+.dark .orders .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+.dark-mode .orders .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] .orders .filters-left input[type="date"]::-webkit-calendar-picker-indicator{
+  filter: invert(1);
+  opacity: 0.85;
+}

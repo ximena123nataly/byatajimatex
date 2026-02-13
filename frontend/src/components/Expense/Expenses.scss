@@ -165,3 +165,39 @@
     }
   }
 }
+/* ===== DARK MODE SOLO FILTROS (NO TOCA BOTONES) ===== */
+body.dark .expenses .filters-bar,
+html.dark .expenses .filters-bar,
+.dark .expenses .filters-bar,
+.dark-mode .expenses .filters-bar,
+[data-theme="dark"] .expenses .filters-bar{
+  background: #1f252c !important;             /* quita el blanco */
+  border: 1px solid rgba(255,255,255,0.10) !important;
+}
+
+body.dark .expenses .filters-left label,
+html.dark .expenses .filters-left label,
+.dark .expenses .filters-left label,
+.dark-mode .expenses .filters-left label,
+[data-theme="dark"] .expenses .filters-left label{
+  color: #cfd8e3 !important;                  /* texto Desde/Hasta visible */
+}
+
+body.dark .expenses .filters-left input[type="date"],
+html.dark .expenses .filters-left input[type="date"],
+.dark .expenses .filters-left input[type="date"],
+.dark-mode .expenses .filters-left input[type="date"],
+[data-theme="dark"] .expenses .filters-left input[type="date"]{
+  background: #11161c !important;             /* input oscuro */
+  color: #e6edf5 !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+}
+
+body.dark .expenses .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark .expenses .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+.dark .expenses .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+.dark-mode .expenses .filters-left input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] .expenses .filters-left input[type="date"]::-webkit-calendar-picker-indicator{
+  filter: invert(1);
+  opacity: 0.85;
+}
