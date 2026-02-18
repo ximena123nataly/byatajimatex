@@ -29,6 +29,15 @@ function Orders() {
   // Modal
   const [viewModalShow, setViewModalShow] = useState(false)
   const [viewOrderDetails, setViewOrderDetails] = useState(null)
+  const [filterFrom, setFilterFrom] = useState(null);
+  const [filterTo, setFilterTo] = useState(null);
+
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    setDateFrom(today);
+    setDateTo(today);
+  }, []);
 
   useEffect(() => {
     moment.locale("es");
@@ -69,8 +78,9 @@ function Orders() {
         sort_column: sc,
         sort_order: so,
         search_value: scv,
-        date_from: dateFrom || null,
-        date_to: dateTo || null,
+        date_from: filterFrom,
+        date_to: filterTo,
+
       }),
 
       credentials: 'include'
@@ -367,25 +377,153 @@ function Orders() {
     const totalSum = rows.reduce((acc, o) => acc + toNumber(o.grand_total), 0);
 
     const html = `
-  <html><head><meta charset="utf-8"/>
-  <title>Reporte Ventas</title>
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Historial de Ventas</title>
+
   <style>
-    body{font-family:Arial; color:#111; padding:18px}
-    table{width:100%; border-collapse:collapse; margin-top:10px}
-    th,td{border:1px solid #ddd; padding:6px; font-size:12px}
-    th{background:#f3f3f3}
-    .right{text-align:right}
+    @page { size: letter portrait; margin: 0; }
+    body { margin: 0; font-family: Arial, sans-serif; color: #111; }
+
+    .page {
+      width: 8.5in;
+      height: 11in;
+      padding: 0.45in;
+      box-sizing: border-box;
+    }
+
+    .header{
+      display: grid;
+      grid-template-columns: 230px 1fr 170px;
+      column-gap: 28px;
+      align-items: start;
+    }
+
+    .col-center { text-align: center; }
+    .logo { width: 180px; margin-bottom: 6px; }
+
+    .small { font-size: 11px; line-height: 1.3; }
+    .muted { color:#444; }
+    .title { font-size: 18px; font-weight: 700; }
+
+    .rightBox{
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+    }
+
+    .rline{
+      display: flex;
+      gap: 8px;
+    }
+
+    .lbl{ min-width: 54px; font-weight: 700; }
+    .val{ font-weight: 400; }
+
+    hr.sep{
+      border: 0;
+      border-top: 1px solid #000;
+      margin: 8px 0;
+    }
+
+    .meta{
+      font-size: 12px;
+      font-weight: 600;
+      border-bottom: 1px solid #000;
+      padding-bottom: 4px;
+      margin-bottom: 6px;
+    }
+
+    table{
+      width:100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+
+    th,td{
+      border-bottom:1px solid #ccc;
+      padding:6px;
+      font-size:12px;
+    }
+
+    th{
+      border-top:2px solid #000;
+      border-bottom:2px solid #000;
+    }
+
+    .c-center{text-align:center}
+    .c-right{text-align:right}
+    .c-left{text-align:left}
+
+    .totals{
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      display:flex;
+      justify-content: space-between;
+      border-top:2px solid #000;
+      padding-top:6px;
+    }
   </style>
-  </head>
-  <body>
-    <h3>Reporte de Ventas</h3>
-    <div>Desde: <b>${dateFrom || "-"}</b> &nbsp; Hasta: <b>${dateTo || "-"}</b></div>
-    <div>Total ventas: <b>${money(totalSum)}</b></div>
+</head>
+
+<body>
+  <div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+      <div>
+        <img class="logo" src="/tajima.png" />
+        <div class="small">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div class="muted">E-mail: byatajima@gmail.com</div>
+          <div class="muted">jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="col-center">
+        <div class="title">HISTORIAL DE VENTAS</div>
+        <div class="small" style="margin-top:6px;">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Tránsito - Bolivia)</div>
+          <div>Cel.: 75866135 - 75274747 - 77221750</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="rightBox">
+          <div class="rline">
+            <span class="lbl">Fecha:</span>
+            <span class="val">${moment().format("YYYY-MM-DD")}</span>
+          </div>
+          <div class="rline">
+            <span class="lbl">Hora:</span>
+            <span class="val">${moment().format("HH:mm:ss")}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="sep"/>
+
+    <div class="meta">
+      <div>Del ${dateFrom || "—"} al ${dateTo || "—"}</div>
+      <div>Filas: <b>${rows.length}</b></div>
+    </div>
 
     <table>
       <thead>
         <tr>
-          <th>#</th><th>Ref</th><th>Cliente</th><th>Vence</th><th>Total</th><th>Fecha</th>
+          <th class="c-center">#</th>
+          <th class="c-center">Ref</th>
+          <th class="c-left">Cliente</th>
+          <th class="c-center">Vence</th>
+          <th class="c-right">Total</th>
+          <th class="c-center">Fecha</th>
         </tr>
       </thead>
       <tbody>
@@ -393,10 +531,23 @@ function Orders() {
       </tbody>
     </table>
 
-    <script>
-      window.onload=()=>{window.print(); window.onafterprint=()=>window.close();}
-    </script>
-  </body></html>`;
+    <div class="totals">
+      <div>TOTAL VENTAS: ${rows.length}</div>
+      <div>MONTO TOTAL: ${money(totalSum)}</div>
+    </div>
+
+  </div>
+
+  <script>
+    window.onload = function(){
+      window.print();
+      window.onafterprint = function(){ window.close(); }
+    }
+  </script>
+</body>
+</html>
+`;
+
 
     const w = window.open("", "_blank", "width=900,height=650");
     if (!w) {
@@ -438,12 +589,15 @@ function Orders() {
               <button
                 className="btn primary"
                 onClick={() => {
+                  setFilterFrom(dateFrom || null);
+                  setFilterTo(dateTo || null);
                   setTablePage(1);
                   getOrders(0, sortColumn, sortOrder, searchInput);
                 }}
               >
                 Filtrar
               </button>
+
 
               <button
                 className="btn warning"

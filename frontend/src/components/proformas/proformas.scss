@@ -107,4 +107,45 @@ input[type="time"] {
   margin-bottom: 6px;
 }
 
+.header{
+  display: grid;
+  grid-template-columns: 230px 1fr 170px;
+  column-gap: 28px;
+  align-items: start;
+}
+
+.col-left{ width: auto; }
+.col-center{ width: auto; text-align: center; }
+.col-right{
+  width: auto;
+  justify-self: end; 
+}
+
+.rightBox{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 2px;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.rline{
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.lbl{
+  min-width: 54px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.val{
+  font-weight: 400;
+}
+
+
 

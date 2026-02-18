@@ -201,3 +201,16 @@ html.dark .expenses .filters-left input[type="date"]::-webkit-calendar-picker-in
   filter: invert(1);
   opacity: 0.85;
 }
+@page {
+  size: letter portrait;
+  margin: 0;
+}
+
+.page {
+  page-break-after: always;
+  position: relative;
+}
+
+.page:last-child {
+  page-break-after: auto;
+}

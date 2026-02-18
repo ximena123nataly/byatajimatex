@@ -3,7 +3,7 @@
   background-color: #fafafa;
   height: calc(100vh - 50px);
 
-  /* ================= HEADER ================= */
+ 
 
   .order-header {
     display: flex;
@@ -12,7 +12,7 @@
     margin: 1rem;
   }
 
-  /* FILTROS (fila superior) */
+  
   .filters-bar {
     display: flex;
     justify-content: flex-start;
@@ -43,7 +43,7 @@
     background: white;
   }
 
-  /* TITULO + BOTON */
+  
   .title-row {
     display: flex;
     justify-content: space-between;
@@ -57,7 +57,7 @@
     margin-left: 0.5rem;
   }
 
-  /* ================= CARD ================= */
+ 
 
   .card {
     background-color: white;
@@ -73,7 +73,7 @@
     height: 100%;
   }
 
-  /* ================= BOTONES ================= */
+ 
 
   .btn {
     border: 2px solid black;
@@ -122,7 +122,7 @@
     color: white;
   }
 }
-/* ===== DARK MODE SOLO FILTROS (VENTAS) ===== */
+
 body.dark .orders .filters-bar,
 html.dark .orders .filters-bar,
 .dark .orders .filters-bar,

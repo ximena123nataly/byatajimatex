@@ -52,6 +52,15 @@ function Proformas() {
       }, 0);
     }
   };
+  const [filterFrom, setFilterFrom] = useState(null);
+  const [filterTo, setFilterTo] = useState(null);
+
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    setDesde(today);
+    setHasta(today);
+  }, []);
+
 
   useEffect(() => {
     moment.locale("es");
@@ -92,8 +101,9 @@ function Proformas() {
         only_pendientes: onlyPendientes,
 
 
-        desde: desde || null,
-        hasta: hasta || null,
+        desde: filterFrom,
+        hasta: filterTo,
+
       }),
 
       credentials: "include",
@@ -110,7 +120,8 @@ function Proformas() {
         .then(() => setPageState(2))
         .catch(() => setPageState(3));
     }
-  }, [permission, tablePage, sortColumn, sortOrder, searchInput, onlyPendientes, desde, hasta]);
+  }, [permission, tablePage, sortColumn, sortOrder, searchInput, onlyPendientes]);
+
 
 
   const deleteProforma = async (id) => {
@@ -312,6 +323,8 @@ function Proformas() {
     return entregado ? "row-entregado" : "row-no-entregado";
   };
   const filtrarPorFechas = () => {
+    setFilterFrom(desde || null);
+    setFilterTo(hasta || null);
     setTablePage(1);
     getProformas(0, sortColumn, sortOrder, searchInput);
   };
@@ -348,7 +361,11 @@ function Proformas() {
         <td class="c-center">${i + 1}</td>
         <td class="c-center">${String(p.id ?? "").padStart(7, "0")}</td>
         <td class="c-left">${String(p.cliente || "")}</td>
-        <td class="c-right">${Number(p.total_general || 0).toFixed(2)}</td>
+<td class="c-center">
+  ${Number(p.entregado) === 1 ? "ENTREGADO" : "NO ENTREGADO"}
+</td>
+<td class="c-right">${Number(p.total_general || 0).toFixed(2)}</td>
+
         <td class="c-right">${Number(p.saldo || 0).toFixed(2)}</td>
         <td class="c-center">${p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : ""}</td>
       </tr>
@@ -533,6 +550,7 @@ function Proformas() {
           <th style="width:45px;" class="c-center">#</th>
           <th style="width:120px;" class="c-center">Proforma</th>
           <th class="c-left">Cliente</th>
+          <th style="width:120px;" class="c-center">Entregado</th>
           <th style="width:110px;" class="c-right">Total</th>
           <th style="width:110px;" class="c-right">Saldo</th>
           <th style="width:120px;" class="c-center">Fecha</th>
