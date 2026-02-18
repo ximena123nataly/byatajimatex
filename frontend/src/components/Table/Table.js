@@ -55,7 +55,7 @@ function Table(props) {
             <Popover id="popover-basic" style={{ backgroundColor: "#e4ffe5" }}>
               <Popover.Body>
                 {
-                  props.headers.map((val, i) => (
+                 (props.headers || []).map((val, i) => (
                     <div key={i} className="d-flex align-items-center gap-2">
                       <input
                         type="checkbox"
@@ -128,7 +128,7 @@ function Table(props) {
 
         <tbody>
           {
-            props.data.length === 0 ? (
+          !props.data || props.data.length === 0? (
               <tr>
                 <td colSpan={props.headers.length} className="text-center">
                   ¡No se encontraron datos!

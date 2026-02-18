@@ -1,9 +1,9 @@
-.compras {
+.compras-add {
 	flex-grow: 1;
 	background-color: #fafafa;
 	height: calc(100vh - 50px);
 
-	.compras-header {
+	.compras-add-header {
 		display: flex;
 		justify-content: space-between;
 		margin: 1rem;
@@ -14,7 +14,6 @@
 		font-size: x-large;
 		font-weight: bold;
 		margin-left: 0.5rem;
-		margin-right: 0.5rem;
 	}
 
 	.card {
@@ -26,27 +25,50 @@
 	}
 
 	.container {
-		-webkit-box-shadow: 2px 4px 10px 1px rgba(0, 0, 0, 0.47);
 		box-shadow: 2px 4px 10px 1px rgba(201, 201, 201, 0.47);
-		padding: 2px 2px;
-		height: 100%;
+		padding: 20px;
+	}
+
+	.form {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		gap: 20px;
+	}
+
+	.form-group {
+		display: flex;
+		flex-direction: column;
+	}
+
+	label {
+		margin-bottom: 5px;
+		font-weight: 500;
+		color: #555;
+	}
+
+	input {
+		padding: 8px;
+		border: 1px solid #ccc;
+		border-radius: 4px;
+	}
+
+	.form-buttons {
+		grid-column: 1 / -1;
+		display: flex;
+		gap: 15px;
+		margin-top: 10px;
 	}
 
 	.btn {
 		border: 2px solid black;
 		background-color: white;
 		color: black;
-		padding: 5px 10px;
-		font-size: 16px;
+		padding: 6px 15px;
+		font-size: 14px;
 		font-weight: bold;
 		border-radius: 0.3rem;
 		cursor: pointer;
-		transition: color 0.4s, background-color 0.4s;
-	}
-
-	.btn:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
+		transition: 0.3s;
 	}
 
 	.success {
@@ -59,46 +81,13 @@
 		color: white;
 	}
 
-	.info {
-		border-color: #2196F3;
-		color: dodgerblue;
-	}
-
-	.info:hover {
-		background: #2196F3;
-		color: white;
-	}
-
-	.warning {
-		border-color: #ff9800;
-		color: orange;
-	}
-
-	.warning:hover {
-		background: #ff9800;
-		color: white;
-	}
-
 	.danger {
 		border-color: #f44336;
-		color: rgb(222, 72, 72);
+		color: #f44336;
 	}
 
 	.danger:hover {
-		background: #f44336;
+		background-color: #f44336;
 		color: white;
-	}
-
-	.default {
-		border-color: #e7e7e7;
-		color: black;
-	}
-
-	.default:hover {
-		background: #e7e7e7;
-	}
-
-	@media screen and (max-width: 768px) {
-		height: 110vh;
 	}
 }

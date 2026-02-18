@@ -1,41 +1,42 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from "react-router-dom"
-import moment from 'moment'
-import 'moment/locale/es'
 import Table from '../Table/Table'
 import './Compras.scss'
 
-//estados principales
 const Compras = () => {
 
     const [compras, setCompras] = useState([]);
-    const [loading, setLoading] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-    const [fechaInicio, setFechaInicio] = useState('')
-    const [fechaFin, setFechaFin] = useState('')
+    const [searchInput, setSearchInput] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [dataCount, setDataCount] = useState(0);
+    const [sortColumn, setSortColumn] = useState("");
+    const [sortOrder, setSortOrder] = useState("");
 
-    //función para traer compras
+    // traer compras
     const getCompras = async () => {
-        setLoading(true)
+        setLoading(true);
         try {
             const res = await fetch('http://localhost:5000/compras', {
                 credentials: "include"
-            })
+            });
 
-            const data = await res.json()
-            setCompras(data)
+            const data = await res.json();
+
+            setCompras(Array.isArray(data) ? data : []);
+            setDataCount(Array.isArray(data) ? data.length : 0);
+
         } catch (error) {
-            console.error(error)
+            console.error(error);
         }
-        setLoading(false)
-    }
+        setLoading(false);
+    };
 
-    //useEffect inicial
     useEffect(() => {
-        getCompras()
-    }, [])
+        getCompras();
+    }, []);
 
-    //columnas de la tabla
     const headers = [
         'Fecha',
         'Proveedor',
@@ -43,7 +44,7 @@ const Compras = () => {
         'Total',
         'Pagado',
         'Saldo',
-        'Método'
+        'Método de pago'
     ];
 
     const columnOriginalNames = [
@@ -56,29 +57,43 @@ const Compras = () => {
         'metodo_pago'
     ];
 
-
-    //render
     return (
         <div className="compras">
 
             <div className="compras-header">
-                <h2>Compras</h2>
+                <h2 className="title">Compras</h2>
 
-                <Link to="/compras/add">
-                    <button className="btn btn-primary">
-                        + Nueva Compra
+                <Link to="/compras/addnew">
+
+                    <button className="btn success">
+                        Agregar nuevo
                     </button>
                 </Link>
             </div>
 
-            <Table
-                columns={columnas}
-                data={compras}
-                loading={loading}
-            />
+            <div className="card">
+                <div className="container">
+
+                    <Table
+                        headers={headers}
+                        columnOriginalNames={columnOriginalNames}
+                        data={compras}
+                        searchInput={searchInput}
+                        setSearchInput={setSearchInput}
+                        current_page={currentPage}
+                        data_count={dataCount}
+                        tablePageChangeFunc={setCurrentPage}
+                        sortColumn={sortColumn}
+                        setSortColumn={setSortColumn}
+                        sortOrder={sortOrder}
+                        setSortOrder={setSortOrder}
+                    />
+
+                </div>
+            </div>
 
         </div>
-    )
-}
+    );
+};
 
-export default Compras
+export default Compras;
