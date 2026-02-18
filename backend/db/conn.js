@@ -28,11 +28,11 @@ function connectToDatabase() {
    conn.connect((err) => {
     if (err) {
       reconnectAttempts++;
-      console.error(`❌ Error conectando a MySQL (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}):`, err.message);
+      console.error(` Error conectando a MySQL (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}):`, err.message);
       
       // Retry con backoff exponencial
       const delay = Math.min(5000 * Math.pow(1.5, reconnectAttempts - 1), 30000);
-      console.log(`🔄 Reintentando en ${delay/1000} segundos...`);
+      console.log(` Reintentando en ${delay/1000} segundos...`);
       
       setTimeout(connectToDatabase, delay);
       return;
@@ -40,7 +40,7 @@ function connectToDatabase() {
 
     // Resetear intentos al conectar exitosamente
     reconnectAttempts = 0;
-    console.log("✅ MySQL conectado correctamente");
+    console.log(" MySQL conectado correctamente");
     
     // Configurar modo SQL
     let q = "SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))";
@@ -51,9 +51,9 @@ function connectToDatabase() {
 
   // Manejar errores de conexión
   conn.on('error', (err) => {
-    console.error('⚠️  Error de conexión MySQL:', err.message);
+    console.error('  Error de conexión MySQL:', err.message);
     if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
-      console.log('🔄 Reconectando...');
+      console.log(' Reconectando...');
 
        // IMPORTANTE: Destruir la conexión vieja
       if (conn && conn.destroy) {

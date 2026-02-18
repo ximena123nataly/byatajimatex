@@ -77,45 +77,49 @@ class Proforma {
           tso = "ORDER BY id DESC";
         }
 
-        const q = `
-        SELECT
-          id,
-          proforma_id,
-          fecha,
-          hora,
-          fecha_entrega,
-          hora_entrega,
-          customer_id,
-          cliente,
-          celular,
-          notas,
-          detalle,
-          total_general,
-          anticipo,
-          saldo,
-          estado,
-          entregado
-        FROM proformas
-        ${tsa}
-        ${tso}
-        LIMIT ?, 10
-      `;
+        const isPrint = req.body.imprimir === true;
 
-        db.query(q, [...params, req.body.start_value], (err, result) => {
+        const q = `
+  SELECT
+    id,
+    proforma_id,
+    fecha,
+    hora,
+    fecha_entrega,
+    hora_entrega,
+    customer_id,
+    cliente,
+    celular,
+    notas,
+    detalle,
+    total_general,
+    anticipo,
+    saldo,
+    estado,
+    entregado
+  FROM proformas
+  ${tsa}
+  ${tso}
+  ${isPrint ? "" : "LIMIT ?, 10"}
+`;
+
+        const queryParams = isPrint ? params : [...params, req.body.start_value];
+
+        db.query(q, queryParams, (err, result) => {
           if (err) return reject(err);
 
           const q2 = `
-          SELECT COUNT(*) AS val
-          FROM proformas
-          ${tsa}
-        `;
+    SELECT COUNT(*) AS val
+    FROM proformas
+    ${tsa}
+  `;
 
           db.query(q2, params, (err2, result2) => {
             if (err2) return reject(err2);
 
             resolve({
               operation: "success",
-              message: "10 proformas got",
+              message: isPrint ? "proformas print" : "10 proformas got",
               info: { proformas: result, count: result2[0].val },
             });
           });
@@ -201,7 +205,7 @@ class Proforma {
                 );
               }
 
-              // ✅ Si anticipo > 0 => registrar en caja
+              // Si anticipo > 0 => registrar en caja
               if (anticipo > 0 && user_id) {
                 db.query(
                   "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1",
@@ -227,7 +231,7 @@ class Proforma {
                     const id_caja = cajaRes[0].id_caja;
                     const { fecha, hora } = nowDateTimeTZ();
 
-                    // ✅ origen según tu regla:
+                    //  origen según tu regla:
                     // anticipo==total o saldo==0 => PAGADO_TOTAL
                     // anticipo>0 y saldo>0 => ANTICIPO
                     const origen = (saldo === 0 || anticipo === total)
@@ -386,7 +390,7 @@ class Proforma {
             );
           }
 
-          // ✅ Tu regla: debe pagar saldo completo
+          //  Tu regla: debe pagar saldo completo
           if (monto !== saldoActual) {
             return db.rollback(() =>
               res.send({ operation: "error", message: "Debes pagar el saldo completo" })

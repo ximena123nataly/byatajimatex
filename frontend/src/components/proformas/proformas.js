@@ -101,8 +101,9 @@ function Proformas() {
         only_pendientes: onlyPendientes,
 
 
-        desde: filterFrom,
-        hasta: filterTo,
+        desde: filterFrom || null,
+        hasta: filterTo || null,
+
 
       }),
 
@@ -328,21 +329,46 @@ function Proformas() {
     setTablePage(1);
     getProformas(0, sortColumn, sortOrder, searchInput);
   };
+  const fmtLargo = (fecha) => {
+    if (!fecha) return "";
+    const f = new Date(fecha);
+    return f.toLocaleDateString("es-BO", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+  };
 
 
-  const imprimirReporteProformas = () => {
-    const filasData = (proformas || []);
+  const imprimirReporteProformas = async () => {
 
-    // ===== SUMAS =====
-    const totalGeneralSum = filasData.reduce((acc, p) => acc + Number(p.total_general || 0), 0);
-    const totalSaldoSum = filasData.reduce((acc, p) => acc + Number(p.saldo || 0), 0);
+    const res = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_proformas`, {
+      method: "POST",
+      headers: { "Content-type": "application/json; charset=UTF-8" },
+      credentials: "include",
+      body: JSON.stringify({
+        imprimir: true,
+        search_value: searchInput,
+        only_pendientes: onlyPendientes,
+        desde: filterFrom,
+        hasta: filterTo,
+      }),
+    });
 
-    // ===== RANGO EN TEXTO (del ... al ...) =====
-    const fmtLargo = (v) => {
-      if (!v) return "";
-      // v viene como "YYYY-MM-DD"
-      return moment(v, "YYYY-MM-DD").format("D [de] MMMM [de] YYYY");
-    };
+
+    const body = await res.json();
+    const filasData = body.info?.proformas || [];
+
+    const totalSaldoSum = filasData.reduce(
+      (acc, p) => acc + Number(p.saldo || 0),
+      0
+    );
+
+    const totalGeneralSum = filasData.reduce(
+      (acc, p) => acc + Number(p.total_general || 0),
+      0
+    );
+
 
     const rangoTexto =
       desde && hasta

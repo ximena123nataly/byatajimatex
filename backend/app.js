@@ -106,10 +106,10 @@ app.get('/', (req, res) => {
 // =============================================
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: '✅ healthy',
+    status: ' healthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    mysql: '✅ connected',
+    mysql: ' connected',
     uptime: `${process.uptime().toFixed(2)} seconds`,
     memory_usage: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`,
     node_version: process.version,
@@ -142,7 +142,7 @@ if (isProduction) {
       index: false // No servir index.html automáticamente
     }));
     
-    console.log('✅ Frontend build encontrado y servido estáticamente');
+    console.log(' Frontend build encontrado y servido estáticamente');
   }
 }
 
@@ -156,6 +156,7 @@ app.use('/', require('./routes/customers.routes.js'));
 app.use('/', require('./routes/suppliers.routes.js'));
 app.use('/', require('./routes/orders.routes.js'));
 app.use('/', require('./routes/expenses.routes.js'));
+app.use('/', require('./routes/compras.routes.js'));
 app.use("/", require("./routes/proformas.routes.js"));
 app.use("/", require("./routes/caja.routes.js"));
 

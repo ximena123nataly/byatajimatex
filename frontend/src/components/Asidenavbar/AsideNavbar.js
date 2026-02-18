@@ -27,7 +27,7 @@ function AsideNavbar() {
   const [permission, setPermission] = useState([]);
   const [toggel, setToggel] = useState(false);
 
-  
+
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
       method: "POST",
@@ -36,7 +36,7 @@ function AsideNavbar() {
       .then(async (response) => {
         const body = await response.json();
 
-        
+
         if (body.operation === "success") {
           fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_permission`, {
             method: "POST",
@@ -44,14 +44,14 @@ function AsideNavbar() {
           })
             .then((res) => res.json())
             .then((body) => {
-              
+
               setPermission(body.permissions || []);
             })
             .catch((error) => {
               console.log(error);
             });
         } else {
-          
+
           window.location.href = "/login";
         }
       })
@@ -60,7 +60,7 @@ function AsideNavbar() {
       });
   }, []);
 
-  
+
   const logout = () => {
     swal({
       title: "¿Estás seguro?",
@@ -86,13 +86,13 @@ function AsideNavbar() {
     });
   };
 
-  
+
   const isView = (page) => {
     if (!Array.isArray(permission)) return false;
     return permission.find((p) => p.page === page)?.view === true;
   };
 
- 
+
   const LogoText = () => (
     <>
       {isView("employees") ? (
@@ -172,6 +172,14 @@ function AsideNavbar() {
           </li>
         </Link>
       )}
+      {isView("compras") && (
+        <Link to="/compras" style={{ textDecoration: "none" }}>
+          <li>
+            <AttachMoneyIcon className="icon" />
+            <span>Compras</span>
+          </li>
+        </Link>
+      )}
 
       {(isView("customers") || isView("orders")) && (
         <p className="title">VENTAS</p>
@@ -215,7 +223,7 @@ function AsideNavbar() {
         </Link>
       )}
 
-      
+
       {isView("caja") && (
         <Link to="/caja" style={{ textDecoration: "none" }}>
           <li>
@@ -232,7 +240,7 @@ function AsideNavbar() {
     </ul>
   );
 
-  
+
   return (
     <div>
       <div className="toggelDiv">
