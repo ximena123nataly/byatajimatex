@@ -32,14 +32,12 @@ const Compras = () => {
                     fecha: item.fecha
                         ? moment(item.fecha).format("DD/MM/YYYY")
                         : "-",
-                    createdAt: item.createdAt
-                        ? moment.utc(item.createdAt).local().format("DD/MM/YYYY HH:mm")
-                        : "-"
+                    
                 }))
                 : [];
 
             setCompras(comprasFormateadas);
-            setDataCount(comprasFormateadas.length);
+            
 
             setDataCount(Array.isArray(data) ? data.length : 0);
 
@@ -54,24 +52,26 @@ const Compras = () => {
     }, []);
 
     const headers = [
+        'ID',
         'Fecha',
         'Proveedor',
-        'Descripción',
-        'Total',
-        'Pagado',
-        'Saldo',
-        'Método de pago'
+        'Método de pago',
+        'Referencia',
+        'Total'
     ];
 
+
+
     const columnOriginalNames = [
+        'id',
         'fecha',
         'proveedor',
-        'descripcion',
-        'total',
-        'pagado',
-        'saldo',
-        'metodo_pago'
+        'metodo_pago',
+        'referencia',
+        'total'
     ];
+
+
 
     return (
         <div className="compras">

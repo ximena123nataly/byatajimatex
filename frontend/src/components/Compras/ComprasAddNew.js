@@ -4,187 +4,212 @@ import "./ComprasAddNew.scss";
 
 const ComprasAddNew = () => {
 
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const [formData, setFormData] = useState({
-        proveedor: "",
-        descripcion: "",
-        total: "",
-        pagado: "",
-        metodo_pago: "",
-        referencia: "",
-        fecha: ""
+  const [formData, setFormData] = useState({
+    referencia: "",
+    proveedor: "",
+    metodo_pago: "",
+    fecha: ""
+  });
+
+  const [productos, setProductos] = useState([
+    { descripcion: "", cantidad: 0, precio: 0 }
+  ]);
+
+  // actualizar datos principales
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
     });
+  };
 
-    const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+  // actualizar productos
+  const handleProductoChange = (index, e) => {
+    const newProductos = [...productos];
+    newProductos[index][e.target.name] = e.target.value;
+    setProductos(newProductos);
+  };
+
+  // agregar producto
+  const addProducto = () => {
+    setProductos([
+      ...productos,
+      { descripcion: "", cantidad: 0, precio: 0 }
+    ]);
+  };
+
+  // eliminar producto
+  const removeProducto = (index) => {
+    const newProductos = productos.filter((_, i) => i !== index);
+    setProductos(newProductos);
+  };
+
+  // total general
+  const totalGeneral = productos.reduce(
+    (acc, item) => acc + item.cantidad * item.precio,
+    0
+  );
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const horaActual = new Date().toTimeString().slice(0, 8);
+
+    const dataToSend = {
+      ...formData,
+      hora: horaActual,
+      productos
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    try {
+      const res = await fetch("http://localhost:5000/compras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSend)
+      });
 
-        const saldoCalculado =
-            parseFloat(formData.total || 0) -
-            parseFloat(formData.pagado || 0);
+      if (!res.ok) {
+        alert("Error al guardar");
+        return;
+      }
 
-        const fechaHoraActual = new Date().toISOString();
+      navigate("/compras");
 
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-        const dataToSend = {
-            ...formData,
-            saldo: saldoCalculado,
-            fecha: fechaHoraActual
-        };
+  return (
+  <div className="orderaddnew">
 
+    <div className="order-header">
+      <h2 className="title">Nueva Compra</h2>
+    </div>
 
-        try {
-            const res = await fetch("http://localhost:5000/compras", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                credentials: "include",
-                body: JSON.stringify(dataToSend)
-            });
+    <div className="card">
+      <div className="container">
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                console.error(errorData);
-                alert("Error al guardar");
-                return;
-            }
+        <form onSubmit={handleSubmit}>
 
-            navigate("/compras");
+          {/* PARTE SUPERIOR */}
+          <div className="top-form">
+            <input
+              type="text"
+              name="referencia"
+              placeholder="Referencia o celular"
+              onChange={handleChange}
+            />
 
-        } catch (error) {
-            console.error(error);
-        }
-    };
+            <input
+              type="text"
+              name="proveedor"
+              placeholder="Proveedor"
+              onChange={handleChange}
+            />
 
-    return (
-        <div className="compras-add">
+            <input
+              type="text"
+              name="metodo_pago"
+              placeholder="Método de pago"
+              onChange={handleChange}
+            />
 
-            <div className="compras-add-header">
-                <h2 className="title">Nueva Compra</h2>
+            <input
+              type="date"
+              name="fecha"
+              onChange={handleChange}
+              required
+            />
+          </div>
+
+          <h3 style={{ marginTop: "20px" }}>Productos</h3>
+
+          <div className="productos-header">
+            <span>Descripción</span>
+            <span>Cantidad</span>
+            <span>Precio</span>
+            <span>Total</span>
+          </div>
+
+          {productos.map((producto, index) => (
+            <div className="producto-row" key={index}>
+              <input
+                type="text"
+                name="descripcion"
+                value={producto.descripcion}
+                onChange={(e) => handleProductoChange(index, e)}
+              />
+
+              <input
+                type="number"
+                name="cantidad"
+                value={producto.cantidad}
+                onChange={(e) => handleProductoChange(index, e)}
+              />
+
+              <input
+                type="number"
+                name="precio"
+                value={producto.precio}
+                onChange={(e) => handleProductoChange(index, e)}
+              />
+
+              <input
+                type="number"
+                value={producto.cantidad * producto.precio}
+                disabled
+              />
+
+              <button
+                type="button"
+                className="btn danger"
+                onClick={() => removeProducto(index)}
+              >
+                X
+              </button>
             </div>
+          ))}
 
-            <div className="card">
-                <div className="container">
+          <button
+            type="button"
+            className="btn info"
+            onClick={addProducto}
+            style={{ marginTop: "10px" }}
+          >
+            + Agregar producto
+          </button>
 
-                    <form onSubmit={handleSubmit} className="form">
+          <div style={{ marginTop: "30px" }}>
+            <h3>Total general: {totalGeneral.toFixed(2)}</h3>
+          </div>
 
-                        <div className="form-group">
-                            <label>Fecha</label>
-                            <input
-                                type="date"
-                                name="fecha"
-                                value={formData.fecha}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+          <div style={{ marginTop: "20px" }}>
+            <button type="submit" className="btn success">
+              Guardar
+            </button>
 
-                        <div className="form-group">
-                            <label>Proveedor</label>
-                            <input
-                                type="text"
-                                name="proveedor"
-                                value={formData.proveedor}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+            <button
+              type="button"
+              className="btn danger"
+              style={{ marginLeft: "10px" }}
+              onClick={() => navigate("/compras")}
+            >
+              Cancelar
+            </button>
+          </div>
 
-                        <div className="form-group">
-                            <label>Descripción</label>
-                            <input
-                                type="text"
-                                name="descripcion"
-                                value={formData.descripcion}
-                                onChange={handleChange}
-                            />
-                        </div>
+        </form>
 
-                        <div className="form-group">
-                            <label>Total</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="total"
-                                value={formData.total}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+      </div>
+    </div>
 
-                        <div className="form-group">
-                            <label>Pagado</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                name="pagado"
-                                value={formData.pagado}
-                                onChange={handleChange}
-                                required
-                            />
-                        </div>
+  </div>
+);
 
-                        <div className="form-group">
-                            <label>Método de pago</label>
-                            <input
-                                type="text"
-                                name="metodo_pago"
-                                value={formData.metodo_pago}
-                                onChange={handleChange}
-                            />
-                        </div>
 
-                        <div className="form-group">
-                            <label>Referencia</label>
-                            <input
-                                type="text"
-                                name="referencia"
-                                value={formData.referencia}
-                                onChange={handleChange}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Saldo</label>
-                            <input
-                                type="number"
-                                value={
-                                    (formData.total || 0) -
-                                    (formData.pagado || 0)
-                                }
-                                disabled
-                            />
-                        </div>
-
-                        <div className="form-buttons">
-                            <button type="submit" className="btn success">
-                                Guardar
-                            </button>
-
-                            <button
-                                type="button"
-                                className="btn danger"
-                                onClick={() => navigate("/compras")}
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-
-                    </form>
-
-                </div>
-            </div>
-
-        </div>
-    );
 };
 
 export default ComprasAddNew;
