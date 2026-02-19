@@ -30,13 +30,15 @@ const ComprasAddNew = () => {
             parseFloat(formData.total || 0) -
             parseFloat(formData.pagado || 0);
 
-        const horaActual = new Date().toTimeString().split(" ")[0];
+        const fechaHoraActual = new Date().toISOString();
+
 
         const dataToSend = {
             ...formData,
             saldo: saldoCalculado,
-            hora: horaActual
+            fecha: fechaHoraActual
         };
+
 
         try {
             const res = await fetch("http://localhost:5000/compras", {

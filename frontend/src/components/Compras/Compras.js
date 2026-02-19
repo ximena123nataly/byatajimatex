@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { Link } from "react-router-dom"
 import Table from '../Table/Table'
 import './Compras.scss'
+import moment from "moment";
+import "moment/locale/es";
 
 const Compras = () => {
 
@@ -24,7 +26,21 @@ const Compras = () => {
 
             const data = await res.json();
 
-            setCompras(Array.isArray(data) ? data : []);
+            const comprasFormateadas = Array.isArray(data)
+                ? data.map(item => ({
+                    ...item,
+                    fecha: item.fecha
+                        ? moment(item.fecha).format("DD/MM/YYYY")
+                        : "-",
+                    createdAt: item.createdAt
+                        ? moment.utc(item.createdAt).local().format("DD/MM/YYYY HH:mm")
+                        : "-"
+                }))
+                : [];
+
+            setCompras(comprasFormateadas);
+            setDataCount(comprasFormateadas.length);
+
             setDataCount(Array.isArray(data) ? data.length : 0);
 
         } catch (error) {

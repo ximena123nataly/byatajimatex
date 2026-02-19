@@ -852,7 +852,8 @@ function Proformas() {
   return (
     <div className="products">
       <div className="products-scroll">
-        <div className="proformas-header">
+        <div className="proformas-header-layout">
+
 
           {/* FILTROS (arriba) */}
           <div className="filters-bar">
