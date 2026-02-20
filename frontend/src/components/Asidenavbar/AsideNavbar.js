@@ -172,8 +172,8 @@ function AsideNavbar() {
           </li>
         </Link>
       )}
-      {isView("compras") && (
-        <Link to="/compras" style={{ textDecoration: "none" }}>
+      {isView("purchases") && (
+        <Link to="/purchases" style={{ textDecoration: "none" }}>
           <li>
             <AttachMoneyIcon className="icon" />
             <span>Compras</span>
