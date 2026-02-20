@@ -5,8 +5,7 @@ import "./style/dark.scss"
 import { DarkModeContext } from './context/darkModeContext';
 import Proformas from "./components/proformas/proformas";
 import ProformasAddNew from "./components/proformas/ProformasAddNew";
-import Compras from "./components/Compras/Compras";
-import ComprasAddNew from "./components/Compras/ComprasAddNew";
+
 import Purchases from "./components/Purchases/Purchases";
 import PurchasesAddNew from "./components/Purchases/PurchasesAddNew";
 
@@ -45,8 +44,7 @@ function App() {
 
             <Route path='/proformas' element={<Proformas />} />
             <Route path='/proformas/addnew' element={<ProformasAddNew />} />
-            <Route path='/compras' element={<Compras />} />
-            <Route path='/compras/addnew' element={<ComprasAddNew />} />
+         
             <Route path='/purchases' element={<Purchases />} />
             <Route path='/purchases/addnew' element={<PurchasesAddNew />} />
             {/*  Ruta Caja */}

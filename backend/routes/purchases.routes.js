@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const Purchase = require("../models/purchases.model");
+const verifyJwt = require("../middlewares/verifyJwt.js");
+const Purchase = require("../models/purchases.model.js");
 
 const purchase = new Purchase();
 
-router.post("/api/purchases/get", purchase.getPurchases);
-router.post("/api/purchases/add", purchase.addPurchase);
+// routes/purchases.js
+router.post("/getPurchases",verifyJwt, purchase.getPurchases);
+router.post("/addPurchase", verifyJwt,purchase.addPurchase);
 
 module.exports = router;

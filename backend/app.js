@@ -156,10 +156,9 @@ app.use('/', require('./routes/customers.routes.js'));
 app.use('/', require('./routes/suppliers.routes.js'));
 app.use('/', require('./routes/orders.routes.js'));
 app.use('/', require('./routes/expenses.routes.js'));
-app.use('/', require('./routes/compras.routes.js'));
 app.use("/", require("./routes/proformas.routes.js"));
 app.use("/", require("./routes/caja.routes.js"));
-app.use('/api/purchases', require('./routes/purchases.routes.js'));
+app.use('/', require('./routes/purchases.routes.js'));
 // =============================================
 // 5. MANEJO DE RUTAS NO ENCONTRADAS (404)
 // =============================================
