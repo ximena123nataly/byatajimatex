@@ -160,7 +160,7 @@ function Purchases() {
 
                 <div className="title-row">
                     <div className="title">Compras</div>
-                    <Link to="/compras/addnew" className="btn success">
+                    <Link to="/purchases/addnew" className="btn success">
                         Agregar nuevo
                     </Link>
                 </div>
