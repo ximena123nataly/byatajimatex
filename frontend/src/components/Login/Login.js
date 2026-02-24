@@ -11,7 +11,8 @@ function Login() {
 	const [email, setEmail] = useState('');
 	const [password, setPassword] = useState('');
 	const [submitButtonState, setSubmitButtonState] = useState(false);
-	let msg = 'Admin: email- testadmin@gmail.com, password- testadmin@12345\nEmployee: email- testemp@gmail.com, password- testemp@12345'
+	//let msg = 'Admin: email- testadmin@gmail.com, password- testadmin@12345\nEmployee: email- testemp@gmail.com, password- testemp@12345'
+	let msg = 'Bienvenido\nSistema de control de inventarios'
 
 	useEffect(() => {
 

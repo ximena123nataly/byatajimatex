@@ -27,6 +27,7 @@ const corsOptions = {
       // En producción, solo dominios específicos
       const allowedOrigins = [
         'https://bordadosjhonny.com',
+        'https://tajima.bordadosjhonny.com',
         'https://stockmerch.vercel.app' 
       ];
       
@@ -85,14 +86,15 @@ app.get('/', (req, res) => {
     server_time: new Date().toISOString(),
     server_uptime: `${process.uptime().toFixed(2)} seconds`,
     endpoints: {
-      auth: '/api/auth/*',
-      products: '/api/products/*',
-      customers: '/api/customers/*',
-      suppliers: '/api/suppliers/*',
-      orders: '/api/orders/*',
-      dashboard: '/api/dashboard/*',
-      proformas: '/api/proformas/*',
-      caja: '/api/caja/*',
+      auth: '/auth/*',
+      products: '/products/*',
+      customers: '/customers/*',
+      suppliers: '/suppliers/*',
+      orders: '/orders/*',
+      dashboard: '/dashboard/*',
+      proformas: '/proformas/*',
+      caja: '/caja/*',
+      compras: '/expenses/*',
       health: '/health'
     },
     frontend_url: 'http://localhost:3000',
@@ -191,7 +193,8 @@ if (isProduction) {
       available_routes: [
         'GET / - API Information',
         'GET /health - Server health check',
-        'GET /api/products - Get products',
+        'GET /products - Get products',
+        'GET /expenses - Get expenses',
         'GET /api/customers - Get customers',
         'POST /api/auth/login - User login'
       ],
@@ -224,25 +227,26 @@ app.use((err, req, res, next) => {
 // =============================================
 // 7. INICIAR SERVIDOR EN MODO PRODUCCION
 // =============================================
-/*
+
 const host = isProduction ? '0.0.0.0' : 'localhost';
 app.listen(port, host, () => {
   console.log(`🚀 Servidor ${isProduction ? 'PRODUCCIÓN' : 'DESARROLLO'} iniciado`);
   console.log(`📡 Escuchando en: http://${host}:${port}`);
   console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⏰ Hora de inicio: ${new Date().toLocaleString()}`);
-*/
+
 // =============================================
 // 7. INICIAR SERVIDOR EN MODO DESARROLLO
 // =============================================
-
+/*
 const host = process.env.HOST || "localhost";
 app.listen(port, host, () => {
   console.log(`🚀 Servidor ${isProduction ? 'PRODUCCION' : 'DESARROLLO'} iniciado`);
   console.log(`📡 Escuchando en: http://${host}:${port}`);
   console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⏰ Hora de inicio: ${new Date().toLocaleString()}`);
-  
+  */
+
   // Verificar conexión a BD
   require('./db/conn.js'); // Esto ejecutará la conexión
 });

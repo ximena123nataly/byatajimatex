@@ -107,7 +107,7 @@ export default function Feature({ reportStats }) {
 
       {/* PROFORMAS */}
       <div className="featuredItem">
-        <span className="featuredTitle">Proformas</span>
+        <span className="featuredTitle">Bordados</span>
 
         <div className="featuredMoneyContainer">
           <span className="featuredMoney">
@@ -119,7 +119,7 @@ export default function Feature({ reportStats }) {
 
         <div className="d-flex justify-content-between align-items-center">
           <Link to="/proformas" className="text-decoration-none">
-            <span className="featuredSub">Ver todas las proformas</span>
+            <span className="featuredSub">Ver todos los bordados</span>
           </Link>
 
           <div style={{ backgroundColor: "#d9b6cb", borderRadius: "5px", color: "#a30b66", padding: "3px" }}>
