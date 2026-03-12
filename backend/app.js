@@ -228,7 +228,8 @@ app.use((err, req, res, next) => {
 // 7. INICIAR SERVIDOR EN MODO PRODUCCION
 // =============================================
 
-const host = isProduction ? '0.0.0.0' : 'localhost';
+//const host = isProduction ? '0.0.0.0' : 'localhost';
+const host = process.env.HOST || '0.0.0.0';
 app.listen(port, host, () => {
   console.log(`🚀 Servidor ${isProduction ? 'PRODUCCIÓN' : 'DESARROLLO'} iniciado`);
   console.log(`📡 Escuchando en: http://${host}:${port}`);
