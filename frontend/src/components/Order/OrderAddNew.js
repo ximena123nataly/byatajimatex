@@ -27,7 +27,17 @@ function OrderAddNew() {
   const today = new Date().toISOString().slice(0, 10);
   const [dueDate, setDueDate] = useState(today);
 
-  const [itemArray, setItemArray] = useState([{ product_id: null, product_name: null, quantity: 0, rate: 0, max_stock: 0 }])
+  const [itemArray, setItemArray] = useState([
+    {
+      product_id: null,
+      product_name: null,
+      quantity: 0,
+      rate: 0,
+      max_stock: 0,
+      product_image: null
+    }
+  ])
+
   const [tax, setTax] = useState(0)
   const [grandTotal, setGrandTotal] = useState(0)
 
@@ -91,7 +101,6 @@ function OrderAddNew() {
     setGrandTotal(temp + (temp * tax / 100))
   }, [itemArray, tax])
 
-  // ✅ CAMBIO: helpers para impresión
   const toNumber = (v) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
@@ -103,7 +112,21 @@ function OrderAddNew() {
     return num.toFixed(2);
   };
 
-  // ✅ CAMBIO: función imprimir (igual estilo que Orders.js)
+  const getProductImageValue = (product) => {
+    return (
+      product?.image ||
+      product?.product_image ||
+      product?.product_img ||
+      product?.img ||
+      null
+    );
+  };
+
+  const getProductImageUrl = (imageName) => {
+    if (!imageName) return null;
+    return `${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${imageName}`;
+  };
+
   const imprimirVenta = (o) => {
     if (!o) return;
 
@@ -299,7 +322,7 @@ function OrderAddNew() {
     obj.due_date = dueDate;
 
     let t = itemArray.map(obj => {
-      let { max_stock, ...objSpread } = obj
+      let { max_stock, product_image, ...objSpread } = obj
       return objSpread
     })
 
@@ -320,7 +343,6 @@ function OrderAddNew() {
     setSubmitButtonState(false)
 
     if (body.operation === 'success') {
-      // ✅ CAMBIO: swal con botón IMPRIMIR
       const orderId = body?.info?.order_id ?? body?.info?.id ?? body?.order_id ?? null;
 
       swal({
@@ -340,7 +362,7 @@ function OrderAddNew() {
             due_date: dueDate,
             tax,
             grand_total: grandTotal,
-            fecha: today, // ✅ fecha simple (no larga)
+            fecha: today,
             items: t.map(x => ({
               product_name: x.product_name,
               quantity: x.quantity,
@@ -350,11 +372,19 @@ function OrderAddNew() {
         }
       });
 
-      // Reset
       setOrderRef('')
       setSelectedCustomer(null)
       setDueDate(today)
-      setItemArray([{ product_id: null, product_name: null, quantity: 0, rate: 0, max_stock: 0 }])
+      setItemArray([
+        {
+          product_id: null,
+          product_name: null,
+          quantity: 0,
+          rate: 0,
+          max_stock: 0,
+          product_image: null
+        }
+      ])
       setTax(0)
       setGrandTotal(0)
 
@@ -364,7 +394,6 @@ function OrderAddNew() {
     }
   }
 
-  // crear cliente
   const createCustomer = async () => {
     if (!newCustomerName.trim()) {
       swal("¡Ups!", "El nombre es obligatorio", "error");
@@ -470,20 +499,35 @@ function OrderAddNew() {
 
                     {
                       itemArray.map((obj, ind) => (
-                        <div key={ind} style={{ display: "flex", textAlign: "center", alignItems: "center", height: "2.5rem", margin: "0.3rem 0" }}>
-                          <div style={{ minWidth: "30%", height: "100%" }}>
+                        <div
+                          key={ind}
+                          style={{
+                            display: "flex",
+                            textAlign: "center",
+                            alignItems: "flex-start",
+                            minHeight: "2.5rem",
+                            margin: "0.5rem 0"
+                          }}
+                        >
+                          <div style={{ minWidth: "30%" }}>
                             <Select
                               options={productList.map(x => ({ label: x.name, value: x.product_id }))}
-                              value={(obj.product_name !== null && obj.product_id !== null) ? { label: obj.product_name, value: obj.product_id } : null}
+                              value={(obj.product_name !== null && obj.product_id !== null)
+                                ? { label: obj.product_name, value: obj.product_id }
+                                : null}
                               placeholder='Selecciona un producto...'
                               onChange={(val) => {
-                                let t2 = itemArray.map(x => ({ ...x }))
-                                t2[ind].product_id = val.value
-                                t2[ind].product_name = val.label
-                                t2[ind].quantity = 1
-                                t2[ind].rate = parseFloat(productList.find(x => x.product_id === val.value).selling_price)
-                                t2[ind].max_stock = parseInt(productList.find(x => x.product_id === val.value).product_stock)
-                                setItemArray(t2)
+                                const selectedProduct = productList.find(x => x.product_id === val.value);
+
+                                let t2 = itemArray.map(x => ({ ...x }));
+                                t2[ind].product_id = val.value;
+                                t2[ind].product_name = val.label;
+                                t2[ind].quantity = 1;
+                                t2[ind].rate = parseFloat(selectedProduct?.selling_price || 0);
+                                t2[ind].max_stock = parseInt(selectedProduct?.product_stock || 0);
+                                t2[ind].product_image = getProductImageValue(selectedProduct);
+
+                                setItemArray(t2);
                               }}
                               onMenuOpen={() => getProducts("")}
                               onInputChange={(val) => {
@@ -492,10 +536,66 @@ function OrderAddNew() {
                               }}
                               classNamePrefix="react-dropdown-dark"
                             />
+
+                            {obj.product_id && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "10px",
+                                  alignItems: "center",
+                                  marginTop: "8px",
+                                  padding: "8px",
+                                  border: "1px solid #e5e5e5",
+                                  borderRadius: "8px",
+                                  background: "#fafafa"
+                                }}
+                              >
+                                {obj.product_image ? (
+                                  <img
+                                    src={getProductImageUrl(obj.product_image)}
+                                    alt={obj.product_name}
+                                    style={{
+                                      width: "60px",
+                                      height: "60px",
+                                      objectFit: "cover",
+                                      borderRadius: "6px",
+                                      border: "1px solid #ddd"
+                                    }}
+                                  />
+                                ) : (
+                                  <div
+                                    style={{
+                                      width: "60px",
+                                      height: "60px",
+                                      border: "1px solid #ddd",
+                                      borderRadius: "6px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontSize: "11px",
+                                      color: "#777",
+                                      background: "#fff"
+                                    }}
+                                  >
+                                    Sin imagen
+                                  </div>
+                                )}
+
+                                <div style={{ textAlign: "left", fontSize: "13px" }}>
+                                  <div style={{ fontWeight: "bold" }}>{obj.product_name}</div>
+                                  <div style={{ color: obj.max_stock <= 5 ? "red" : "green" }}>
+                                    Stock disponible: <b>{obj.max_stock}</b>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div style={{ minWidth: "20%", height: "100%" }}>
-                            <input className='my_input' style={{ width: "90%", height: "100%", marginLeft: "10%" }} type="number"
+                            <input
+                              className='my_input'
+                              style={{ width: "90%", height: "100%", marginLeft: "10%" }}
+                              type="number"
                               max={obj.max_stock}
                               value={obj.quantity.toString()}
                               onChange={(e) => {
@@ -507,7 +607,10 @@ function OrderAddNew() {
                           </div>
 
                           <div style={{ minWidth: "20%", height: "100%" }}>
-                            <input className='my_input' style={{ width: "90%", height: "100%", marginLeft: "10%" }} type="number"
+                            <input
+                              className='my_input'
+                              style={{ width: "90%", height: "100%", marginLeft: "10%" }}
+                              type="number"
                               value={obj.rate.toString()}
                               onChange={(e) => {
                                 let t2 = itemArray.map(x => ({ ...x }))
@@ -518,18 +621,24 @@ function OrderAddNew() {
                           </div>
 
                           <div style={{ minWidth: "20%", height: "100%" }}>
-                            <p className='my_input' style={{ width: "90%", height: "100%", marginLeft: "10%" }} >{obj.quantity * obj.rate}</p>
+                            <p className='my_input' style={{ width: "90%", height: "100%", marginLeft: "10%" }}>
+                              {obj.quantity * obj.rate}
+                            </p>
                           </div>
 
                           <div style={{ minWidth: "10%", height: "100%" }}>
                             {itemArray.length > 1 && (
-                              <button className='btn danger' style={{ borderRadius: "3rem", width: "3rem" }}
+                              <button
+                                className='btn danger'
+                                style={{ borderRadius: "3rem", width: "3rem" }}
                                 onClick={() => {
                                   let t2 = itemArray.map(x => ({ ...x }))
                                   t2.splice(ind, 1)
                                   setItemArray(t2)
                                 }}
-                              >&#10006;</button>
+                              >
+                                &#10006;
+                              </button>
                             )}
                           </div>
                         </div>
@@ -537,24 +646,40 @@ function OrderAddNew() {
                     }
                   </div>
 
-                  <button className='btn info' style={{ maxWidth: "15%", margin: "0 15px" }}
+                  <button
+                    className='btn info'
+                    style={{ maxWidth: "15%", margin: "0 15px" }}
                     onClick={() => {
                       let t2 = itemArray.map(x => ({ ...x }))
-                      t2.push({ product_id: null, product_name: null, quantity: 0, rate: 0, max_stock: 0 })
+                      t2.push({
+                        product_id: null,
+                        product_name: null,
+                        quantity: 0,
+                        rate: 0,
+                        max_stock: 0,
+                        product_image: null
+                      })
                       setItemArray(t2)
                     }}
-                  >Sumar +</button>
+                  >
+                    Sumar +
+                  </button>
 
                   <div style={{ margin: "0 15px" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", margin: "0.2rem 0" }}>
-                      <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }} ><h4>Subtotal</h4></div>
-                      <div style={{ width: "20%", marginRight: "8%" }}><p className='my_input' >{itemArray.reduce((p, o) => p + (o.quantity * o.rate), 0)}</p></div>
+                      <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }}><h4>Subtotal</h4></div>
+                      <div style={{ width: "20%", marginRight: "8%" }}>
+                        <p className='my_input'>{itemArray.reduce((p, o) => p + (o.quantity * o.rate), 0)}</p>
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", margin: "0.2rem 0" }}>
-                      <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }} ><h4>Impuestos (%)</h4></div>
+                      <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }}><h4>Impuestos (%)</h4></div>
                       <div style={{ width: "20%", marginRight: "8%" }}>
-                        <input className='my_input' style={{ width: "90%", height: "100%" }} type="number"
+                        <input
+                          className='my_input'
+                          style={{ width: "90%", height: "100%" }}
+                          type="number"
                           value={tax.toString()}
                           onChange={(e) => { setTax(e.target.value === "" ? 0 : parseFloat(e.target.value)) }}
                         />
@@ -564,13 +689,18 @@ function OrderAddNew() {
                     <hr style={{ width: "50%", marginLeft: "auto" }} />
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", margin: "0.2rem 0" }}>
-                      <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }} ><h3>Total general</h3></div>
-                      <div style={{ width: "20%", marginRight: "8%" }}><p className='my_input'>{grandTotal}</p></div>
+                      <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }}><h3>Total general</h3></div>
+                      <div style={{ width: "20%", marginRight: "8%" }}>
+                        <p className='my_input'>{grandTotal}</p>
+                      </div>
                     </div>
                   </div>
 
                   {permission.create && (
-                    <button className='btn success' style={{ alignSelf: "center" }} disabled={submitButtonState}
+                    <button
+                      className='btn success'
+                      style={{ alignSelf: "center" }}
+                      disabled={submitButtonState}
                       onClick={() => {
                         swal({
                           title: "¿Estás seguro?",
@@ -591,7 +721,6 @@ function OrderAddNew() {
               <Error />
         }
 
-        {/* Modal agregar cliente */}
         {showCustomerModal && (
           <div style={{
             position: "fixed",
@@ -606,17 +735,33 @@ function OrderAddNew() {
               <h3 style={{ marginTop: 0 }}>Agregar nuevo cliente</h3>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <input className="my_input" placeholder="Nombre" value={newCustomerName}
-                  onChange={(e) => setNewCustomerName(e.target.value)} />
+                <input
+                  className="my_input"
+                  placeholder="Nombre"
+                  value={newCustomerName}
+                  onChange={(e) => setNewCustomerName(e.target.value)}
+                />
 
-                <input className="my_input" placeholder="Correo" value={newCustomerEmail}
-                  onChange={(e) => setNewCustomerEmail(e.target.value)} />
+                <input
+                  className="my_input"
+                  placeholder="Correo"
+                  value={newCustomerEmail}
+                  onChange={(e) => setNewCustomerEmail(e.target.value)}
+                />
 
-                <input className="my_input" placeholder="Dirección" value={newCustomerAddress}
-                  onChange={(e) => setNewCustomerAddress(e.target.value)} />
+                <input
+                  className="my_input"
+                  placeholder="Dirección"
+                  value={newCustomerAddress}
+                  onChange={(e) => setNewCustomerAddress(e.target.value)}
+                />
 
-                <input className="my_input" placeholder="Celular" value={newCustomerCelular}
-                  onChange={(e) => setNewCustomerCelular(e.target.value.replace(/[^\d]/g, ""))} />
+                <input
+                  className="my_input"
+                  placeholder="Celular"
+                  value={newCustomerCelular}
+                  onChange={(e) => setNewCustomerCelular(e.target.value.replace(/[^\d]/g, ""))}
+                />
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 15 }}>
