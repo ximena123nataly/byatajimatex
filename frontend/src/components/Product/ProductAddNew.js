@@ -200,6 +200,7 @@ function ProductAddNew() {
 												>
 													<option value="">Seleccionar talla</option>
 													<option value="XS">XS</option>
+													<option value="SS">SS</option>
 													<option value="S">S</option>
 													<option value="M">M</option>
 													<option value="L">L</option>

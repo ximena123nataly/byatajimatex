@@ -259,7 +259,8 @@ function Products() {
     f.append('material', editMaterial)
     f.append('category', editCategory)
     f.append('description', editDescription)
-    //    f.append('image', editImage)
+    f.append('product_stock', parseInt(editStock))
+       f.append('image', editImage)
     f.append('selling_price', parseFloat(editSellingPrice))
     f.append('purchase_price', parseFloat(editPurchasePrice))
 
@@ -375,6 +376,7 @@ function Products() {
                     >
                       <option value="">Seleccionar talla</option>
                       <option value="XS">XS</option>
+                      <option value="SS">SS</option>
                       <option value="S">S</option>
                       <option value="M">M</option>
                       <option value="L">L</option>
