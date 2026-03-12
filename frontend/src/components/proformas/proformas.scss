@@ -107,45 +107,67 @@ input[type="time"] {
   margin-bottom: 6px;
 }
 
-.proformas-header-layout {
-  display: grid;
-  grid-template-columns: 230px 1fr 170px;
-  column-gap: 28px;
-  align-items: start;
+
+
+
+.proformas .btn,
+.proformas-header .btn {
+  border: 2px solid black;
+  background-color: white;
+  color: black;
+  padding: 6px 14px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.3s, background-color 0.3s, border-color 0.3s;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
-.col-left{ width: auto; }
-.col-center{ width: auto; text-align: center; }
-.col-right{
-  width: auto;
-  justify-self: end; 
+.proformas .btn:disabled,
+.proformas-header .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.rightBox{
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  text-align: right;
-  gap: 2px;
-  font-size: 11px;
-  margin-top: 6px;
+.proformas .btn.primary,
+.proformas-header .btn.primary {
+  border-color: black;
+  color: black;
 }
 
-.rline{
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
+.proformas .btn.primary:hover,
+.proformas-header .btn.primary:hover {
+  background-color: black;
+  color: white;
 }
 
-.lbl{
-  min-width: 54px;
-  font-weight: 700;
-  text-align: right;
+.proformas .btn.warning,
+.proformas-header .btn.warning {
+  border-color: #ff9800;
+  color: #ff9800;
 }
 
-.val{
-  font-weight: 400;
+.proformas .btn.warning:hover,
+.proformas-header .btn.warning:hover {
+  background-color: #ff9800;
+  color: white;
 }
 
+.proformas .btn.success,
+.proformas-header .btn.success {
+  border-color: #04AA6D;
+  color: #04AA6D;
+}
 
-
+.proformas .btn.success:hover,
+.proformas-header .btn.success:hover {
+  background-color: #04AA6D;
+  color: white;
+}
