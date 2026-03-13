@@ -24,6 +24,12 @@ function OrderAddNew() {
   const [savingCustomer, setSavingCustomer] = useState(false);
   const [newCustomerCelular, setNewCustomerCelular] = useState("");
 
+  // Modal buscar por imagen
+  const [showImagePickerModal, setShowImagePickerModal] = useState(false);
+  const [imageSearchValue, setImageSearchValue] = useState("");
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [imagePickerLoading, setImagePickerLoading] = useState(false);
+
   const today = new Date().toISOString().slice(0, 10);
   const [dueDate, setDueDate] = useState(today);
 
@@ -69,15 +75,24 @@ function OrderAddNew() {
   }, [])
 
   const getProducts = async (value) => {
-    let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_search`, {
-      method: 'POST',
-      headers: { 'Content-type': 'application/json; charset=UTF-8' },
-      body: JSON.stringify({ search_value: value }),
-      credentials: 'include'
-    })
+    try {
+      setImagePickerLoading(true);
 
-    let body = await result.json()
-    setProductList(body.info.products)
+      let result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_search`, {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({ search_value: value }),
+        credentials: 'include'
+      })
+
+      let body = await result.json()
+      setProductList(body?.info?.products || [])
+    } catch (error) {
+      console.log(error)
+      setProductList([])
+    } finally {
+      setImagePickerLoading(false);
+    }
   }
 
   const getCustomers = async (value) => {
@@ -124,7 +139,45 @@ function OrderAddNew() {
 
   const getProductImageUrl = (imageName) => {
     if (!imageName) return null;
-    return `${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${imageName}`;
+
+    const cleanName = String(imageName).replace(/\\/g, "/");
+
+    if (cleanName.startsWith("http://") || cleanName.startsWith("https://")) {
+      return cleanName;
+    }
+
+    if (cleanName.startsWith("/uploads/")) {
+      return `${process.env.REACT_APP_BACKEND_ORIGIN}${cleanName}`;
+    }
+
+    if (cleanName.startsWith("uploads/")) {
+      return `${process.env.REACT_APP_BACKEND_ORIGIN}/${cleanName}`;
+    }
+
+    return `${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${cleanName}`;
+  };
+
+  const applyProductToRow = (rowIndex, selectedProduct) => {
+    if (rowIndex === null || rowIndex === undefined || !selectedProduct) return;
+
+    let t2 = itemArray.map(x => ({ ...x }));
+    t2[rowIndex].product_id = selectedProduct.product_id;
+    t2[rowIndex].product_name = selectedProduct.name || selectedProduct.product_name || "";
+    t2[rowIndex].quantity = 1;
+    t2[rowIndex].rate = parseFloat(selectedProduct?.selling_price || 0);
+    t2[rowIndex].max_stock = parseInt(selectedProduct?.product_stock || 0);
+    t2[rowIndex].product_image = getProductImageValue(selectedProduct);
+
+    setItemArray(t2);
+    setShowImagePickerModal(false);
+    setActiveRowIndex(null);
+  };
+
+  const openImagePicker = async (rowIndex) => {
+    setActiveRowIndex(rowIndex);
+    setImageSearchValue("");
+    setShowImagePickerModal(true);
+    await getProducts("");
   };
 
   const imprimirVenta = (o) => {
@@ -510,85 +563,47 @@ function OrderAddNew() {
                           }}
                         >
                           <div style={{ minWidth: "30%" }}>
-                            <Select
-                              options={productList.map(x => ({ label: x.name, value: x.product_id }))}
-                              value={(obj.product_name !== null && obj.product_id !== null)
-                                ? { label: obj.product_name, value: obj.product_id }
-                                : null}
-                              placeholder='Selecciona un producto...'
-                              onChange={(val) => {
-                                const selectedProduct = productList.find(x => x.product_id === val.value);
+                            <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
+                              <div style={{ flex: 1 }}>
+                                <Select
+                                  options={productList.map(x => ({ label: x.name, value: x.product_id }))}
+                                  value={(obj.product_name !== null && obj.product_id !== null)
+                                    ? { label: obj.product_name, value: obj.product_id }
+                                    : null}
+                                  placeholder='Selecciona un producto...'
+                                  onChange={(val) => {
+                                    const selectedProduct = productList.find(x => x.product_id === val.value);
+                                    applyProductToRow(ind, selectedProduct);
+                                  }}
+                                  onMenuOpen={() => getProducts("")}
+                                  onInputChange={(val) => {
+                                    getProducts(val || "");
+                                    return val;
+                                  }}
+                                  classNamePrefix="react-dropdown-dark"
+                                />
+                              </div>
 
-                                let t2 = itemArray.map(x => ({ ...x }));
-                                t2[ind].product_id = val.value;
-                                t2[ind].product_name = val.label;
-                                t2[ind].quantity = 1;
-                                t2[ind].rate = parseFloat(selectedProduct?.selling_price || 0);
-                                t2[ind].max_stock = parseInt(selectedProduct?.product_stock || 0);
-                                t2[ind].product_image = getProductImageValue(selectedProduct);
-
-                                setItemArray(t2);
-                              }}
-                              onMenuOpen={() => getProducts("")}
-                              onInputChange={(val) => {
-                                getProducts(val || "");
-                                return val;
-                              }}
-                              classNamePrefix="react-dropdown-dark"
-                            />
-
-                            {obj.product_id && (
-                              <div
+                              <button
+                                type="button"
+                                className="btn info"
+                                title="Buscar por imagen"
+                                onClick={() => openImagePicker(ind)}
                                 style={{
+                                  minWidth: "46px",
+                                  height: "38px",
+                                  padding: "0",
                                   display: "flex",
-                                  gap: "10px",
                                   alignItems: "center",
-                                  marginTop: "8px",
-                                  padding: "8px",
-                                  border: "1px solid #e5e5e5",
-                                  borderRadius: "8px",
-                                  background: "#fafafa"
+                                  justifyContent: "center",
+                                  borderRadius: "6px"
                                 }}
                               >
-                                {obj.product_image ? (
-                                  <img
-                                    src={getProductImageUrl(obj.product_image)}
-                                    alt={obj.product_name}
-                                    style={{
-                                      width: "60px",
-                                      height: "60px",
-                                      objectFit: "cover",
-                                      borderRadius: "6px",
-                                      border: "1px solid #ddd"
-                                    }}
-                                  />
-                                ) : (
-                                  <div
-                                    style={{
-                                      width: "60px",
-                                      height: "60px",
-                                      border: "1px solid #ddd",
-                                      borderRadius: "6px",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontSize: "11px",
-                                      color: "#777",
-                                      background: "#fff"
-                                    }}
-                                  >
-                                    Sin imagen
-                                  </div>
-                                )}
+                                🖼️
+                              </button>
+                            </div>
 
-                                <div style={{ textAlign: "left", fontSize: "13px" }}>
-                                  <div style={{ fontWeight: "bold" }}>{obj.product_name}</div>
-                                  <div style={{ color: obj.max_stock <= 5 ? "red" : "green" }}>
-                                    Stock disponible: <b>{obj.max_stock}</b>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
+                            
                           </div>
 
                           <div style={{ minWidth: "20%", height: "100%" }}>
@@ -773,6 +788,150 @@ function OrderAddNew() {
                   {savingCustomer ? "Guardando..." : "Guardar"}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showImagePickerModal && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10000
+            }}
+          >
+            <div
+              style={{
+                background: "#fff",
+                borderRadius: "12px",
+                width: "1100px",
+                maxWidth: "96%",
+                maxHeight: "90vh",
+                padding: "18px",
+                overflow: "auto",
+                boxSizing: "border-box"
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <h3 style={{ margin: 0 }}>Buscar por imagen</h3>
+
+                <button
+                  type="button"
+                  className="btn danger"
+                  onClick={() => {
+                    setShowImagePickerModal(false);
+                    setActiveRowIndex(null);
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginBottom: "10px", alignItems: "center" }}>
+                <input
+                  className="my_input"
+                  type="text"
+                  placeholder="Busca por nombre o categoría. Ej: chamarra, polera, quepi..."
+                  value={imageSearchValue}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setImageSearchValue(value);
+                    getProducts(value);
+                  }}
+                  style={{ flex: 1 }}
+                />
+
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => getProducts(imageSearchValue)}
+                >
+                  Buscar
+                </button>
+              </div>
+
+              <div style={{ marginBottom: "12px", color: "#666", fontSize: "13px" }}>
+                Escribe algo como <b>chamarra</b>, <b>polera</b>, <b>quepi</b> o el nombre del producto.
+              </div>
+
+              {imagePickerLoading ? (
+                <div style={{ padding: "30px 0", textAlign: "center" }}>Cargando productos...</div>
+              ) : productList.length === 0 ? (
+                <div style={{ padding: "30px 0", textAlign: "center" }}>No se encontraron productos.</div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                    gap: "14px"
+                  }}
+                >
+                  {productList.map((product) => {
+                    const imageValue = getProductImageValue(product);
+                    const imageUrl = getProductImageUrl(imageValue);
+
+                    return (
+                      <button
+                        key={product.product_id}
+                        type="button"
+                        onClick={() => applyProductToRow(activeRowIndex, product)}
+                        style={{
+                          border: "1px solid #ddd",
+                          borderRadius: "10px",
+                          background: "#fff",
+                          padding: "10px",
+                          textAlign: "left",
+                          cursor: "pointer"
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "150px",
+                            borderRadius: "8px",
+                            overflow: "hidden",
+                            border: "1px solid #eee",
+                            background: "#fafafa",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginBottom: "10px"
+                          }}
+                        >
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={product.name}
+                              onError={(e) => {
+                                e.target.style.display = "none";
+                              }}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                          ) : (
+                            <span style={{ color: "#888", fontSize: "12px" }}>Sin imagen</span>
+                          )}
+                        </div>
+
+                        <div style={{ fontWeight: "bold", fontSize: "14px", marginBottom: "4px" }}>
+                          {product.name}
+                        </div>
+
+                        <div style={{ fontSize: "13px", color: product.product_stock <= 5 ? "red" : "green" }}>
+                          Stock: <b>{product.product_stock}</b>
+                        </div>
+
+                        <div style={{ fontSize: "13px", color: "#333", marginTop: "4px" }}>
+                          Precio: <b>{product.selling_price}</b>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
