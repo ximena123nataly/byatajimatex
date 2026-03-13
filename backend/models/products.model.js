@@ -6,7 +6,7 @@ const path = require("path")
 
 class Product {
 	constructor() {
-		
+
 	}
 
 	getProducts = (req, res) => {
@@ -42,7 +42,7 @@ class Product {
 						if (err) {
 							return reject(err);
 						}
-						
+
 						resolve({ operation: "success", message: '10 products got', info: { products: result, count: result2[0].val } });
 					})
 				})
@@ -63,18 +63,35 @@ class Product {
 	getProductsSearch = (req, res) => {
 		try {
 			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let email = d.payload.email;
-			let role = d.payload.role;
 
 			new Promise((resolve, reject) => {
-				let q = `SELECT * FROM products WHERE name LIKE '${req.body.search_value}%' LIMIT 10`
-				db.query(q, (err, result) => {
+				const searchValue = (req.body.search_value || "").trim();
+
+				let q = `
+				SELECT * 
+				FROM products
+				WHERE
+					name LIKE ?
+					OR category LIKE ?
+					OR description LIKE ?
+					OR material LIKE ?
+				ORDER BY name ASC
+				LIMIT 50
+			`;
+
+				const likeValue = `%${searchValue}%`;
+
+				db.query(q, [likeValue, likeValue, likeValue, likeValue], (err, result) => {
 					if (err) {
 						return reject(err);
 					}
-					
-					resolve({ operation: "success", message: '10 products got', info: { products: result } });
-				})
+
+					resolve({
+						operation: "success",
+						message: "Products found",
+						info: { products: result }
+					});
+				});
 			})
 				.then((value) => {
 					res.send(value);
@@ -82,7 +99,7 @@ class Product {
 				.catch((err) => {
 					console.log(err);
 					res.send({ operation: "error", message: 'Something went wrong' });
-				})
+				});
 		} catch (error) {
 			console.log(error);
 			res.send({ operation: "error", message: 'Something went wrong' });
@@ -101,7 +118,7 @@ class Product {
 					if (err) {
 						return reject(err);
 					}
-					
+
 					resolve({ operation: "success", message: 'Success', info: { products: result } });
 				})
 			})
@@ -117,7 +134,56 @@ class Product {
 			res.send({ operation: "error", message: 'Something went wrong' });
 		}
 	}
+	getProductsReport = (req, res) => {
+		try {
+			new Promise((resolve, reject) => {
+				const q = `
+        SELECT 
+          product_id,
+          name,
+          category,
+          product_stock,
+          selling_price,
+          image
+        FROM products
+        ORDER BY name ASC
+      `;
 
+				db.query(q, (err, result) => {
+					if (err) return reject(err);
+
+					const totalProducts = result.length;
+					const totalStock = result.reduce((sum, item) => {
+						return sum + (parseInt(item.product_stock) || 0);
+					}, 0);
+
+					resolve({
+						operation: "success",
+						message: "Reporte de productos obtenido",
+						info: {
+							products: result,
+							total_products: totalProducts,
+							total_stock: totalStock
+						}
+					});
+				});
+			})
+				.then((value) => res.send(value))
+				.catch((err) => {
+					console.log(err);
+					res.send({
+						operation: "error",
+						message: "Error al obtener el reporte de productos"
+					});
+				});
+		} catch (error) {
+			console.log(error);
+			res.send({
+				operation: "error",
+				message: "Error al obtener el reporte de productos"
+			});
+		}
+	}
 	addProduct = (req, res) => {
 		try {
 			let d = jwt.decode(req.cookies.accessToken, { complete: true });
@@ -195,7 +261,7 @@ class Product {
 					if (result[0].image != null) {
 						p = new Promise((res, rej) => {
 							let pathToFile = path.resolve("./") + "/public/uploads/" + result[0].image
-						
+
 							fs.unlink(pathToFile, function (ferr) {
 								if (ferr) {
 									rej(ferr);

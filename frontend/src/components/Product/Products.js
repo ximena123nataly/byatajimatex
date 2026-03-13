@@ -47,7 +47,126 @@ function Products() {
   const [editImageData, setEditImageData] = useState(null)
 
   const [editModalSubmitButton, setEditModalSubmitButton] = useState(false)
+  const imprimirReporteProductos = async () => {
+    try {
+      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_report`, {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json; charset=UTF-8' },
+        credentials: 'include'
+      });
 
+      const body = await result.json();
+
+      if (body.operation !== 'success') {
+        swal("¡Ups!", body.message || "No se pudo generar el reporte", "error");
+        return;
+      }
+
+      const products = body?.info?.products || [];
+      const totalProducts = body?.info?.total_products || 0;
+      const totalStock = body?.info?.total_stock || 0;
+
+      const filas = products.map((p, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${p.name || ''}</td>
+        <td>${p.category || ''}</td>
+        <td style="text-align:right;">${p.product_stock || 0}</td>
+        <td style="text-align:right;">${Number(p.selling_price || 0).toFixed(2)}</td>
+      </tr>
+    `).join("");
+
+      const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Reporte de productos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #111;
+      margin: 24px;
+    }
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 24px;
+    }
+    .meta {
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .summary {
+      display: flex;
+      gap: 24px;
+      margin: 12px 0 18px 0;
+      font-size: 15px;
+      font-weight: bold;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    th {
+      background: #f3f3f3;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reporte de productos</h1>
+  <div class="meta">Fecha: ${new Date().toLocaleDateString()}</div>
+
+  <div class="summary">
+    <div>Total de productos: ${totalProducts}</div>
+    <div>Stock total: ${totalStock}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>N°</th>
+        <th>Nombre</th>
+        <th>Categoría</th>
+        <th>Stock</th>
+        <th>Precio venta</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filas || `<tr><td colspan="5">No hay productos</td></tr>`}
+    </tbody>
+  </table>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+      const w = window.open("", "_blank", "width=1000,height=700");
+      if (!w) {
+        swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+        return;
+      }
+
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } catch (error) {
+      console.log(error);
+      swal("¡Ups!", "Error al generar el reporte", "error");
+    }
+  };
   useEffect(() => {
     moment.locale("es");
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
@@ -260,7 +379,7 @@ function Products() {
     f.append('category', editCategory)
     f.append('description', editDescription)
     f.append('product_stock', parseInt(editStock))
-       f.append('image', editImage)
+    f.append('image', editImage)
     f.append('selling_price', parseFloat(editSellingPrice))
     f.append('purchase_price', parseFloat(editPurchasePrice))
 
@@ -310,15 +429,22 @@ function Products() {
       <div className='products-scroll' >
         <div className='product-header'>
           <div className='title'>Productos</div>
-          {permission !== null && permission.create && (
-            <Link
-              to={"/products/addnew"}
-              className='btn success'
-              style={{ margin: "0 0.5rem", textDecoration: "none" }}
-            >
-              Agregar nuevo
-            </Link>
-          )}
+
+          <div style={{ display: "flex", gap: "10px", marginRight: "0.5rem" }}>
+            <button className='btn warning' onClick={imprimirReporteProductos}>
+              Imprimir reporte
+            </button>
+
+            {permission !== null && permission.create && (
+              <Link
+                to={"/products/addnew"}
+                className='btn success'
+                style={{ textDecoration: "none" }}
+              >
+                Agregar nuevo 
+              </Link>
+            )}
+          </div>
         </div>
 
         {

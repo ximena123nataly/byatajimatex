@@ -19,7 +19,7 @@ router.post('/get_products_search', verifyJwt, product.getProductsSearch)
 router.post('/get_products_details_by_id', verifyJwt, product.getProductsDetailsById)
 router.post('/update_product', verifyJwt, upload("/uploads").single("image"), product.updateProduct)
 router.post('/delete_product_image', verifyJwt, product.deleteProductImage)
-
+router.post('/get_products_report', verifyJwt, product.getProductsReport)
 // Rutas GET adicionales
 router.get('/products', verifyJwt, (req, res) => {
   // Convertir query params a body para usar la misma función

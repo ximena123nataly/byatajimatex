@@ -141,20 +141,22 @@ function OrderAddNew() {
     if (!imageName) return null;
 
     const cleanName = String(imageName).replace(/\\/g, "/");
+    const imageBase =
+      process.env.REACT_APP_IMAGE_BASE_URL || process.env.REACT_APP_BACKEND_ORIGIN;
 
     if (cleanName.startsWith("http://") || cleanName.startsWith("https://")) {
       return cleanName;
     }
 
     if (cleanName.startsWith("/uploads/")) {
-      return `${process.env.REACT_APP_BACKEND_ORIGIN}${cleanName}`;
+      return `${imageBase}${cleanName}`;
     }
 
     if (cleanName.startsWith("uploads/")) {
-      return `${process.env.REACT_APP_BACKEND_ORIGIN}/${cleanName}`;
+      return `${imageBase}/${cleanName}`;
     }
 
-    return `${process.env.REACT_APP_BACKEND_ORIGIN}/uploads/${cleanName}`;
+    return `${imageBase}/uploads/${cleanName}`;
   };
 
   const applyProductToRow = (rowIndex, selectedProduct) => {
@@ -603,7 +605,7 @@ function OrderAddNew() {
                               </button>
                             </div>
 
-                            
+
                           </div>
 
                           <div style={{ minWidth: "20%", height: "100%" }}>
