@@ -70,6 +70,8 @@ function ProformasAddNew() {
   const [submitButtonState, setSubmitButtonState] = useState(false);
   const [proformaCreada, setProformaCreada] = useState("");
 
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewImageName, setPreviewImageName] = useState("");
   // Permisos
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
@@ -844,7 +846,10 @@ function ProformasAddNew() {
                         <img
                           src={r.foto_preview}
                           alt={r.foto_nombre || `foto-${idx + 1}`}
-                          onClick={() => window.open(r.foto_preview, "_blank")}
+                          onClick={() => {
+                            setPreviewImage(r.foto_preview);
+                            setPreviewImageName(r.foto_nombre || `foto-${idx + 1}`);
+                          }}
                           style={{
                             width: "100%",
                             height: "80px",
@@ -853,7 +858,6 @@ function ProformasAddNew() {
                             display: "block",
                             cursor: "pointer",
                           }}
-                          title="Clic para abrir en grande"
                         />
 
 
@@ -973,6 +977,72 @@ function ProformasAddNew() {
         </div>
       ) : (
         <Error />
+      )}
+      {previewImage && (
+        <div
+          onClick={() => {
+            setPreviewImage(null);
+            setPreviewImageName("");
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 99999,
+            padding: "20px"
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              background: "transparent",
+              maxWidth: "90vw",
+              maxHeight: "90vh"
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setPreviewImage(null);
+                setPreviewImageName("");
+              }}
+              style={{
+                position: "absolute",
+                top: "-12px",
+                right: "-12px",
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                border: "none",
+                background: "#fff",
+                cursor: "pointer",
+                fontSize: "18px",
+                fontWeight: "bold",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+              }}
+            >
+              ×
+            </button>
+
+            <img
+              src={previewImage}
+              alt={previewImageName || "vista previa"}
+              style={{
+                display: "block",
+                maxWidth: "90vw",
+                maxHeight: "90vh",
+                objectFit: "contain",
+                borderRadius: "6px",
+                boxShadow: "0 8px 30px rgba(0,0,0,0.35)",
+                background: "#fff"
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

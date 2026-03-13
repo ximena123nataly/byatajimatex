@@ -37,8 +37,8 @@ function Proformas() {
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
-  const [zoomImage, setZoomImage] = useState(null);
-  const [zoomImageName, setZoomImageName] = useState("");
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewImageName, setPreviewImageName] = useState("");
 
 
   const clickNoFocusAsync = (fn) => async (e) => {
@@ -321,8 +321,8 @@ function Proformas() {
   const closeViewModal = () => {
     setSelected(null);
     setViewModalShow(false);
-    setZoomImage(null);
-    setZoomImageName("");
+    setPreviewImage(null);
+    setPreviewImageName("");
   };
 
 
@@ -1228,34 +1228,11 @@ function Proformas() {
                             it.foto_url ||
                             it.foto ||
                             null;
-                          <Modal
-                            show={!!zoomImage}
-                            onHide={() => {
-                              setZoomImage(null);
-                              setZoomImageName("");
-                            }}
-                            centered
-                            size="lg"
-                          >
-                            <Modal.Header closeButton>
-                              <Modal.Title>Vista de imagen</Modal.Title>
-                            </Modal.Header>
 
-                            <Modal.Body style={{ textAlign: "center" }}>
-                              {zoomImage && (
-                                <img
-                                  src={zoomImage}
-                                  alt={zoomImageName || "imagen ampliada"}
-                                  style={{
-                                    maxWidth: "100%",
-                                    maxHeight: "75vh",
-                                    objectFit: "contain",
-                                    borderRadius: "8px"
-                                  }}
-                                />
-                              )}
-                            </Modal.Body>
-                          </Modal>
+
+                      
+
+
 
                           return (
                             <tr key={idx}>
@@ -1268,7 +1245,10 @@ function Proformas() {
                                   <img
                                     src={fotoSrc}
                                     alt={it.foto_nombre || `foto-${idx + 1}`}
-                                    onClick={() => window.open(fotoSrc, "_blank")}
+                                    onClick={() => {
+                                      setPreviewImage(fotoSrc);
+                                      setPreviewImageName(it.foto_nombre || `foto-${idx + 1}`);
+                                    }}
                                     style={{
                                       width: "70px",
                                       height: "70px",
@@ -1277,7 +1257,7 @@ function Proformas() {
                                       border: "1px solid #ccc",
                                       cursor: "pointer"
                                     }}
-                                    title="Clic para abrir en grande"
+                                    title="Clic para ampliar"
                                   />
                                 ) : (
                                   <span style={{ color: "#777", fontSize: "12px" }}>Sin foto</span>
@@ -1335,6 +1315,73 @@ function Proformas() {
             )}
           </Modal.Body>
         </Modal>
+        {previewImage && (
+          <div
+            onClick={() => {
+              setPreviewImage(null);
+              setPreviewImageName("");
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 99999,
+              padding: "20px",
+              cursor: "pointer"
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "relative",
+                background: "transparent",
+                maxWidth: "90vw",
+                maxHeight: "90vh"
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewImage(null);
+                  setPreviewImageName("");
+                }}
+                style={{
+                  position: "absolute",
+                  top: "-12px",
+                  right: "-12px",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+                }}
+              >
+                ×
+              </button>
+
+              <img
+                src={previewImage}
+                alt={previewImageName || "vista previa"}
+                style={{
+                  display: "block",
+                  maxWidth: "90vw",
+                  maxHeight: "90vh",
+                  objectFit: "contain",
+                  borderRadius: "6px",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.35)",
+                  background: "#fff"
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div >
   );
