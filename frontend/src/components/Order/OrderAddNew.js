@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import './OrderAddNew.scss'
 
 import Select from 'react-select'
@@ -33,6 +33,9 @@ function OrderAddNew() {
   const today = new Date().toISOString().slice(0, 10);
   const [dueDate, setDueDate] = useState(today);
 
+  const imageSearchTimeout = useRef(null);
+  const selectSearchTimeout = useRef(null);
+
   const [itemArray, setItemArray] = useState([
     {
       product_id: null,
@@ -48,6 +51,17 @@ function OrderAddNew() {
   const [grandTotal, setGrandTotal] = useState(0)
 
   const [submitButtonState, setSubmitButtonState] = useState(false)
+
+  useEffect(() => {
+    return () => {
+      if (imageSearchTimeout.current) {
+        clearTimeout(imageSearchTimeout.current);
+      }
+      if (selectSearchTimeout.current) {
+        clearTimeout(selectSearchTimeout.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
@@ -171,11 +185,20 @@ function OrderAddNew() {
     t2[rowIndex].product_image = getProductImageValue(selectedProduct);
 
     setItemArray(t2);
+
+    if (imageSearchTimeout.current) {
+      clearTimeout(imageSearchTimeout.current);
+    }
+
     setShowImagePickerModal(false);
     setActiveRowIndex(null);
   };
 
   const openImagePicker = async (rowIndex) => {
+    if (imageSearchTimeout.current) {
+      clearTimeout(imageSearchTimeout.current);
+    }
+
     setActiveRowIndex(rowIndex);
     setImageSearchValue("");
     setShowImagePickerModal(true);
@@ -579,7 +602,14 @@ function OrderAddNew() {
                                   }}
                                   onMenuOpen={() => getProducts("")}
                                   onInputChange={(val) => {
-                                    getProducts(val || "");
+                                    if (selectSearchTimeout.current) {
+                                      clearTimeout(selectSearchTimeout.current);
+                                    }
+
+                                    selectSearchTimeout.current = setTimeout(() => {
+                                      getProducts(val || "");
+                                    }, 500);
+
                                     return val;
                                   }}
                                   classNamePrefix="react-dropdown-dark"
@@ -604,8 +634,6 @@ function OrderAddNew() {
                                 🖼️
                               </button>
                             </div>
-
-
                           </div>
 
                           <div style={{ minWidth: "20%", height: "100%" }}>
@@ -825,6 +853,10 @@ function OrderAddNew() {
                   type="button"
                   className="btn danger"
                   onClick={() => {
+                    if (imageSearchTimeout.current) {
+                      clearTimeout(imageSearchTimeout.current);
+                    }
+
                     setShowImagePickerModal(false);
                     setActiveRowIndex(null);
                   }}
@@ -842,7 +874,14 @@ function OrderAddNew() {
                   onChange={(e) => {
                     const value = e.target.value;
                     setImageSearchValue(value);
-                    getProducts(value);
+
+                    if (imageSearchTimeout.current) {
+                      clearTimeout(imageSearchTimeout.current);
+                    }
+
+                    imageSearchTimeout.current = setTimeout(() => {
+                      getProducts(value);
+                    }, 600);
                   }}
                   style={{ flex: 1 }}
                 />
@@ -850,7 +889,12 @@ function OrderAddNew() {
                 <button
                   type="button"
                   className="btn primary"
-                  onClick={() => getProducts(imageSearchValue)}
+                  onClick={() => {
+                    if (imageSearchTimeout.current) {
+                      clearTimeout(imageSearchTimeout.current);
+                    }
+                    getProducts(imageSearchValue);
+                  }}
                 >
                   Buscar
                 </button>
@@ -942,4 +986,4 @@ function OrderAddNew() {
   )
 }
 
-export default OrderAddNew
+export default OrderAddNew  

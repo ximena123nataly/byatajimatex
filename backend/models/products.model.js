@@ -146,7 +146,7 @@ class Product {
           selling_price,
           image
         FROM products
-        ORDER BY name ASC
+        ORDER BY category ASC, name ASC
       `;
 
 				db.query(q, (err, result) => {

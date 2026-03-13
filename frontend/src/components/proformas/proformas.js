@@ -1158,6 +1158,9 @@ function Proformas() {
                     <div>
                       <b>Celular:</b> {selected.celular || "-"}
                     </div>
+                    <div style={{ marginTop: "8px", maxWidth: "420px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                      <b>Notas:</b> {selected.notas || "-"}
+                    </div>
                   </div>
 
                   <div>
