@@ -57,7 +57,14 @@ function ProformasAddNew() {
 
   // Filas (detalle)
   const [rows, setRows] = useState([
-    { cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" },
+    {
+      cantidad: "1",
+      detalle: "",
+      foto_preview: null,
+      foto_nombre: "",
+      precio_unitario: "0",
+      oferta: "Sin oferta",
+    },
   ]);
 
   const [submitButtonState, setSubmitButtonState] = useState(false);
@@ -107,7 +114,14 @@ function ProformasAddNew() {
   const addRow = () => {
     setRows((prev) => [
       ...prev,
-      { cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" },
+      {
+        cantidad: "1",
+        detalle: "",
+        foto_preview: null,
+        foto_nombre: "",
+        precio_unitario: "0",
+        oferta: "Sin oferta",
+      },
     ]);
   };
 
@@ -118,6 +132,40 @@ function ProformasAddNew() {
   const updateRow = (index, key, value) => {
     setRows((prev) =>
       prev.map((r, i) => (i === index ? { ...r, [key]: value } : r))
+    );
+  };
+
+  const handleRowPhotoChange = (index, file) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setRows((prev) =>
+        prev.map((r, i) =>
+          i === index
+            ? {
+              ...r,
+              foto_preview: reader.result,
+              foto_nombre: file.name || "",
+            }
+            : r
+        )
+      );
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearRowPhoto = (index) => {
+    setRows((prev) =>
+      prev.map((r, i) =>
+        i === index
+          ? {
+            ...r,
+            foto_preview: null,
+            foto_nombre: "",
+          }
+          : r
+      )
     );
   };
 
@@ -552,10 +600,13 @@ function ProformasAddNew() {
       detalle: validItems.map((r) => ({
         cantidad: String(r.cantidad),
         detalle: String(r.detalle),
+        foto_preview: r.foto_preview || null,
+        foto_nombre: r.foto_nombre || "",
         precio_unitario: String(r.precio_unitario),
         oferta: String(r.oferta || "Sin oferta"),
         total: r.total,
       })),
+
 
       total_general: totalGeneral,
       saldo,
@@ -606,10 +657,13 @@ function ProformasAddNew() {
             items: validItems.map((r) => ({
               cantidad: r.cantidad,
               detalle: r.detalle,
+              foto_preview: r.foto_preview || null,
+              foto_nombre: r.foto_nombre || "",
               precio_unitario: r.precio_unitario,
               oferta: r.oferta,
               total: r.total,
             })),
+
           };
 
           if (value === "print") {
@@ -631,7 +685,17 @@ function ProformasAddNew() {
         setCelular("");
         setNotas(""); //  reset notas
         setAnticipo("0");
-        setRows([{ cantidad: "1", detalle: "", precio_unitario: "0", oferta: "Sin oferta" }]);
+        setRows([
+          {
+            cantidad: "1",
+            detalle: "",
+            foto_preview: null,
+            foto_nombre: "",
+            precio_unitario: "0",
+            oferta: "Sin oferta",
+          },
+        ]);
+
       } else {
         swal("¡Ups!", body.message || "No se pudo crear la proforma", "error");
       }
@@ -747,10 +811,97 @@ function ProformasAddNew() {
                   />
                 </div>
 
+                <div style={{ flex: "0 0 160px" }}>
+                  <label>Foto</label>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label
+                      className="btn info"
+                      style={{
+                        textAlign: "center",
+                        cursor: "pointer",
+                        marginBottom: 0,
+                      }}
+                    >
+                      {r.foto_preview ? "Cambiar foto" : "Subir foto"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: "none" }}
+                        onChange={(e) => handleRowPhotoChange(idx, e.target.files?.[0] || null)}
+                      />
+                    </label>
+
+                    {r.foto_preview ? (
+                      <div
+                        style={{
+                          border: "1px solid #ddd",
+                          borderRadius: "6px",
+                          padding: "6px",
+                          background: "#fafafa",
+                        }}
+                      >
+                        <img
+                          src={r.foto_preview}
+                          alt={r.foto_nombre || `foto-${idx + 1}`}
+                          onClick={() => window.open(r.foto_preview, "_blank")}
+                          style={{
+                            width: "100%",
+                            height: "80px",
+                            objectFit: "cover",
+                            borderRadius: "4px",
+                            display: "block",
+                            cursor: "pointer",
+                          }}
+                          title="Clic para abrir en grande"
+                        />
+
+
+                        <div
+                          style={{
+                            fontSize: "11px",
+                            marginTop: "4px",
+                            wordBreak: "break-word",
+                            color: "#555",
+                          }}
+                        >
+                          {r.foto_nombre || "Imagen cargada"}
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn danger"
+                          style={{ marginTop: "6px", width: "100%" }}
+                          onClick={() => clearRowPhoto(idx)}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          height: "80px",
+                          border: "1px dashed #bbb",
+                          borderRadius: "6px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#777",
+                          fontSize: "12px",
+                          background: "#fafafa",
+                        }}
+                      >
+                        Sin foto
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div style={{ flex: "0 0 140px" }}>
                   <label>Precio</label>
                   <input className="my_input" type="number" value={r.precio_unitario} onChange={(e) => updateRow(idx, "precio_unitario", e.target.value)} />
                 </div>
+
 
                 <div style={{ flex: "0 0 150px" }}>
                   <label>Oferta</label>

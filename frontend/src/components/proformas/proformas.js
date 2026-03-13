@@ -37,6 +37,10 @@ function Proformas() {
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
+  const [zoomImage, setZoomImage] = useState(null);
+  const [zoomImageName, setZoomImageName] = useState("");
+
+
   const clickNoFocusAsync = (fn) => async (e) => {
     const el = e?.currentTarget;
     if (el) el.blur();
@@ -317,7 +321,10 @@ function Proformas() {
   const closeViewModal = () => {
     setSelected(null);
     setViewModalShow(false);
+    setZoomImage(null);
+    setZoomImageName("");
   };
+
 
   const rowClassByEntregado = (obj) => {
     const entregado = Number(obj?.entregado) === 1;
@@ -1198,30 +1205,93 @@ function Proformas() {
                         <th>#</th>
                         <th>Cant.</th>
                         <th>Detalle</th>
+                        <th>Foto</th>
                         <th>Oferta</th>
                         <th>Precio</th>
                         <th>Total</th>
                       </tr>
+
                     </thead>
 
                     <tbody>
                       {(selected.detalle || []).length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: "center" }}>
+                          <td colSpan={7} style={{ textAlign: "center" }}>
                             Sin ítems
                           </td>
+
                         </tr>
                       ) : (
-                        (selected.detalle || []).map((it, idx) => (
-                          <tr key={idx}>
-                            <td>{idx + 1}</td>
-                            <td>{it.cantidad ?? "-"}</td>
-                            <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
-                            <td>{it.oferta ?? "Sin oferta"}</td>
-                            <td>{it.precio_unitario ?? "-"}</td>
-                            <td>{it.total ?? "-"}</td>
-                          </tr>
-                        ))
+                        (selected.detalle || []).map((it, idx) => {
+                          const fotoSrc =
+                            it.foto_preview ||
+                            it.foto_url ||
+                            it.foto ||
+                            null;
+                          <Modal
+                            show={!!zoomImage}
+                            onHide={() => {
+                              setZoomImage(null);
+                              setZoomImageName("");
+                            }}
+                            centered
+                            size="lg"
+                          >
+                            <Modal.Header closeButton>
+                              <Modal.Title>Vista de imagen</Modal.Title>
+                            </Modal.Header>
+
+                            <Modal.Body style={{ textAlign: "center" }}>
+                              {zoomImage && (
+                                <img
+                                  src={zoomImage}
+                                  alt={zoomImageName || "imagen ampliada"}
+                                  style={{
+                                    maxWidth: "100%",
+                                    maxHeight: "75vh",
+                                    objectFit: "contain",
+                                    borderRadius: "8px"
+                                  }}
+                                />
+                              )}
+                            </Modal.Body>
+                          </Modal>
+
+                          return (
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td>{it.cantidad ?? "-"}</td>
+                              <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
+
+                              <td style={{ textAlign: "center" }}>
+                                {fotoSrc ? (
+                                  <img
+                                    src={fotoSrc}
+                                    alt={it.foto_nombre || `foto-${idx + 1}`}
+                                    onClick={() => window.open(fotoSrc, "_blank")}
+                                    style={{
+                                      width: "70px",
+                                      height: "70px",
+                                      objectFit: "cover",
+                                      borderRadius: "6px",
+                                      border: "1px solid #ccc",
+                                      cursor: "pointer"
+                                    }}
+                                    title="Clic para abrir en grande"
+                                  />
+                                ) : (
+                                  <span style={{ color: "#777", fontSize: "12px" }}>Sin foto</span>
+                                )}
+
+                              </td>
+
+                              <td>{it.oferta ?? "Sin oferta"}</td>
+                              <td>{it.precio_unitario ?? "-"}</td>
+                              <td>{it.total ?? "-"}</td>
+                            </tr>
+                          );
+                        })
+
                       )}
                     </tbody>
                   </table>
