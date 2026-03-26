@@ -21,6 +21,7 @@ function Caja() {
   const [usuariosDestino, setUsuariosDestino] = useState([]);
   const [destino, setDestino] = useState("");
   const [montoTraspaso, setMontoTraspaso] = useState("");
+  const [detalleTraspaso, setDetalleTraspaso] = useState("");
   const [loadingTraspaso, setLoadingTraspaso] = useState(false);
 
   const [showConfirm, setShowConfirm] = useState(false);
@@ -216,6 +217,7 @@ function Caja() {
         body: JSON.stringify({
           id_usuario_destino: destino,
           monto: montoNum,
+          detalle:detalleTraspaso,
         }),
       });
 
@@ -232,6 +234,7 @@ function Caja() {
       setShowTraspaso(false);
       setDestino("");
       setMontoTraspaso("");
+      setDetalleTraspaso("");
 
       await refrescar();
       window.dispatchEvent(new Event("caja_actualizada"));
@@ -392,13 +395,24 @@ function Caja() {
               </div>
 
               <div>
-                <label>Monto</label>
+                <label>Monto: </label>
                 <input
                   className="my_form_control"
                   type="number"
                   value={montoTraspaso}
                   onChange={(e) => setMontoTraspaso(e.target.value)}
                   placeholder="Monto a traspasar"
+                />
+              </div>
+              
+              <div>
+                <label>Detalle: </label>
+                <input
+                  className="my_form_control"
+                  type="text"
+                  value={detalleTraspaso}
+                  onChange={(e) => setDetalleTraspaso(e.target.value)}
+                  placeholder="Detalle del traspaso"
                 />
               </div>
             </div>

@@ -95,6 +95,7 @@ class Proforma {
     total_general,
     anticipo,
     saldo,
+    descuento,
     estado,
     entregado
   FROM proformas
@@ -147,7 +148,8 @@ class Proforma {
 
       const total = Number(req.body.total_general ?? 0);
       const anticipo = Number(req.body.anticipo ?? 0);
-      const saldo = Number(req.body.saldo ?? (total - anticipo));
+      const descuento=Number(req.body.descuento ?? 0);
+      const saldo = Number(req.body.saldo ?? (total - anticipo - descuento));
 
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
@@ -155,8 +157,8 @@ class Proforma {
         const qInsert = `
           INSERT INTO proformas
           (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
-           cliente, celular, notas, detalle, total_general, anticipo, saldo, estado, entregado, user_id)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           cliente, celular, notas, detalle, total_general, anticipo, saldo, descuento, estado, entregado, user_id)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         `;
 
         db.query(
@@ -175,6 +177,7 @@ class Proforma {
             total,
             anticipo,
             saldo,
+            descuento,
             req.body.estado || "ACTIVA",
             req.body.entregado ?? 0,
             user_id,
@@ -363,7 +366,7 @@ class Proforma {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
         const qGet = `
-          SELECT id, proforma_id, total_general, anticipo, saldo
+          SELECT id, proforma_id, total_general, anticipo, saldo, descuento 
           FROM proformas
           WHERE id = ?
           LIMIT 1
@@ -383,6 +386,7 @@ class Proforma {
           const total = Number(p.total_general) || 0;
           const anticipoActual = Number(p.anticipo) || 0;
           const saldoActual = Number(p.saldo) || 0;
+          const descuento = Number(p.descuento) || 0;
 
           if (saldoActual <= 0) {
             return db.rollback(() =>

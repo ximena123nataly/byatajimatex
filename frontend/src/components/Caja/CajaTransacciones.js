@@ -329,6 +329,9 @@ export default function CajaTransacciones({ transacciones, loading }) {
             <div class="k">Referencia:</div>
             <div class="v wrap">${safe(mov?.nro_registro || "-")}</div>
 
+            <div class="k">Detalle del trapaso:</div>
+            <div class="v wrap">${safe(mov?.detalle || "-")}</div>
+
             <div class="k">Hora:</div>
             <div class="v">${safe(fmtHora(mov?.hora))}</div>
 
@@ -591,6 +594,249 @@ export default function CajaTransacciones({ transacciones, loading }) {
   };
 
   /** =========================
+   * PRINT TEMPLATE: Detalle del movimiento (térmica 80mm)
+   * ========================= */
+  const buildHtmlMovimientoTermico = ({ mov, tipo_detalle, detalle }) => {
+    const titulo = tituloPorTipo(tipo_detalle);
+    const now = new Date();
+    const impFecha = moment(now).format("DD/MM/YYYY");
+    const impHora = moment(now).format("HH:mm");
+    const logoUrl = `${window.location.origin}${process.env.PUBLIC_URL || ""}/tajima.png`;
+
+    // ---- bloque ítems según tipo ----
+    let itemsHtml = "";
+
+    if (String(tipo_detalle).toUpperCase() === "PROFORMA" && detalle) {
+      const itemsArr = Array.isArray(detalle.detalle)
+        ? detalle.detalle
+        : safeJson(detalle.items || detalle.detalle);
+
+      const filas = itemsArr.map((it) => {
+        const cant = toNumber(it.cantidad ?? it.quantity);
+        const pu   = toNumber(it.precio_unitario ?? it.rate);
+        const tot  = toNumber(it.total ?? cant * pu);
+        const det  = safe(it.detalle || it.product_name || "").replace(/\n/g, "<br/>");
+        return `
+          <tr>
+            <td class="td-right" style="width:28px;">${cant}</td>
+            <td class="td-left wrap">${det}</td>
+            <td class="td-right" style="width:52px;">${money(pu)}</td>
+            <td class="td-right" style="width:56px;">${money(tot)}</td>
+          </tr>`;
+      }).join("");
+
+      const nro = detalle.proforma_id || formatProforma(detalle.id);
+      itemsHtml = `
+        <hr class="sep-dashed"/>
+        <div class="info-row"><span>Proforma N°:</span><span>${safe(nro)}</span></div>
+        <div class="info-row"><span>Cliente:</span><span class="wrap">${safe(detalle.cliente || "-")}</span></div>
+        <div class="info-row"><span>Celular:</span><span>${safe(detalle.celular || "-")}</span></div>
+        <div class="info-row"><span>Estado:</span><span>${safe(detalle.estado || "-")}</span></div>
+        <hr class="sep-solid"/>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:28px;" class="td-right">Cant</th>
+              <th class="td-left">Detalle</th>
+              <th style="width:52px;" class="td-right">P/U</th>
+              <th style="width:56px;" class="td-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas || `<tr><td colspan="4" class="td-left" style="padding:3px;">(Sin ítems)</td></tr>`}
+          </tbody>
+        </table>
+        <div class="totals">
+          <div class="t-row"><span>Anticipo:</span><span>${money(detalle.anticipo)}</span></div>
+          <div class="t-row"><span>Total:</span><span>${money(detalle.total_general)}</span></div>
+          <div class="t-row grande"><span>SALDO:</span><span>${money(detalle.saldo)}</span></div>
+        </div>`;
+    }
+
+    if (String(tipo_detalle).toUpperCase() === "VENTA" && detalle) {
+      const items = safeJson(detalle.items);
+      const filas = items.map((it) => {
+        const q = toNumber(it.quantity);
+        const r = toNumber(it.rate);
+        return `
+          <tr>
+            <td class="td-right" style="width:28px;">${q}</td>
+            <td class="td-left wrap">${safe(it.product_name || "-")}</td>
+            <td class="td-right" style="width:52px;">${money(r)}</td>
+            <td class="td-right" style="width:56px;">${money(q * r)}</td>
+          </tr>`;
+      }).join("");
+
+      itemsHtml = `
+        <hr class="sep-dashed"/>
+        <div class="info-row"><span>Ref:</span><span class="wrap">${safe(detalle.order_ref || detalle.order_id || "-")}</span></div>
+        <div class="info-row"><span>Cliente:</span><span class="wrap">${safe(detalle.customer_name || detalle.customer_id || "-")}</span></div>
+        <hr class="sep-solid"/>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:28px;" class="td-right">Cant</th>
+              <th class="td-left">Producto</th>
+              <th style="width:52px;" class="td-right">P/U</th>
+              <th style="width:56px;" class="td-right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas || `<tr><td colspan="4" class="td-left" style="padding:3px;">(Sin ítems)</td></tr>`}
+          </tbody>
+        </table>
+        <div class="totals">
+          <div class="t-row grande"><span>TOTAL:</span><span>${money(detalle.grand_total)}</span></div>
+        </div>`;
+    }
+
+    if (String(tipo_detalle).toUpperCase() === "GASTO" && detalle) {
+      itemsHtml = `
+        <hr class="sep-dashed"/>
+        <div class="info-row"><span>Ref:</span><span class="wrap">${safe(detalle.expense_ref || detalle.expense_id || "-")}</span></div>
+        <div class="info-row"><span>Proveedor:</span><span class="wrap">${safe(detalle.supplier_name || detalle.supplier_id || "-")}</span></div>
+        <div class="info-row"><span>Total:</span><span>${money(detalle.grand_total ?? detalle.total)}</span></div>
+        <hr class="sep-dashed"/>
+        <div style="font-size:10px; line-height:1.4;" class="wrap">
+          ${safe(detalle.description || detalle.expense_description || "-").replace(/\n/g, "<br/>")}
+        </div>`;
+    }
+
+    if (String(tipo_detalle).toUpperCase() === "TRASPASO") {
+      const arr = Array.isArray(detalle) ? detalle : [];
+      const eg  = arr.find((x) => x.tipo === "EGRESO");
+      const ing = arr.find((x) => x.tipo === "INGRESO");
+      itemsHtml = `
+        <hr class="sep-dashed"/>
+        <div class="bold" style="font-size:10px; margin-bottom:2px;">Origen (Sale)</div>
+        <div class="info-row"><span>Caja:</span><span>#${safe(eg?.id_caja || "-")}</span></div>
+        <div class="info-row"><span>Monto:</span><span>Bs ${money(eg?.monto)}</span></div>
+        <hr class="sep-dashed"/>
+        <div class="bold" style="font-size:10px; margin-bottom:2px;">Destino (Entra)</div>
+        <div class="info-row"><span>Caja:</span><span>#${safe(ing?.id_caja || "-")}</span></div>
+        <div class="info-row"><span>Monto:</span><span>Bs ${money(ing?.monto)}</span></div>`;
+    }
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>${safe(titulo)} - Mov ${safe(mov?.id_transaccion || "")}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Lucida Console', Courier, monospace;
+      font-size: 11px;
+      color: #000;
+      width: 80mm;
+    }
+    .ticket { width: 80mm; padding: 4mm 4mm 8mm 4mm; }
+    .center { text-align: center; }
+    .bold   { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    .wrap   { word-break: break-word; overflow-wrap: anywhere; }
+    .empresa-nombre { font-size: 13px; font-weight: 800; text-align: center; -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000; }
+    .empresa-sub    { font-size: 10px; text-align: center; line-height: 1.3; }
+    .sep-solid  { border: 0; border-top: 1px solid #000; margin: 3px 0; }
+    .sep-dashed { border: 0; border-top: 1px dashed #000; margin: 3px 0; }
+    .num-mov { font-size: 15px; font-weight: 800; text-align: center; margin: 2px 0; -webkit-text-stroke: 0.5px #000; text-shadow: 0.5px 0 0 #000; }
+    .info-row { display: flex; justify-content: space-between; font-size: 10px; gap: 4px; }
+    .info-row span:first-child { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    .badge { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 999px; border: 1px solid #000; }
+    .badge-in  { border-color: #16a34a; }
+    .badge-out { border-color: #ef4444; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 10px; text-align: left;
+      border-top: 1px solid #000; border-bottom: 1px solid #000;
+      padding: 2px;
+    }
+    tbody td { font-size: 10px; padding: 2px; vertical-align: top; border-bottom: 1px dashed #ccc; }
+    tbody tr:last-child td { border-bottom: 1px solid #000; }
+    .td-right { text-align: right; }
+    .td-left  { text-align: left; }
+    .totals { margin-top: 4px; font-size: 11px; }
+    .totals .t-row { display: flex; justify-content: space-between; padding: 1px 0; }
+    .totals .t-row.grande {
+      font-size: 13px; font-weight: 800;
+      border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;
+      -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000;
+    }
+    .firma { margin-top: 10mm; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+
+    <div class="center" style="margin-bottom:4px;">
+      <img src="${logoUrl}" alt="TAJIMA" style="width:30mm; height:auto; display:block; margin:0 auto;" />
+    </div>
+
+    <div class="empresa-nombre">BYATAJIMATEX</div>
+    <div class="empresa-sub">
+      BORDADOS COMPUTARIZADOS<br/>
+      Y APLICACIONES<br/>
+      Av. Juan Pablo II Ceja<br/>
+      (El Alto lado Tránsito - Bolivia)<br/>
+      Cel.: 75866135 · 75274747 · 77221750<br/>
+      byatajima@gmail.com
+    </div>
+
+    <hr class="sep-solid"/>
+    <div class="center bold" style="font-size:11px; margin-bottom:1px;">DETALLE DE MOVIMIENTO</div>
+    <div class="center bold" style="font-size:11px;">${safe(titulo)}</div>
+    <div class="num-mov">ID #${safe(mov?.id_transaccion || "--")}</div>
+
+    <hr class="sep-dashed"/>
+    <div class="info-row"><span>Fecha:</span><span>${safe(fmtFecha(mov?.fecha))}</span></div>
+    <div class="info-row"><span>Hora:</span><span>${safe(fmtHora(mov?.hora))}</span></div>
+    <div class="info-row"><span>Impreso:</span><span>${safe(impFecha)} ${safe(impHora)}</span></div>
+
+    <hr class="sep-dashed"/>
+    <div class="info-row"><span>Tipo:</span><span><span class="badge ${mov?.tipo === "INGRESO" ? "badge-in" : "badge-out"}">${safe(mov?.tipo)}</span></span></div>
+    <div class="info-row"><span>Monto:</span><span>Bs ${money(mov?.monto)}</span></div>
+    <div class="info-row"><span>Origen:</span><span>${safe(mov?.origen)}</span></div>
+    <div class="info-row"><span>Referencia:</span><span class="wrap">${safe(mov?.nro_registro || "-")}</span></div>
+    <div class="info-row"><span>Caja:</span><span>#${safe(mov?.id_caja)}</span></div>
+    <div class="info-row"><span>Usuario:</span><span>${safe(mov?.id_usuario)}</span></div>
+    ${mov?.detalle ? `<div class="info-row"><span>Detalle:</span><span class="wrap">${safe(mov.detalle)}</span></div>` : ""}
+
+    ${itemsHtml}
+
+    <div class="firma">Firma / Sello</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+    return html;
+  };
+
+  const imprimirTermicaDesdeModal = () => {
+    if (!mov) return;
+    const html = buildHtmlMovimientoTermico({
+      mov,
+      tipo_detalle: tipoDetalle || "",
+      detalle,
+    });
+    const w = window.open("", "_blank", "width=400,height=600");
+    if (!w) {
+      alert("Tu navegador bloqueó la ventana de impresión. Permite pop-ups.");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
+  /** =========================
    * Render detalle (modal)
    * ========================= */
   const renderGeneral = () => {
@@ -622,6 +868,10 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
         <div>
           <b>Referencia:</b> {mov.nro_registro || "-"}
+        </div>
+
+        <div>
+          <b>Detalle: {mov.detalle || "-"} </b>
         </div>
 
         <div>
@@ -1009,6 +1259,7 @@ export default function CajaTransacciones({ transacciones, loading }) {
                   style={{
                     display: "flex",
                     justifyContent: "flex-end",
+                    gap: 8,
                     marginTop: 20,
                     borderTop: "1px solid #eee",
                     paddingTop: 12,
@@ -1016,11 +1267,15 @@ export default function CajaTransacciones({ transacciones, loading }) {
                 >
                   <button
                     className="btn-ver"
+                    onClick={imprimirTermicaDesdeModal}
+                    style={{ padding: "10px 18px", fontWeight: 600 }}
+                  >
+                    Imprimir Térmica
+                  </button>
+                  <button
+                    className="btn-ver"
                     onClick={imprimirDesdeModal}
-                    style={{
-                      padding: "10px 18px",
-                      fontWeight: 600,
-                    }}
+                    style={{ padding: "10px 18px", fontWeight: 600 }}
                   >
                     Imprimir
                   </button>

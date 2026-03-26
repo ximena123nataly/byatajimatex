@@ -582,7 +582,7 @@ function Proformas() {
         <tr>
           <th style="width:45px;" class="c-center">#</th>
           <th style="width:120px;" class="c-center">Proforma</th>
-          <th class="c-left">Cliente</th>
+          <th style="width:220px;" class="c-center">Cliente</th>
           <th style="width:120px;" class="c-center">Entregado</th>
           <th style="width:110px;" class="c-right">Total</th>
           <th style="width:110px;" class="c-right">Saldo</th>
@@ -780,8 +780,9 @@ function Proformas() {
 
     <div class="totals">
       <table>
-        <tr><td>Anticipo</td><td>${money(p.anticipo ?? 0)}</td></tr>
         <tr><td>Total</td><td>${money(p.total_general ?? 0)}</td></tr>
+        <tr><td>Anticipo</td><td>${money(p.anticipo ?? 0)}</td></tr>        
+        <tr><td>Descuento</td><td>${money(p.descuento ?? 0)}</td></tr>
         <tr><td>Saldo</td><td>${money(p.saldo ?? 0)}</td></tr>
       </table>
     </div>
@@ -988,8 +989,9 @@ function Proformas() {
 
     <!-- TOTALES -->
     <div class="totals">
-      <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>
       <div class="t-row"><span>Total:</span><span>${money(p.total_general ?? 0)}</span></div>
+      <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>      
+      <div class="t-row"><span>Descuento:</span><span>${money(p.descuento ?? 0)}</span></div>
       <div class="t-row grande"><span>SALDO:</span><span>${money(p.saldo ?? 0)}</span></div>
     </div>
 
@@ -1303,6 +1305,11 @@ function Proformas() {
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span><b>Anticipo / Monto pagado:</b></span>
                       <span>{selected.anticipo ?? 0}</span>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span><b>Descuento:</b></span>
+                      <span>{selected.descuento ?? 0}</span>
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>

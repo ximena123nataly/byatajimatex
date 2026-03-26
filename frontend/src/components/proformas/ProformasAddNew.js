@@ -46,6 +46,7 @@ function ProformasAddNew() {
 
   // Montos
   const [anticipo, setAnticipo] = useState("0");
+  const [descuento, setDescuento] = useState("0");
 
   // Ofertas (combo)
   const OFERTAS = [
@@ -185,8 +186,8 @@ function ProformasAddNew() {
   }, [rowsWithTotals]);
 
   const saldo = useMemo(() => {
-    return totalGeneral - Math.max(0, toNumber(anticipo));
-  }, [totalGeneral, anticipo]);
+    return totalGeneral - Math.max(0, toNumber(anticipo)) - Math.max(0, toNumber(descuento));
+  }, [totalGeneral, anticipo, descuento]);
 
   //  IMPRESION
   const imprimirProforma = (p) => {
@@ -321,8 +322,9 @@ function ProformasAddNew() {
 
     <div class="totals">
       <table>
-        <tr><td>Anticipo</td><td>${money(p.anticipo)}</td></tr>
         <tr><td>Total</td><td>${money(p.total_general)}</td></tr>
+        <tr><td>Anticipo</td><td>${money(p.anticipo)}</td></tr>        
+        <tr><td>Descuento</td><td>${money(p.descuento ?? 0)}</td></tr>
         <tr><td>Saldo</td><td>${money(p.saldo)}</td></tr>
       </table>
     </div>
@@ -530,8 +532,9 @@ function ProformasAddNew() {
     </table>
 
     <div class="totals">
-      <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>
       <div class="t-row"><span>Total:</span><span>${money(p.total_general ?? 0)}</span></div>
+      <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>      
+      <div class="t-row"><span>Descuento:</span><span>${money(p.descuento ?? 0)}</span></div>
       <div class="t-row grande"><span>SALDO:</span><span>${money(p.saldo ?? 0)}</span></div>
     </div>
 
@@ -598,6 +601,7 @@ function ProformasAddNew() {
       notas: notas.trim() === "" ? null : notas.trim(),
 
       anticipo: toNumber(anticipo),
+      descuento: toNumber(descuento),
 
       detalle: validItems.map((r) => ({
         cantidad: String(r.cantidad),
@@ -654,6 +658,7 @@ function ProformasAddNew() {
             fecha_entrega: fechaEntrega,
             hora_entrega: horaEntregaDB || "",
             anticipo: toNumber(anticipo),
+            descuento: toNumber(descuento),
             total_general: totalGeneral,
             saldo,
             items: validItems.map((r) => ({
@@ -687,6 +692,7 @@ function ProformasAddNew() {
         setCelular("");
         setNotas(""); //  reset notas
         setAnticipo("0");
+        setDescuento("0");
         setRows([
           {
             cantidad: "1",
@@ -960,6 +966,10 @@ function ProformasAddNew() {
               <div className="col">
                 <label>Total</label>
                 <input className="my_input" value={totalGeneral} readOnly />
+              </div>
+              <div className="col">
+                <label>Descuento</label>
+                <input className="my_input" type="number" value={descuento} onChange={(e) => setDescuento(e.target.value)} />
               </div>
               <div className="col">
                 <label>Saldo</label>

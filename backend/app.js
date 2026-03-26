@@ -227,7 +227,7 @@ app.use((err, req, res, next) => {
 // =============================================
 // 7. INICIAR SERVIDOR EN MODO PRODUCCION
 // =============================================
-
+/*
 //const host = isProduction ? '0.0.0.0' : 'localhost';
 const host = process.env.HOST || '0.0.0.0';
 app.listen(port, host, () => {
@@ -235,18 +235,18 @@ app.listen(port, host, () => {
   console.log(`📡 Escuchando en: http://${host}:${port}`);
   console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⏰ Hora de inicio: ${new Date().toLocaleString()}`);
-
+*/
 // =============================================
 // 7. INICIAR SERVIDOR EN MODO DESARROLLO
 // =============================================
-/*
+
 const host = process.env.HOST || "localhost";
 app.listen(port, host, () => {
   console.log(`🚀 Servidor ${isProduction ? 'PRODUCCION' : 'DESARROLLO'} iniciado`);
   console.log(`📡 Escuchando en: http://${host}:${port}`);
   console.log(`🌍 Entorno: ${process.env.NODE_ENV || 'development'}`);
   console.log(`⏰ Hora de inicio: ${new Date().toLocaleString()}`);
-  */
+  
 
   // Verificar conexión a BD
   require('./db/conn.js'); // Esto ejecutará la conexión
