@@ -37,6 +37,10 @@ function Proformas() {
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
+  const [previewImage, setPreviewImage] = useState(null);
+  const [previewImageName, setPreviewImageName] = useState("");
+
+
   const clickNoFocusAsync = (fn) => async (e) => {
     const el = e?.currentTarget;
     if (el) el.blur();
@@ -338,7 +342,10 @@ function Proformas() {
   const closeViewModal = () => {
     setSelected(null);
     setViewModalShow(false);
+    setPreviewImage(null);
+    setPreviewImageName("");
   };
+
 
   const rowClassByEntregado = (obj) => {
     const entregado = Number(obj?.entregado) === 1;
@@ -600,7 +607,7 @@ function Proformas() {
         <tr>
           <th style="width:45px;" class="c-center">#</th>
           <th style="width:120px;" class="c-center">Proforma</th>
-          <th class="c-left">Cliente</th>
+          <th style="width:220px;" class="c-center">Cliente</th>
           <th style="width:120px;" class="c-center">Entregado</th>
           <th style="width:110px;" class="c-right">Total</th>
           <th style="width:110px;" class="c-right">Saldo</th>
@@ -798,8 +805,9 @@ function Proformas() {
 
     <div class="totals">
       <table>
-        <tr><td>Anticipo</td><td>${money(p.anticipo ?? 0)}</td></tr>
         <tr><td>Total</td><td>${money(p.total_general ?? 0)}</td></tr>
+        <tr><td>Anticipo</td><td>${money(p.anticipo ?? 0)}</td></tr>        
+        <tr><td>Descuento</td><td>${money(p.descuento ?? 0)}</td></tr>
         <tr><td>Saldo</td><td>${money(p.saldo ?? 0)}</td></tr>
       </table>
     </div>
@@ -824,6 +832,218 @@ function Proformas() {
     w.document.write(html);
     w.document.close();
   };
+
+  //IMPRESION DE PROFORMA EN IMPRESORA TERMINCA
+  const imprimirProformaTermica = (p) => {
+    if (!p) return;
+
+    const toNumber = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const money = (n) => {
+      const num = Number(n);
+      if (!Number.isFinite(num)) return "0.00";
+      return num.toFixed(2);
+    };
+
+    const safe = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const items = Array.isArray(p.detalle) ? p.detalle : [];
+
+    const filas = items
+      .map((it) => {
+        const cant = toNumber(it.cantidad);
+        const pu = toNumber(it.precio_unitario);
+        const tot = toNumber(it.total);
+        const ofertaTxt = it.oferta && it.oferta !== "Sin oferta" ? `<div class="oferta">${safe(it.oferta)}</div>` : "";
+        const det = safe(it.detalle || "").replace(/\n/g, "<br/>");
+
+        return `
+          <tr>
+            <td class="td-right" style="width:30px;">${cant}</td>
+            <td class="td-left wrap">${det}${ofertaTxt}</td>
+            <td class="td-right" style="width:55px;">${money(pu)}</td>
+            <td class="td-right" style="width:60px;">${money(tot)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const notasHTML =
+      p.notas && String(p.notas).trim() !== ""
+        ? `<div class="notas"><b>Notas:</b> ${safe(p.notas).replace(/\n/g, "<br/>")}</div>`
+        : "";
+
+    const fechaPrint = p.fecha ? moment.utc(p.fecha).format("YYYY-MM-DD") : "";
+    const horaPrint = p.hora ? String(p.hora).slice(0, 8) : "";
+    const fechaEntregaPrint = p.fecha_entrega ? moment.utc(p.fecha_entrega).format("YYYY-MM-DD") : "";
+    const horaEntregaPrint = p.hora_entrega ? String(p.hora_entrega).slice(0, 5) : "";
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Proforma ${safe(formatProforma(p.id))}</title>
+  <style>
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Lucida Console', Courier, monospace;
+      font-size: 11px;
+      color: #000;
+      width: 80mm;
+    }
+    .ticket {
+      width: 80mm;
+      padding: 4mm 4mm 8mm 4mm;
+    }
+    .center { text-align: center; }
+    .left   { text-align: left; }
+    .right  { text-align: right; }
+    .bold   { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    .wrap   { word-break: break-word; overflow-wrap: anywhere; }
+    .oferta { font-size: 10px; color: #333; font-style: italic; }
+    .notas  { font-size: 10px; margin-top: 4px; border-top: 1px dashed #000; padding-top: 3px; }
+
+    .empresa-nombre { font-size: 13px; font-weight: 800; text-align: center; -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000; }
+    .empresa-sub    { font-size: 10px; text-align: center; line-height: 1.3; }
+
+    .sep-solid  { border: 0; border-top: 1px solid #000; margin: 3px 0; }
+    .sep-dashed { border: 0; border-top: 1px dashed #000; margin: 3px 0; }
+
+    .num-proforma { font-size: 16px; font-weight: 800; text-align: center; margin: 2px 0; -webkit-text-stroke: 0.5px #000; text-shadow: 0.5px 0 0 #000; }
+
+    .info-row { display: flex; justify-content: space-between; font-size: 10px; }
+    .info-row span:first-child { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 10px;
+      text-align: left;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 2px 2px;
+    }
+    tbody td {
+      font-size: 10px;
+      padding: 2px 2px;
+      vertical-align: top;
+      border-bottom: 1px dashed #ccc;
+    }
+    tbody tr:last-child td { border-bottom: 1px solid #000; }
+    .td-right  { text-align: right; }
+    .td-center { text-align: center; }
+    .td-left   { text-align: left; }
+
+    .totals { margin-top: 4px; font-size: 11px; }
+    .totals .t-row { display: flex; justify-content: space-between; padding: 1px 0; }
+    .totals .t-row.grande { font-size: 13px; font-weight: 800; border-top: 1px solid #000; margin-top: 2px; padding-top: 2px; -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000; }
+
+    .firma { margin-top: 10mm; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+
+    <!-- LOGO -->
+    <div class="center" style="margin-bottom:4px;">
+      <img src="/tajima.png" alt="TAJIMA" style="width:30mm; height:auto; display:block; margin:0 auto;" />
+    </div>
+
+    <!-- ENCABEZADO EMPRESA -->
+    <div class="empresa-nombre">BYATAJIMATEX</div>
+    <div class="empresa-sub">
+      BORDADOS COMPUTARIZADOS<br/>
+      Y APLICACIONES<br/>
+      Av. Juan Pablo II Ceja<br/>
+      (El Alto lado Tránsito - Bolivia)<br/>
+      Cel.: 75866135 · 75274747 · 77221750<br/>
+      byatajima@gmail.com
+    </div>
+
+    <hr class="sep-solid"/>
+
+    <!-- NÚMERO DE PROFORMA -->
+    <div class="center bold" style="font-size:11px; margin-bottom:1px;">PROFORMA</div>
+    <div class="num-proforma">N° ${safe(formatProforma(p.id))}</div>
+
+    <hr class="sep-dashed"/>
+
+    <!-- FECHA / HORA -->
+    <div class="info-row"><span>Fecha:</span><span>${fechaPrint}</span></div>
+    <div class="info-row"><span>Hora:</span><span>${horaPrint}</span></div>
+
+    <hr class="sep-dashed"/>
+
+    <!-- CLIENTE -->
+    <div class="info-row"><span>Cliente:</span><span class="wrap">${safe(p.cliente || "-")}</span></div>
+    <div class="info-row"><span>Celular:</span><span>${safe(p.celular || "-")}</span></div>
+    <div class="info-row"><span>Entregado:</span><span>${Number(p.entregado) ? "SÍ" : "NO"}</span></div>
+    ${fechaEntregaPrint ? `<div class="info-row"><span>F. entrega:</span><span>${fechaEntregaPrint} ${horaEntregaPrint}</span></div>` : ""}
+    ${notasHTML}
+
+    <hr class="sep-solid"/>
+
+    <!-- DETALLE DE PRODUCTOS -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:55px;" class="td-right">P/U</th>
+          <th style="width:60px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="4" class="td-left" style="padding:4px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <!-- TOTALES -->
+    <div class="totals">
+      <div class="t-row"><span>Total:</span><span>${money(p.total_general ?? 0)}</span></div>
+      <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>      
+      <div class="t-row"><span>Descuento:</span><span>${money(p.descuento ?? 0)}</span></div>
+      <div class="t-row grande"><span>SALDO:</span><span>${money(p.saldo ?? 0)}</span></div>
+    </div>
+
+    <div class="firma">Firma / Sello</div>
+
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+    const w = window.open("", "_blank", "width=400,height=600");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+  //FIN IMPRESION TERMICA
 
   useEffect(() => {
     if (proformas.length !== 0) {
@@ -895,7 +1115,7 @@ function Proformas() {
   return (
     <div className="products">
       <div className="products-scroll">
-        <div className="proformas-header-layout">
+        <div className="proformas-header">
 
 
           {/* FILTROS (arriba) */}
@@ -990,6 +1210,9 @@ function Proformas() {
                     <div>
                       <b>Celular:</b> {selected.celular || "-"}
                     </div>
+                    <div style={{ marginTop: "8px", maxWidth: "420px", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+                      <b>Notas:</b> {selected.notas || "-"}
+                    </div>
                   </div>
 
                   <div>
@@ -1027,30 +1250,73 @@ function Proformas() {
                         <th>#</th>
                         <th>Cant.</th>
                         <th>Detalle</th>
+                        <th>Foto</th>
                         <th>Oferta</th>
                         <th>Precio</th>
                         <th>Total</th>
                       </tr>
+
                     </thead>
 
                     <tbody>
                       {(selected.detalle || []).length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: "center" }}>
+                          <td colSpan={7} style={{ textAlign: "center" }}>
                             Sin ítems
                           </td>
+
                         </tr>
                       ) : (
-                        (selected.detalle || []).map((it, idx) => (
-                          <tr key={idx}>
-                            <td>{idx + 1}</td>
-                            <td>{it.cantidad ?? "-"}</td>
-                            <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
-                            <td>{it.oferta ?? "Sin oferta"}</td>
-                            <td>{it.precio_unitario ?? "-"}</td>
-                            <td>{it.total ?? "-"}</td>
-                          </tr>
-                        ))
+                        (selected.detalle || []).map((it, idx) => {
+                          const fotoSrc =
+                            it.foto_preview ||
+                            it.foto_url ||
+                            it.foto ||
+                            null;
+
+
+                      
+
+
+
+                          return (
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td>{it.cantidad ?? "-"}</td>
+                              <td style={{ whiteSpace: "pre-wrap" }}>{it.detalle ?? "-"}</td>
+
+                              <td style={{ textAlign: "center" }}>
+                                {fotoSrc ? (
+                                  <img
+                                    src={fotoSrc}
+                                    alt={it.foto_nombre || `foto-${idx + 1}`}
+                                    onClick={() => {
+                                      setPreviewImage(fotoSrc);
+                                      setPreviewImageName(it.foto_nombre || `foto-${idx + 1}`);
+                                    }}
+                                    style={{
+                                      width: "70px",
+                                      height: "70px",
+                                      objectFit: "cover",
+                                      borderRadius: "6px",
+                                      border: "1px solid #ccc",
+                                      cursor: "pointer"
+                                    }}
+                                    title="Clic para ampliar"
+                                  />
+                                ) : (
+                                  <span style={{ color: "#777", fontSize: "12px" }}>Sin foto</span>
+                                )}
+
+                              </td>
+
+                              <td>{it.oferta ?? "Sin oferta"}</td>
+                              <td>{it.precio_unitario ?? "-"}</td>
+                              <td>{it.total ?? "-"}</td>
+                            </tr>
+                          );
+                        })
+
                       )}
                     </tbody>
                   </table>
@@ -1065,6 +1331,14 @@ function Proformas() {
                     Imprimir
                   </button>
 
+                  <button
+                    className="btn btn-outline-secondary"
+                    onClick={() => imprimirProformaTermica(selected)}
+                    style={{ minWidth: "130px" }}
+                  >
+                    🧾 Imprimir Térmica
+                  </button>
+
                   <div style={{ minWidth: "280px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span><b>Total:</b></span>
@@ -1077,6 +1351,11 @@ function Proformas() {
                     </div>
 
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span><b>Descuento:</b></span>
+                      <span>{selected.descuento ?? 0}</span>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span><b>Saldo:</b></span>
                       <span>{selected.saldo ?? 0}</span>
                     </div>
@@ -1086,6 +1365,73 @@ function Proformas() {
             )}
           </Modal.Body>
         </Modal>
+        {previewImage && (
+          <div
+            onClick={() => {
+              setPreviewImage(null);
+              setPreviewImageName("");
+            }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,0.55)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 99999,
+              padding: "20px",
+              cursor: "pointer"
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: "relative",
+                background: "transparent",
+                maxWidth: "90vw",
+                maxHeight: "90vh"
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewImage(null);
+                  setPreviewImageName("");
+                }}
+                style={{
+                  position: "absolute",
+                  top: "-12px",
+                  right: "-12px",
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "50%",
+                  border: "none",
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.25)"
+                }}
+              >
+                ×
+              </button>
+
+              <img
+                src={previewImage}
+                alt={previewImageName || "vista previa"}
+                style={{
+                  display: "block",
+                  maxWidth: "90vw",
+                  maxHeight: "90vh",
+                  objectFit: "contain",
+                  borderRadius: "6px",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.35)",
+                  background: "#fff"
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div >
   );

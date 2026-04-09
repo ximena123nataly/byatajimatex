@@ -127,7 +127,7 @@ class Order {
       const order_id = uniqid();
       const grandTotal = Number(req.body.grand_total);
       if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
-        return res.send({ operation: "error", message: "grand_total inválido" });
+        return res.send({ operation: "error", message: "Monto total inválido" });
       }
 
       if (!Array.isArray(req.body.item_array) || req.body.item_array.length === 0) {
@@ -141,8 +141,8 @@ class Order {
 
 
         const q1 =
-          "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`, `grand_total`, `user_id`) " +
-          "VALUES (?,?,?,?,?,?,?,?)";
+          "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`,`descuento`, `grand_total`, `user_id`) " +
+          "VALUES (?,?,?,?,?,?,?,?,?)";
 
         db.query(
           q1,
@@ -153,6 +153,7 @@ class Order {
             req.body.due_date,
             JSON.stringify(req.body.item_array),
             req.body.tax || 0,
+            req.body.descuento || 0,
             grandTotal,
             id_usuario,
           ],

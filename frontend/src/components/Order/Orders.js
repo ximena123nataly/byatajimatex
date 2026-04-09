@@ -285,7 +285,7 @@ function Orders() {
     <div class="mid small">
       <div class="mid-left wrap">
         <div><b>Cliente:</b> ${o.customer_name || ""}</div>
-        <div><b>Vence:</b> ${moment(o.due_date).format("YYYY-MM-DD")}</div>
+        <div><b>Fecha:</b> ${moment(o.due_date).format("YYYY-MM-DD")}</div>
         <div><b>Impuesto:</b> ${toNumber(o.tax)}%</div>
       </div>
       <div class="mid-right">
@@ -336,6 +336,189 @@ function Orders() {
     w.document.write(html);
     w.document.close();
   };
+
+  //IMPRESION TERMICA
+
+const imprimirVentaTermica = (o) => {
+    if (!o) return;
+
+   let items = [];
+    try {
+      items = o.items ? JSON.parse(o.items) : [];
+    } catch (e) {
+      items = [];
+    }
+
+    const safe = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+
+      const filas = (items || [])
+      .map((it) => {
+        const cant = toNumber(it.quantity);
+        const pu = toNumber(it.rate);
+        const det = String(it.product_name || "").replace(/\n/g, "<br/>");
+        const tot = cant * pu;
+
+        return `
+          <tr>
+            <td class="td-center" style="width:15px;">${cant}</td>
+            <td class="td-left wrap">${det}</td>
+            <td class="td-right" style="width:40px;">${money(pu)}</td>
+            <td class="td-right" style="width:50px;">${money(tot)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const subtotal = items.reduce((acc, it) => acc + toNumber(it.quantity) * toNumber(it.rate), 0);
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Venta ${safe(String(o.order_id ?? ""))}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Lucida Console', Courier, monospace;
+      font-size: 11px;
+      color: #000;
+      width: 80mm;
+    }
+    .ticket { width: 80mm; padding: 4mm 4mm 8mm 4mm; }
+    .center { text-align: center; }
+    .left   { text-align: left; }
+    .right  { text-align: right; }
+    .bold   { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    .wrap   { word-break: break-word; overflow-wrap: anywhere; }
+    .empresa-nombre { font-size: 13px; font-weight: 800; text-align: center; -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000; }
+    .empresa-sub    { font-size: 10px; text-align: center; line-height: 1.3; }
+    .sep-solid  { border: 0; border-top: 1px solid #000; margin: 3px 0; }
+    .sep-dashed { border: 0; border-top: 1px dashed #000; margin: 3px 0; }
+    .num-venta { font-size: 16px; font-weight: 800; text-align: center; margin: 2px 0; -webkit-text-stroke: 0.5px #000; text-shadow: 0.5px 0 0 #000; }
+    .info-row { display: flex; justify-content: space-between; font-size: 10px; gap: 6px; }
+    .info-row span:first-child { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 10px;
+      text-align: left;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 2px 2px;
+    }
+    tbody td {
+      font-size: 10px;
+      padding: 2px 2px;
+      vertical-align: top;
+      border-bottom: 1px dashed #ccc;
+    }
+    tbody tr:last-child td { border-bottom: 1px solid #000; }
+    .td-right { text-align: right; }
+    .td-left  { text-align: left; }
+    .totals { margin-top: 4px; font-size: 11px; }
+    .totals .t-row { display: flex; justify-content: space-between; padding: 1px 0; }
+    .totals .t-row.grande {
+      font-size: 13px;
+      font-weight: 800;
+      border-top: 1px solid #000;
+      margin-top: 2px;
+      padding-top: 2px;
+      -webkit-text-stroke: 0.4px #000;
+      text-shadow: 0.4px 0 0 #000;
+    }
+    .firma { margin-top: 10mm; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+
+    <div class="center" style="margin-bottom:4px;">
+      <img src="/tajima.png" alt="TAJIMA" style="width:30mm; height:auto; display:block; margin:0 auto;" />
+    </div>
+
+    <div class="empresa-nombre">BYATAJIMATEX</div>
+    <div class="empresa-sub">
+      BORDADOS COMPUTARIZADOS<br/>
+      Y APLICACIONES<br/>
+      Av. Juan Pablo II Ceja<br/>
+      (El Alto lado Tránsito - Bolivia)<br/>
+      Cel.: 75866135 · 75274747 · 77221750<br/>
+      byatajima@gmail.com
+    </div>
+
+    <hr class="sep-solid"/>
+
+    <div class="center bold" style="font-size:11px; margin-bottom:1px;">VENTA</div>
+    <div class="num-venta">N° ${safe(String(o.order_id ?? "--").padStart(6, "0"))}</div>
+
+    <hr class="sep-dashed"/>
+
+    <div class="info-row"><span>Fecha:</span><span> ${moment(o.due_date).format("YYYY-MM-DD")}</span></div>
+
+    <hr class="sep-dashed"/>
+
+    <div class="info-row"><span>Referencia:</span><span class="wrap">${safe(o.order_ref || "-")}</span></div>
+    <div class="info-row"><span>Cliente:</span><span class="wrap">${safe(o.customer_name || "-")}</span></div>
+
+    <hr class="sep-solid"/>
+
+    
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:15px;" class="td-left">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:40px;" class="td-right">P/U</th>
+          <th style="width:40px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="4" class="td-left" style="padding:4px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="t-row"><span>Subtotal:</span><span>${money(subtotal)}</span></div>
+      <div class="t-row"><span>Impuesto:</span><span>${toNumber(o.tax)}%</span></div>
+      <div class="t-row"><span>Descuento:</span><span>${money(o.descuento ?? 0)}</span></div>
+      <div class="t-row grande"><span>TOTAL:</span><span>${money(o.grand_total)}</span></div>
+    </div>
+
+    <div class="firma">Firma / Sello</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+  `;
+
+    const w = window.open("", "_blank", "width=400,height=600");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
+// FIN IMPRESION TERMICA
+
   const imprimirVentasFiltradas = async () => {
     const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_orders`, {
       method: "POST",
@@ -689,6 +872,10 @@ function Orders() {
                         <label className='fw-bold'>Impuesto</label>
                         <input className='my_form_control' value={`${viewOrderDetails.tax}%`} readOnly />
                       </div>
+                       <div className='form-group mb-2'>
+                        <label className='fw-bold'>Descuento</label>
+                        <input className='my_form_control' value={viewOrderDetails.descuento} readOnly />
+                      </div>
                       <div className='form-group mb-2'>
                         <label className='fw-bold'>Total</label>
                         <input className='my_form_control' value={viewOrderDetails.grand_total} readOnly />
@@ -733,6 +920,14 @@ function Orders() {
               disabled={!viewOrderDetails}
             >
               Imprimir
+            </button>
+
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => imprimirVentaTermica(viewOrderDetails)}
+              disabled={!viewOrderDetails}
+            >
+              Impresion termica
             </button>
 
             <button className='btn btn-outline-danger' onClick={handleViewModalClose}>

@@ -1,3 +1,4 @@
+const { parse } = require("dotenv");
 const db = require("../db/conn.js");
 const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
@@ -88,7 +89,7 @@ class Caja {
       const caja = await this.ensureCaja(user_id);
 
       db.query(
-        `SELECT id_transaccion, id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora
+        `SELECT id_transaccion, id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora
          FROM caja_transacciones
          WHERE id_caja=?
          ORDER BY id_transaccion DESC
@@ -172,7 +173,7 @@ class Caja {
       if (!id_caja) return res.send({ ok: false, msg: "Falta id_caja" });
 
       db.query(
-        `SELECT id_transaccion, id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora
+        `SELECT id_transaccion, id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora
          FROM caja_transacciones
          WHERE id_caja=?
          ORDER BY id_transaccion DESC
@@ -227,9 +228,11 @@ class Caja {
       const id_usuario_origen = this.getUserIdFromToken(req);
       if (!id_usuario_origen) return res.send({ ok: false, msg: "No autorizado" });
 
-      const { id_usuario_destino, monto } = req.body;
+      const { id_usuario_destino, monto, detalle } = req.body;
       const montoNum = parseFloat(monto);
+      const detalleTrasp= detalle;
 
+     if (!detalle) return res.send({ ok: false, msg: "Ingrese un detalle para el traspaso" });
       if (!id_usuario_destino) return res.send({ ok: false, msg: "Falta usuario destino" });
       if (!monto || isNaN(montoNum) || montoNum <= 0) {
         return res.send({ ok: false, msg: "Monto inválido" });
@@ -260,9 +263,9 @@ class Caja {
 
         db.query(
           `INSERT INTO caja_transacciones
-           (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
-           VALUES (?,?,?,?,?,?,?,?)`,
-          [cajaOrigen.id_caja, id_usuario_origen, "EGRESO", "TRASPASO", nro, montoNum, fecha, hora],
+           (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
+           VALUES (?,?,?,?,?,?,?,?,?)`,
+          [cajaOrigen.id_caja, id_usuario_origen,detalleTrasp, "EGRESO", "TRASPASO", nro, montoNum, fecha, hora],
           (err1) => {
             if (err1) {
               console.log(err1);
@@ -273,9 +276,9 @@ class Caja {
 
             db.query(
               `INSERT INTO caja_transacciones
-               (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
-               VALUES (?,?,?,?,?,?,?,?)`,
-              [cajaDestino.id_caja, id_usuario_destino, "INGRESO", "TRASPASO", nro, montoNum, fecha, hora],
+               (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
+               VALUES (?,?,?,?,?,?,?,?,?)`,
+              [cajaDestino.id_caja, id_usuario_destino,detalleTrasp, "INGRESO", "TRASPASO", nro, montoNum, fecha, hora],
               (err2) => {
                 if (err2) {
                   console.log(err2);
@@ -344,7 +347,7 @@ class Caja {
       if (!id_transaccion) return res.send({ ok: false, msg: "Falta id_transaccion" });
 
       db.query(
-        `SELECT id_transaccion, id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora
+        `SELECT id_transaccion, id_caja, detalle, id_usuario, tipo, origen, nro_registro, monto, fecha, hora
          FROM caja_transacciones
          WHERE id_transaccion=? LIMIT 1`,
         [id_transaccion],
@@ -372,7 +375,7 @@ class Caja {
           // TRASPASO: devuelve los 2 movimientos (egreso e ingreso)
           if (mov.origen === "TRASPASO") {
             return db.query(
-              `SELECT ct.id_transaccion, ct.id_caja, ct.id_usuario, ct.tipo, ct.origen, ct.nro_registro, ct.monto, ct.fecha, ct.hora,
+              `SELECT ct.id_transaccion, ct.id_caja, ct.id_usuario, ct.detalle, ct.tipo, ct.origen, ct.nro_registro, ct.monto, ct.fecha, ct.hora,
                       c.nombre_caja,
                       u.user_name
                FROM caja_transacciones ct

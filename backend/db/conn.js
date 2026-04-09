@@ -40,7 +40,7 @@ function connectToDatabase() {
 
     // Resetear intentos al conectar exitosamente
     reconnectAttempts = 0;
-    console.log(" MySQL conectado correctamente");
+    console.log(" ✅ MySQL conectado correctamente");
     
     // Configurar modo SQL
     let q = "SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))";
@@ -53,7 +53,7 @@ function connectToDatabase() {
   conn.on('error', (err) => {
     console.error('  Error de conexión MySQL:', err.message);
     if (err.code === 'PROTOCOL_CONNECTION_LOST' || err.code === 'ECONNRESET') {
-      console.log(' Reconectando...');
+      console.log(' 🔄 Reconectando...');
 
        // IMPORTANTE: Destruir la conexión vieja
       if (conn && conn.destroy) {
@@ -84,44 +84,59 @@ connectToDatabase();
 
 // =============================================
 // TRUCO: Interceptar todos los queries para reconectar automáticamente
-//  VERIFICAR CODIGO
+//  ✅ VERSIÓN CORREGIDA - Sin modificar el prototype
 // =============================================
-/*
-const originalQuery = mysql.Connection.prototype.query;
 
-// Guardar referencia a nuestra conexión
-Object.defineProperty(conn, '_query', {
-  value: originalQuery,
-  writable: true,
-  configurable: true
-});
+// Guardar referencia a la función query original de esta conexión
+let currentQuery = null;
 
-// Wrapper para queries que reconecta automáticamente
-function wrappedQuery(sql, values, cb) {
-  // Si la conexión está muerta, reconectar
-  if (!this || this.state === 'disconnected' || this.state === 'protocol_error') {
-    console.log('🔄 Conexión perdida, reconectando antes de query...');
-    connectToDatabase();
+// Sobrescribir el método query de la conexión actual cuando se establece
+function setupQueryWrapper() {
+  if (conn && conn.query) {
+    // Guardar query original
+    currentQuery = conn.query;
     
-    // Esperar un poco y reintentar
-    setTimeout(() => {
-      if (conn && conn.state === 'authenticated') {
-        conn._query(sql, values, cb);
-      } else {
-        console.error('❌ No se pudo reconectar');
-        if (cb) cb(new Error('Database connection lost'), null);
+    // Reemplazar con wrapper
+    conn.query = function(sql, values, cb) {
+      // Si hay callback, es estilo callback
+      if (typeof values === 'function') {
+        cb = values;
+        values = [];
       }
-    }, 1000);
-    return;
+      
+      // Verificar estado de conexión
+      if (!conn || conn.state === 'disconnected' || conn.state === 'protocol_error') {
+        console.log('🔄 Conexión perdida, reconectando antes de query...');
+        connectToDatabase();
+        
+        setTimeout(() => {
+          if (conn && conn.state === 'authenticated') {
+            currentQuery.call(conn, sql, values, cb);
+          } else {
+            console.error('❌ No se pudo reconectar');
+            if (cb) cb(new Error('Database connection lost'), null);
+          }
+        }, 1000);
+        return;
+      }
+      
+      // Ejecutar query normalmente
+      currentQuery.call(conn, sql, values, cb);
+    };
   }
-  
-  // Si todo está bien, ejecutar query normalmente
-  this._query(sql, values, cb);
 }
 
-// Aplicar el wrapper
-mysql.Connection.prototype.query = wrappedQuery;
+// Ejecutar después de cada conexión exitosa
+const originalConnect = connectToDatabase;
+connectToDatabase = function() {
+  originalConnect();
+  // Esperar a que la conexión esté lista
+  setTimeout(setupQueryWrapper, 100);
+};
 
-*/
+// Iniciar
+connectToDatabase();
+
+
 
 module.exports = conn;

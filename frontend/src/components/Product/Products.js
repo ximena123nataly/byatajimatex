@@ -48,6 +48,571 @@ function Products() {
 
   const [editModalSubmitButton, setEditModalSubmitButton] = useState(false)
 
+
+  const imprimirReporteProductos = async () => {
+    try {
+      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_report`, {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json; charset=UTF-8' },
+        credentials: 'include'
+      });
+
+      const body = await result.json();
+
+      if (body.operation !== 'success') {
+        swal("¡Ups!", body.message || "No se pudo generar el reporte", "error");
+        return;
+      }
+
+      const products = body?.info?.products || [];
+      const totalProducts = body?.info?.total_products || 0;
+      const totalStock = body?.info?.total_stock || 0;
+
+      const now = new Date();
+      const fechaActual = now.toISOString().slice(0, 10);
+      const horaActual = now.toLocaleTimeString();
+
+      const escapeHtml = (text) => {
+        return String(text ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      };
+
+      const grouped = products.reduce((acc, product) => {
+        const category = product.category && String(product.category).trim() !== ""
+          ? product.category
+          : "Sin categoría";
+
+        if (!acc[category]) acc[category] = [];
+        acc[category].push(product);
+        return acc;
+      }, {});
+
+      let tableRows = "";
+      let globalIndex = 1;
+
+      Object.keys(grouped).forEach((category) => {
+        const items = grouped[category];
+
+        const stockCategoria = items.reduce((sum, item) => {
+          return sum + (parseInt(item.product_stock) || 0);
+        }, 0);
+
+        tableRows += `
+  <tr class="group-separator">
+    <td colspan="5"></td>
+  </tr>
+  <tr class="group-row">
+    <td colspan="5">
+      <b>CATEGORÍA:</b> ${escapeHtml(category)}
+      <span style="float:right;">
+        <b>Productos:</b> ${items.length} &nbsp;&nbsp;
+        <b>Stock:</b> ${stockCategoria}
+      </span>
+    </td>
+  </tr>
+`;
+        items.forEach((p) => {
+          tableRows += `
+          <tr>
+            <td class="center">${globalIndex++}</td>
+            <td>${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category || "Sin categoría")}</td>
+            <td class="right">${p.product_stock || 0}</td>
+            <td class="right">${Number(p.selling_price || 0).toFixed(2)}</td>
+          </tr>
+        `;
+        });
+      });
+
+      const logoUrl = `${window.location.origin}/tajima.png`;
+
+      const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Historial de productos</title>
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 18mm 14mm 18mm 14mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .page {
+      width: 100%;
+    }
+
+    .header {
+      display: table;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .header-left,
+    .header-center,
+    .header-right {
+      display: table-cell;
+      vertical-align: top;
+    }
+
+    .header-left {
+      width: 33%;
+    }
+
+    .header-center {
+      width: 34%;
+      text-align: center;
+    }
+
+    .header-right {
+      width: 33%;
+      text-align: right;
+      font-size: 12px;
+    }
+
+    .logo {
+      width: 100px;
+      height: auto;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .company {
+      font-size: 10px;
+      line-height: 1.25;
+    }
+
+    .title {
+      font-size: 10px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .center-info {
+      font-size: 10px;
+      line-height: 1.3;
+    }
+
+    .meta-right div {
+      margin-bottom: 3px;
+    }
+
+    .separator {
+      border-top: 1px solid #bbb;
+      margin: 12px 0 8px 0;
+    }
+
+    .range-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+
+    thead th {
+      border-top: 2px solid #222;
+      border-bottom: 2px solid #222;
+      padding: 7px 6px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    tbody td {
+      padding: 4px 6px;
+      font-size: 11px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .group-row td {
+  background: #f3f3f3;
+  border-top: 2px solid #222;
+  border-bottom: 1px solid #222;
+  padding: 10px 6px;
+  font-size: 12px;
+}
+
+.group-row {
+  height: 18px;
+}
+
+.group-separator td {
+  border: none !important;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+}
+
+    .footer-summary {
+      margin-top: 14px;
+      border-top: 2px solid #222;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-left">
+        <img class="logo" src="${logoUrl}" alt="TAJIMA" />
+        <div class="company">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div>E-mail: byatajima@gmail.com</div>
+          <div>jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="title">HISTORIAL DE PRODUCTOS</div>
+        <div class="center-info">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135 - 75274747 - 77221750</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="meta-right">
+          
+          <div><b>Fecha:</b> ${fechaActual}</div>
+          <div><b>Hora:</b> ${horaActual}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="range-row">
+      <div>Listado general de productos por categoría</div>
+      <div><b>Filas:</b> ${totalProducts}</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60px;" class="center">#</th>
+          <th>Producto</th>
+          <th style="width:180px;">Categoría</th>
+          <th style="width:100px;" class="right">Stock</th>
+          <th style="width:130px;" class="right">Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows || `<tr><td colspan="5">No hay productos</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>TOTAL PRODUCTOS: ${totalProducts}</div>
+      <div>STOCK TOTAL: ${totalStock}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+      const w = window.open("", "_blank", "width=1100,height=800");
+      if (!w) {
+        swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+        return;
+      }
+
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } catch (error) {
+      console.log(error);
+      swal("¡Ups!", "Error al generar el reporte", "error");
+    }
+  };
+
+  const imprimirReporteProductosGeneral = async () => {
+    try {
+      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_products_report`, {
+        method: 'POST',
+        headers: { 'Content-type': 'application/json; charset=UTF-8' },
+        credentials: 'include'
+      });
+
+      const body = await result.json();
+
+      if (body.operation !== 'success') {
+        swal("¡Ups!", body.message || "No se pudo generar el reporte", "error");
+        return;
+      }
+
+      const products = body?.info?.products || [];
+      const totalProducts = body?.info?.total_products || 0;
+      const totalStock = body?.info?.total_stock || 0;
+
+      const now = new Date();
+      const fechaActual = now.toISOString().slice(0, 10);
+      const horaActual = now.toLocaleTimeString();
+
+      const escapeHtml = (text) => {
+        return String(text ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      };
+
+      const tableRows = products.map((p, index) => `
+      <tr>
+        <td class="center">${index + 1}</td>
+        <td class="product-name">${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.category || "Sin categoría")}</td>
+        <td class="right">${p.product_stock || 0}</td>
+        <td class="right">${Number(p.selling_price || 0).toFixed(2)}</td>
+      </tr>
+    `).join("");
+
+      const logoUrl = `${window.location.origin}/tajima.png`;
+
+      const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Historial de productos</title>
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 18mm 14mm 18mm 14mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .page {
+      width: 100%;
+    }
+
+    .header {
+      display: table;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .header-left,
+    .header-center,
+    .header-right {
+      display: table-cell;
+      vertical-align: top;
+    }
+
+    .header-left { width: 33%; }
+    .header-center { width: 34%; text-align: center; }
+    .header-right { width: 33%; text-align: right; font-size: 12px; }
+
+    .logo {
+      width: 120px;
+      height: auto;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .company {
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .center-info {
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .meta-right div {
+      margin-bottom: 3px;
+    }
+
+    .separator {
+      border-top: 1px solid #bbb;
+      margin: 12px 0 8px 0;
+    }
+
+    .range-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+    }
+
+    thead th {
+      border-top: 2px solid #222;
+      border-bottom: 2px solid #222;
+      padding: 7px 6px;
+      text-align: left;
+      font-size: 13px;
+    }
+
+    tbody td {
+      padding: 5px 6px;
+      font-size: 11px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .product-name {
+      font-size: 11px;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .footer-summary {
+      margin-top: 14px;
+      border-top: 2px solid #222;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="header-left">
+        <img class="logo" src="${logoUrl}" alt="TAJIMA" />
+        <div class="company">
+          <div><b>BORDADOS COMPUTARIZADOS</b></div>
+          <div>Y APLICACIONES TAJIMA TEXTIL</div>
+          <div>E-mail: byatajima@gmail.com</div>
+          <div>jhonnfya@hotmail.com</div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <div class="title">HISTORIAL DE PRODUCTOS</div>
+        <div class="center-info">
+          <div><b>Dir.:</b> Av. Juan Pablo II Ceja</div>
+          <div>(El Alto lado Transito - Bolivia)</div>
+          <div>Cel.: 75866135 - 75274747 - 77221750</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="meta-right">
+          
+          <div><b>Fecha:</b> ${fechaActual}</div>
+          <div><b>Hora:</b> ${horaActual}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="separator"></div>
+
+    <div class="range-row">
+      <div>Listado general de productos</div>
+      <div><b>Filas:</b> ${totalProducts}</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60px;" class="center">#</th>
+          <th>Producto</th>
+          <th style="width:180px;">Categoría</th>
+          <th style="width:100px;" class="right">Stock</th>
+          <th style="width:130px;" class="right">Precio</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows || `<tr><td colspan="5">No hay productos</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="footer-summary">
+      <div>TOTAL PRODUCTOS: ${totalProducts}</div>
+      <div>STOCK TOTAL: ${totalStock}</div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>
+    `;
+
+      const w = window.open("", "_blank", "width=1100,height=800");
+      if (!w) {
+        swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+        return;
+      }
+
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+    } catch (error) {
+      console.log(error);
+      swal("¡Ups!", "Error al generar el reporte", "error");
+    }
+  };
   useEffect(() => {
     moment.locale("es");
     fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/verifiy_token`, {
@@ -259,7 +824,8 @@ function Products() {
     f.append('material', editMaterial)
     f.append('category', editCategory)
     f.append('description', editDescription)
-    //    f.append('image', editImage)
+    f.append('product_stock', parseInt(editStock))
+    f.append('image', editImage)
     f.append('selling_price', parseFloat(editSellingPrice))
     f.append('purchase_price', parseFloat(editPurchasePrice))
 
@@ -309,15 +875,24 @@ function Products() {
       <div className='products-scroll' >
         <div className='product-header'>
           <div className='title'>Productos</div>
-          {permission !== null && permission.create && (
-            <Link
-              to={"/products/addnew"}
-              className='btn success'
-              style={{ margin: "0 0.5rem", textDecoration: "none" }}
-            >
-              Agregar nuevo
-            </Link>
-          )}
+
+          <div style={{ display: "flex", gap: "10px", marginRight: "0.5rem" }}>
+            <button className='btn warning' onClick={imprimirReporteProductos}>
+              Imprimir por categorías
+            </button>
+            <button className='btn primary' onClick={imprimirReporteProductosGeneral}>
+              Imprimir general
+            </button>
+            {permission !== null && permission.create && (
+              <Link
+                to={"/products/addnew"}
+                className='btn success'
+                style={{ textDecoration: "none" }}
+              >
+                Agregar nuevo
+              </Link>
+            )}
+          </div>
         </div>
 
         {
@@ -375,6 +950,7 @@ function Products() {
                     >
                       <option value="">Seleccionar talla</option>
                       <option value="XS">XS</option>
+                      <option value="SS">SS</option>
                       <option value="S">S</option>
                       <option value="M">M</option>
                       <option value="L">L</option>

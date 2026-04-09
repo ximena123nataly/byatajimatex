@@ -146,7 +146,7 @@ function AsideNavbar() {
         <Link to="/proformas" style={{ textDecoration: "none" }}>
           <li>
             <DescriptionIcon className="icon" />
-            <span>Proformas</span>
+            <span>Bordados</span>
           </li>
         </Link>
       )}
