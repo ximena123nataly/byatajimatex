@@ -95,6 +95,7 @@ class Proforma {
     detalle,
     total_general,
     anticipo,
+    tipo_pago,
     saldo,
     descuento,
     estado,
@@ -151,17 +152,19 @@ class Proforma {
       const anticipo = Number(req.body.anticipo ?? 0);
       const descuento = Number(req.body.descuento ?? 0);
       const saldo = Number(req.body.saldo ?? (total - anticipo - descuento));
-
+      const tipoPago =
+        String(req.body.tipo_pago || "EFECTIVO").toUpperCase() === "QR"
+          ? "QR"
+          : "EFECTIVO";
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
         const qInsert = `
-          INSERT INTO proformas
-          (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
-           cliente, celular, notas, detalle, total_general, anticipo, saldo, descuento, estado, entregado, user_id)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        `;
-
+  INSERT INTO proformas
+  (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
+   cliente, celular, notas, detalle, total_general, anticipo, descuento, saldo, tipo_pago, estado, entregado, user_id)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+`;
         db.query(
           qInsert,
           [
@@ -177,9 +180,10 @@ class Proforma {
             detalleStr,
             total,
             anticipo,
-            saldo,
             descuento,
-            req.body.estado || "ACTIVA",
+            saldo,
+            tipoPago,
+            req.body.estado || "PENDIENTE_BORDAR",
             req.body.entregado ?? 0,
             user_id,
           ],

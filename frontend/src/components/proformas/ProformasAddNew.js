@@ -48,6 +48,7 @@ function ProformasAddNew() {
   const [anticipo, setAnticipo] = useState("0");
   const [descuento, setDescuento] = useState("0");
 
+  const [tipoPago, setTipoPago] = useState("EFECTIVO");
   // Ofertas (combo)
   const OFERTAS = [
     { label: "Sin oferta", cantidad: null, precio_total: null },
@@ -597,9 +598,9 @@ function ProformasAddNew() {
       cliente: cliente.trim(),
       celular: celular.trim(),
 
-
       notas: notas.trim() === "" ? null : notas.trim(),
 
+      tipo_pago: tipoPago,
       anticipo: toNumber(anticipo),
       descuento: toNumber(descuento),
 
@@ -612,7 +613,6 @@ function ProformasAddNew() {
         oferta: String(r.oferta || "Sin oferta"),
         total: r.total,
       })),
-
 
       total_general: totalGeneral,
       saldo,
@@ -889,19 +889,9 @@ function ProformasAddNew() {
                       </div>
                     ) : (
                       <div
-                        style={{
-                          height: "80px",
-                          border: "1px dashed #bbb",
-                          borderRadius: "6px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#777",
-                          fontSize: "12px",
-                          background: "#fafafa",
-                        }}
+                        
                       >
-                        Sin foto
+
                       </div>
                     )}
                   </div>
@@ -955,22 +945,63 @@ function ProformasAddNew() {
             <button className="btn warning" onClick={addRow}>
               + Agregar ítem
             </button>
+             <hr />
+            <div className="col">
+              <label>Tipo de pago</label>
+              <div style={{ display: "flex", gap: "18px", marginTop: "10px", alignItems: "center" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
+                  <input
+                    type="radio"
+                    name="tipo_pago"
+                    value="EFECTIVO"
+                    checked={tipoPago === "EFECTIVO"}
+                    onChange={(e) => setTipoPago(e.target.value)}
+                  />
+                  Efectivo
+                </label>
 
+                <label style={{ display: "flex", alignItems: "center", gap: "6px", margin: 0 }}>
+                  <input
+                    type="radio"
+                    name="tipo_pago"
+                    value="QR"
+                    checked={tipoPago === "QR"}
+                    onChange={(e) => setTipoPago(e.target.value)}
+                  />
+                  QR
+                </label>
+              </div>
+            </div>
             <hr />
 
             <div className="row">
               <div className="col">
                 <label>Anticipo</label>
-                <input className="my_input" type="number" value={anticipo} onChange={(e) => setAnticipo(e.target.value)} />
+                <input
+                  className="my_input"
+                  type="number"
+                  value={anticipo}
+                  onChange={(e) => setAnticipo(e.target.value)}
+                />
               </div>
+
+             
+
               <div className="col">
                 <label>Total</label>
                 <input className="my_input" value={totalGeneral} readOnly />
               </div>
+
               <div className="col">
                 <label>Descuento</label>
-                <input className="my_input" type="number" value={descuento} onChange={(e) => setDescuento(e.target.value)} />
+                <input
+                  className="my_input"
+                  type="number"
+                  value={descuento}
+                  onChange={(e) => setDescuento(e.target.value)}
+                />
               </div>
+
               <div className="col">
                 <label>Saldo</label>
                 <input className="my_input" value={saldo} readOnly />
