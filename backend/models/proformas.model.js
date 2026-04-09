@@ -58,6 +58,7 @@ class Proforma {
 
         if (req.body.only_pendientes) {
           whereParts.push(`entregado = 0`);
+          whereParts.push(`UPPER(COALESCE(estado, '')) IN ('PENDIENTE_BORDAR', 'ACTIVA', '')`);
         }
 
 
@@ -148,7 +149,7 @@ class Proforma {
 
       const total = Number(req.body.total_general ?? 0);
       const anticipo = Number(req.body.anticipo ?? 0);
-      const descuento=Number(req.body.descuento ?? 0);
+      const descuento = Number(req.body.descuento ?? 0);
       const saldo = Number(req.body.saldo ?? (total - anticipo - descuento));
 
       db.beginTransaction((txErr) => {

@@ -170,3 +170,14 @@ input[type="time"] {
   background-color: #04AA6D;
   color: white;
 }
+.mytable tbody tr.row-bordado-pendiente {
+  background: rgba(220, 53, 69, 0.25) !important;
+}
+
+.mytable tbody tr.row-bordado-realizado {
+  background: #33ccffe3 !important;
+}
+
+.mytable tbody tr.row-entregado {
+  background: #73C883 !important;
+}
