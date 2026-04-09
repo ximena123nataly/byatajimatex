@@ -10,7 +10,7 @@ router.post("/delete_proforma", verifyJwt, proforma.deleteProforma);
 router.post("/get_proformas", verifyJwt, proforma.getProformas);
 router.post("/entregar_proforma", verifyJwt, proforma.entregarProforma);
 router.post("/cobrar_proforma", verifyJwt, proforma.cobrarProforma);
-
+router.post("/actualizar_estado_bordado", verifyJwt, proforma.actualizarEstadoBordado);
 
 module.exports = router;
 

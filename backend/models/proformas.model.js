@@ -345,7 +345,51 @@ class Proforma {
       res.send({ operation: "error", message: "Something went wrong" });
     }
   };
+  actualizarEstadoBordado = (req, res) => {
+    try {
+      jwt.decode(req.cookies.accessToken, { complete: true });
 
+      const { id, estado } = req.body;
+
+      if (!id) {
+        return res.send({ operation: "failed", message: "ID de proforma requerido" });
+      }
+
+      const permitidos = ["PENDIENTE_BORDAR", "BORDADO_REALIZADO"];
+      if (!permitidos.includes(String(estado || "").trim())) {
+        return res.send({ operation: "failed", message: "Estado inválido" });
+      }
+
+      const q = `
+      UPDATE proformas
+      SET estado = ?
+      WHERE id = ?
+        AND entregado <> 1
+    `;
+
+      db.query(q, [estado, id], (err, result) => {
+        if (err) {
+          console.log(err);
+          return res.send({ operation: "error", message: "Something went wrong" });
+        }
+
+        if (result.affectedRows > 0) {
+          return res.send({
+            operation: "success",
+            message: "Estado del bordado actualizado",
+          });
+        }
+
+        return res.send({
+          operation: "failed",
+          message: "No se pudo actualizar la proforma",
+        });
+      });
+    } catch (error) {
+      console.log(error);
+      res.send({ operation: "error", message: "Something went wrong" });
+    }
+  };
   // COBRAR PROFORMA (PAGO SALDO => movimiento SALDO_PAGADO)
   cobrarProforma = (req, res) => {
     try {

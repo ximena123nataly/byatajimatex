@@ -54,7 +54,28 @@ function Proformas() {
   };
   const [filterFrom, setFilterFrom] = useState(null);
   const [filterTo, setFilterTo] = useState(null);
+  const actualizarEstadoBordado = async (id, estado) => {
+    try {
+      const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/actualizar_estado_bordado`, {
+        method: "POST",
+        headers: { "Content-type": "application/json; charset=UTF-8" },
+        body: JSON.stringify({ id, estado }),
+        credentials: "include",
+      });
 
+      const body = await result.json();
+
+      if (body.operation === "success") {
+        swal("Éxito", body.message || "Estado actualizado", "success");
+        getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput);
+      } else {
+        swal("¡Ups!", body.message || "No se pudo actualizar", "error");
+      }
+    } catch (err) {
+      console.log(err);
+      swal("¡Ups!", "Error de conexión con el servidor", "error");
+    }
+  };
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     setDesde(today);
@@ -321,7 +342,11 @@ function Proformas() {
 
   const rowClassByEntregado = (obj) => {
     const entregado = Number(obj?.entregado) === 1;
-    return entregado ? "row-entregado" : "row-no-entregado";
+    const estado = String(obj?.estado || "").toUpperCase();
+
+    if (entregado) return "row-entregado";
+    if (estado === "BORDADO_REALIZADO") return "row-bordado-realizado";
+    return "row-bordado-pendiente";
   };
   const filtrarPorFechas = () => {
     setFilterFrom(desde || null);
@@ -819,6 +844,24 @@ function Proformas() {
             {Number(obj?.saldo) > 0 && (
               <button className="btn primary" onClick={clickNoFocusAsync(() => cobrarProforma(obj.id, obj.saldo))}>
                 Cobrar
+              </button>
+            )}
+
+            {Number(obj?.entregado) !== 1 && (
+              <button
+                className="btn warning"
+                onClick={clickNoFocusAsync(() =>
+                  actualizarEstadoBordado(
+                    obj.id,
+                    String(obj?.estado || "").toUpperCase() === "BORDADO_REALIZADO"
+                      ? "PENDIENTE_BORDAR"
+                      : "BORDADO_REALIZADO"
+                  )
+                )}
+              >
+                {String(obj?.estado || "").toUpperCase() === "BORDADO_REALIZADO"
+                  ? "Volver pendiente"
+                  : "Marcar bordado"}
               </button>
             )}
 

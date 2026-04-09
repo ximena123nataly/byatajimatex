@@ -351,7 +351,7 @@ function ProformasAddNew() {
       total_general: totalGeneral,
       saldo,
 
-      estado: "ACTIVA",
+      estado: "PENDIENTE_BORDAR",
       entregado: 0,
     };
 
