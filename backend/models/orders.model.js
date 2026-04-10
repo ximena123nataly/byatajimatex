@@ -119,6 +119,11 @@ class Order {
 
   addOrder = (req, res) => {
     try {
+      const tipoPago =
+        String(req.body.tipo_pago || "EFECTIVO").toUpperCase() === "QR"
+          ? "QR"
+          : "EFECTIVO";
+
       const id_usuario = getUserIdFromCookie(req);
       if (!id_usuario) {
         return res.send({ operation: "error", message: "No autorizado" });
@@ -141,8 +146,8 @@ class Order {
 
 
         const q1 =
-          "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`,`descuento`, `grand_total`, `user_id`) " +
-          "VALUES (?,?,?,?,?,?,?,?,?)";
+          "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`, `descuento`, `tipo_pago`, `grand_total`, `user_id`) " +
+          "VALUES (?,?,?,?,?,?,?,?,?,?)";
 
         db.query(
           q1,
@@ -154,6 +159,7 @@ class Order {
             JSON.stringify(req.body.item_array),
             req.body.tax || 0,
             req.body.descuento || 0,
+            tipoPago,
             grandTotal,
             id_usuario,
           ],
@@ -178,8 +184,10 @@ class Order {
             Promise.all(parr)
               .then(() => {
 
-                const qcaja = "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1";
-                db.query(qcaja, [id_usuario], (errCaja, cajaRes) => {
+                const nombreCaja = tipoPago === "QR" ? "Caja QR" : "Caja EFECTIVO";
+                const qcaja = "SELECT id_caja FROM caja WHERE id_usuario=? AND nombre_caja=? LIMIT 1";
+
+                db.query(qcaja, [id_usuario, nombreCaja], (errCaja, cajaRes) => {
                   if (errCaja) {
                     return db.rollback(() =>
                       res.send({ operation: "error", message: errCaja.message })

@@ -52,6 +52,7 @@ function OrderAddNew() {
   const [grandTotal, setGrandTotal] = useState(0)
 
   const [submitButtonState, setSubmitButtonState] = useState(false)
+  const [tipoPago, setTipoPago] = useState("EFECTIVO");
 
   useEffect(() => {
     return () => {
@@ -579,6 +580,7 @@ function OrderAddNew() {
     obj.item_array = t
     obj.tax = tax
     obj.descuento = descuento
+    obj.tipo_pago = tipoPago
     obj.grand_total = grandTotal
 
     setSubmitButtonState(true)
@@ -613,6 +615,7 @@ function OrderAddNew() {
           due_date: dueDate,
           tax,
           descuento,
+          tipo_pago: tipoPago,
           grand_total: grandTotal,
           fecha: today,
           items: t.map(x => ({
@@ -647,7 +650,7 @@ function OrderAddNew() {
       setTax(0)
       setDescuento(0)
       setGrandTotal(0)
-
+      setTipoPago("EFECTIVO");
       window.dispatchEvent(new Event("caja_actualizada"));
     } else {
       swal("Oops!", body.message, "error")
@@ -745,6 +748,39 @@ function OrderAddNew() {
                     <div style={{ flexGrow: "1", textAlign: "center" }}>
                       <input className='my_input' type='date' value={dueDate} onChange={(e) => { setDueDate(e.target.value) }} />
                     </div>
+
+
+                    <div style={{ marginTop: "12px", marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: "bold", marginBottom: "8px" }}>
+                        Tipo de pago
+                      </label>
+
+                      <div style={{ display: "flex", gap: "18px", alignItems: "center", flexWrap: "wrap" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <input
+                            type="radio"
+                            name="tipo_pago_venta"
+                            value="EFECTIVO"
+                            checked={tipoPago === "EFECTIVO"}
+                            onChange={(e) => setTipoPago(e.target.value)}
+                          />
+                          Efectivo
+                        </label>
+
+                        <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <input
+                            type="radio"
+                            name="tipo_pago_venta"
+                            value="QR"
+                            checked={tipoPago === "QR"}
+                            onChange={(e) => setTipoPago(e.target.value)}
+                          />
+                          QR
+                        </label>
+                      </div>
+                    </div>
+
+
                   </div>
 
                   <h3 style={{ marginLeft: "10px", marginTop: "5px", color: "darkseagreen" }}>Lista de productos</h3>
