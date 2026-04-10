@@ -220,9 +220,11 @@ class Proforma {
 
               // Si anticipo > 0 => registrar en caja
               if (anticipo > 0 && user_id) {
+                const nombreCaja = tipoPago === "QR" ? "Caja QR" : "Caja EFECTIVO";
+
                 db.query(
-                  "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1",
-                  [user_id],
+                  "SELECT id_caja FROM caja WHERE id_usuario=? AND nombre_caja=? LIMIT 1",
+                  [user_id, nombreCaja],
                   (errCaja, cajaRes) => {
                     if (errCaja) {
                       return db.rollback(() =>
@@ -420,7 +422,7 @@ class Proforma {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
         const qGet = `
-          SELECT id, proforma_id, total_general, anticipo, saldo, descuento 
+          SELECT id, proforma_id, total_general, anticipo, saldo, descuento, tipo_pago 
           FROM proformas
           WHERE id = ?
           LIMIT 1
@@ -472,9 +474,14 @@ class Proforma {
             }
 
             // buscar caja
+            const nombreCaja =
+              String(p.tipo_pago || "EFECTIVO").toUpperCase() === "QR"
+                ? "Caja QR"
+                : "Caja EFECTIVO";
+
             db.query(
-              "SELECT id_caja FROM caja WHERE id_usuario=? LIMIT 1",
-              [user_id],
+              "SELECT id_caja FROM caja WHERE id_usuario=? AND nombre_caja=? LIMIT 1",
+              [user_id, nombreCaja],
               (errCaja, cajaRes) => {
                 if (errCaja) {
                   return db.rollback(() =>
