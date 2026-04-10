@@ -98,6 +98,7 @@ class Proforma {
     tipo_pago,
     saldo,
     descuento,
+    costura,
     estado,
     entregado
   FROM proformas
@@ -151,6 +152,7 @@ class Proforma {
       const total = Number(req.body.total_general ?? 0);
       const anticipo = Number(req.body.anticipo ?? 0);
       const descuento = Number(req.body.descuento ?? 0);
+      const costura = Number(req.body.costura ?? 0);
       const saldo = Number(req.body.saldo ?? (total - anticipo - descuento));
       const tipoPago =
         String(req.body.tipo_pago || "EFECTIVO").toUpperCase() === "QR"
@@ -159,11 +161,13 @@ class Proforma {
       db.beginTransaction((txErr) => {
         if (txErr) return res.send({ operation: "error", message: txErr.message });
 
+
         const qInsert = `
   INSERT INTO proformas
   (proforma_id, fecha, hora, fecha_entrega, hora_entrega, customer_id,
-   cliente, celular, notas, detalle, total_general, anticipo, descuento, saldo, tipo_pago, estado, entregado, user_id)
-  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+   cliente, celular, notas, detalle, total_general, anticipo, descuento, costura, saldo, tipo_pago, estado, entregado, user_id)
+  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+
 `;
         db.query(
           qInsert,
@@ -181,6 +185,7 @@ class Proforma {
             total,
             anticipo,
             descuento,
+            costura,
             saldo,
             tipoPago,
             req.body.estado || "PENDIENTE_BORDAR",

@@ -1236,6 +1236,10 @@ function Proformas() {
                       <b>Estado:</b> {selected.estado || "-"}
                     </div>
                     <div>
+                      <b>Tipo de pago:</b> {selected.tipo_pago || "-"}
+                    </div>
+                    
+                    <div>
                       <b>Entregado:</b> {selected.entregado ? "Sí" : "No"}
                     </div>
                   </div>
@@ -1275,7 +1279,7 @@ function Proformas() {
                             null;
 
 
-                      
+
 
 
 
@@ -1354,7 +1358,10 @@ function Proformas() {
                       <span><b>Descuento:</b></span>
                       <span>{selected.descuento ?? 0}</span>
                     </div>
-
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span><b>Costura:</b></span>
+                      <span>{Number(selected.costura ?? 0).toFixed(2)}</span>
+                    </div>
                     <div style={{ display: "flex", justifyContent: "space-between" }}>
                       <span><b>Saldo:</b></span>
                       <span>{selected.saldo ?? 0}</span>

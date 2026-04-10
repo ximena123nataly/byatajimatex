@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const uniqid = require("uniqid");
 
 class Caja {
-  constructor() {}
+  constructor() { }
 
   test = (req, res) => {
     return res.send({ ok: true, msg: "Caja funcionando" });
@@ -26,54 +26,43 @@ class Caja {
     return role === "admin" || role === "administrador";
   };
 
-  ensureCaja = (user_id) => {
+  ensureCaja = (user_id, nombreCaja = "Caja EFECTIVO") => {
     return new Promise((resolve, reject) => {
       if (!user_id) return reject(new Error("user_id no encontrado"));
 
       db.query(
-        "SELECT id_caja, id_usuario, nombre_caja, saldo FROM caja WHERE id_usuario=? LIMIT 1",
-        [user_id],
+        "SELECT id_caja, id_usuario, nombre_caja, saldo FROM caja WHERE id_usuario=? AND nombre_caja=? LIMIT 1",
+        [user_id, nombreCaja],
         (err, rows) => {
           if (err) return reject(err);
 
           if (rows && rows.length) return resolve(rows[0]);
 
           db.query(
-            "INSERT INTO caja (id_usuario, nombre_caja, saldo) VALUES (?, '', 0.00)",
-            [user_id],
+            "INSERT INTO caja (id_usuario, nombre_caja, saldo) VALUES (?, ?, 0.00)",
+            [user_id, nombreCaja],
             (err2, result2) => {
               if (err2) return reject(err2);
 
-              const id_caja = result2.insertId;
-              const nombre_caja = `Caja ${id_caja}`;
-
-              db.query(
-                "UPDATE caja SET nombre_caja=? WHERE id_caja=?",
-                [nombre_caja, id_caja],
-                (err3) => {
-                  if (err3) return reject(err3);
-
-                  resolve({
-                    id_caja,
-                    id_usuario: user_id,
-                    nombre_caja,
-                    saldo: 0.0,
-                  });
-                }
-              );
+              resolve({
+                id_caja: result2.insertId,
+                id_usuario: user_id,
+                nombre_caja: nombreCaja,
+                saldo: 0.0,
+              });
             }
           );
         }
       );
     });
   };
-
   getCaja = async (req, res) => {
     try {
       const user_id = this.getUserIdFromToken(req);
       if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
 
-      const caja = await this.ensureCaja(user_id);
+      const nombreCaja = req.body?.nombre_caja || "Caja EFECTIVO";
+      const caja = await this.ensureCaja(user_id, nombreCaja);
       return res.send({ ok: true, caja });
     } catch (e) {
       console.log(e);
@@ -86,7 +75,8 @@ class Caja {
       const user_id = this.getUserIdFromToken(req);
       if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
 
-      const caja = await this.ensureCaja(user_id);
+      const nombreCaja = req.body?.nombre_caja || "Caja EFECTIVO";
+      const caja = await this.ensureCaja(user_id, nombreCaja);
 
       db.query(
         `SELECT id_transaccion, id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora
@@ -230,9 +220,9 @@ class Caja {
 
       const { id_usuario_destino, monto, detalle } = req.body;
       const montoNum = parseFloat(monto);
-      const detalleTrasp= detalle;
+      const detalleTrasp = detalle;
 
-     if (!detalle) return res.send({ ok: false, msg: "Ingrese un detalle para el traspaso" });
+      if (!detalle) return res.send({ ok: false, msg: "Ingrese un detalle para el traspaso" });
       if (!id_usuario_destino) return res.send({ ok: false, msg: "Falta usuario destino" });
       if (!monto || isNaN(montoNum) || montoNum <= 0) {
         return res.send({ ok: false, msg: "Monto inválido" });
@@ -265,7 +255,7 @@ class Caja {
           `INSERT INTO caja_transacciones
            (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
            VALUES (?,?,?,?,?,?,?,?,?)`,
-          [cajaOrigen.id_caja, id_usuario_origen,detalleTrasp, "EGRESO", "TRASPASO", nro, montoNum, fecha, hora],
+          [cajaOrigen.id_caja, id_usuario_origen, detalleTrasp, "EGRESO", "TRASPASO", nro, montoNum, fecha, hora],
           (err1) => {
             if (err1) {
               console.log(err1);
@@ -278,7 +268,7 @@ class Caja {
               `INSERT INTO caja_transacciones
                (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
                VALUES (?,?,?,?,?,?,?,?,?)`,
-              [cajaDestino.id_caja, id_usuario_destino,detalleTrasp, "INGRESO", "TRASPASO", nro, montoNum, fecha, hora],
+              [cajaDestino.id_caja, id_usuario_destino, detalleTrasp, "INGRESO", "TRASPASO", nro, montoNum, fecha, hora],
               (err2) => {
                 if (err2) {
                   console.log(err2);
@@ -364,10 +354,17 @@ class Caja {
 
           // Seguridad: si NO es admin, solo puede ver su caja
           if (!this.isAdmin(req)) {
-            const cajaMia = await this.ensureCaja(user_id);
-            if (String(cajaMia.id_caja) !== String(mov.id_caja)) {
+            const cajaMiaEf = await this.ensureCaja(user_id, "Caja EFECTIVO");
+            const cajaMiaQr = await this.ensureCaja(user_id, "Caja QR");
+
+            const puedeVer =
+              String(cajaMiaEf?.id_caja) === String(mov.id_caja) ||
+              String(cajaMiaQr?.id_caja) === String(mov.id_caja);
+
+            if (!puedeVer) {
               return res.send({ ok: false, msg: "No autorizado a ver este movimiento" });
             }
+            
           }
 
           const ref = mov.nro_registro || "";

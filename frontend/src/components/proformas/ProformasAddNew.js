@@ -47,7 +47,7 @@ function ProformasAddNew() {
   // Montos
   const [anticipo, setAnticipo] = useState("0");
   const [descuento, setDescuento] = useState("0");
-
+  const [costura, setCostura] = useState("0");
   const [tipoPago, setTipoPago] = useState("EFECTIVO");
   // Ofertas (combo)
   const OFERTAS = [
@@ -182,9 +182,13 @@ function ProformasAddNew() {
     });
   }, [rows]);
 
-  const totalGeneral = useMemo(() => {
+  const subtotalItems = useMemo(() => {
     return rowsWithTotals.reduce((acc, r) => acc + toNumber(r.total), 0);
   }, [rowsWithTotals]);
+
+  const totalGeneral = useMemo(() => {
+    return subtotalItems + Math.max(0, toNumber(costura));
+  }, [subtotalItems, costura]);
 
   const saldo = useMemo(() => {
     return totalGeneral - Math.max(0, toNumber(anticipo)) - Math.max(0, toNumber(descuento));
@@ -603,6 +607,7 @@ function ProformasAddNew() {
       tipo_pago: tipoPago,
       anticipo: toNumber(anticipo),
       descuento: toNumber(descuento),
+      costura: toNumber(costura),
 
       detalle: validItems.map((r) => ({
         cantidad: String(r.cantidad),
@@ -659,6 +664,7 @@ function ProformasAddNew() {
             hora_entrega: horaEntregaDB || "",
             anticipo: toNumber(anticipo),
             descuento: toNumber(descuento),
+            costura: toNumber(costura),
             total_general: totalGeneral,
             saldo,
             items: validItems.map((r) => ({
@@ -693,6 +699,7 @@ function ProformasAddNew() {
         setNotas(""); //  reset notas
         setAnticipo("0");
         setDescuento("0");
+        setCostura("0");
         setRows([
           {
             cantidad: "1",
@@ -889,7 +896,7 @@ function ProformasAddNew() {
                       </div>
                     ) : (
                       <div
-                        
+
                       >
 
                       </div>
@@ -945,7 +952,7 @@ function ProformasAddNew() {
             <button className="btn warning" onClick={addRow}>
               + Agregar ítem
             </button>
-             <hr />
+            <hr />
             <div className="col">
               <label>Tipo de pago</label>
               <div style={{ display: "flex", gap: "18px", marginTop: "10px", alignItems: "center" }}>
@@ -973,6 +980,16 @@ function ProformasAddNew() {
               </div>
             </div>
             <hr />
+            <div className="col">
+              <label>Costura</label>
+              <input
+                className="my_input"
+                type="number"
+                value={costura}
+                onChange={(e) => setCostura(e.target.value)}
+              />
+            </div>
+            <hr />
 
             <div className="row">
               <div className="col">
@@ -985,7 +1002,7 @@ function ProformasAddNew() {
                 />
               </div>
 
-             
+
 
               <div className="col">
                 <label>Total</label>

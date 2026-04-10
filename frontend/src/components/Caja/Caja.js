@@ -27,6 +27,8 @@ function Caja() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "ok", text: "" });
 
+  const [selectedNombreCaja, setSelectedNombreCaja] = useState("Caja EFECTIVO");
+
   const showToast = (type, text) => {
     setToast({ show: true, type, text });
     setTimeout(() => setToast((t) => ({ ...t, show: false })), 2500);
@@ -43,7 +45,7 @@ function Caja() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}),
+        body: JSON.stringify({ nombre_caja: selectedNombreCaja }),
       });
 
       const data = await res.json();
@@ -61,7 +63,7 @@ function Caja() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}),
+        body: JSON.stringify({ nombre_caja: selectedNombreCaja }),
       });
 
       const data2 = await res2.json();
@@ -217,7 +219,7 @@ function Caja() {
         body: JSON.stringify({
           id_usuario_destino: destino,
           monto: montoNum,
-          detalle:detalleTraspaso,
+          detalle: detalleTraspaso,
         }),
       });
 
@@ -261,6 +263,13 @@ function Caja() {
   }, []);
 
   useEffect(() => {
+    if (!isAdmin) {
+      cargarCajaMia();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNombreCaja, isAdmin]);
+
+  useEffect(() => {
     if (isAdmin && selectedCajaId) {
       cargarCajaPorId(selectedCajaId);
     }
@@ -284,7 +293,34 @@ function Caja() {
               flexWrap: "wrap",
               alignItems: "flex-start",
             }}
+
+
           >
+            {!isAdmin && (
+              <div
+                className="caja-card"
+                style={{ width: "320px", minHeight: "120px" }}
+              >
+                <div style={{ fontWeight: 800, marginBottom: "12px" }}>Seleccionar caja</div>
+
+                <label className="fw-bold" style={{ display: "block", marginBottom: "6px" }}>
+                  Tipo de caja
+                </label>
+
+                <select
+                  className="my_form_control"
+                  value={selectedNombreCaja}
+                  onChange={(e) => setSelectedNombreCaja(e.target.value)}
+                >
+                  <option value="Caja EFECTIVO">Caja EFECTIVO</option>
+                  <option value="Caja QR">Caja QR</option>
+                </select>
+
+                <div style={{ marginTop: "10px", fontSize: "13px", color: "#666" }}>
+                  Al cambiar la caja se actualiza la tarjeta y los movimientos.
+                </div>
+              </div>
+            )}
             <div className="caja-card">
               <div className="caja-header">
                 <h2>CAJA</h2>
@@ -404,7 +440,7 @@ function Caja() {
                   placeholder="Monto a traspasar"
                 />
               </div>
-              
+
               <div>
                 <label>Detalle: </label>
                 <input
