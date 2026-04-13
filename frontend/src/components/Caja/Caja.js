@@ -98,7 +98,12 @@ function Caja() {
         setCajas(list);
 
         if (!selectedCajaId && list.length > 0) {
-          setSelectedCajaId(String(list[0].id_caja));
+          const preferida =
+            list.find((c) => c.nombre_caja === "Caja EFECTIVO") ||
+            list.find((c) => c.nombre_caja === "Caja QR") ||
+            list[0];
+
+          setSelectedCajaId(String(preferida.id_caja));
         }
         return true;
       }
@@ -387,7 +392,7 @@ function Caja() {
                 >
                   {cajas.map((c) => (
                     <option key={c.id_caja} value={String(c.id_caja)}>
-                      {c.usuario_nombre || "Usuario"} - Caja #{c.id_caja}
+                      {c.usuario_nombre || "Usuario"} - {c.nombre_caja}
                     </option>
                   ))}
                 </select>

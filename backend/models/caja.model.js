@@ -109,7 +109,14 @@ class Caja {
                u.email AS usuario_email
         FROM caja c
         LEFT JOIN \`user\` u ON u.user_id = c.id_usuario
-        ORDER BY c.id_caja ASC
+        ORDER BY
+  u.user_name ASC,
+  CASE
+    WHEN c.nombre_caja = 'Caja EFECTIVO' THEN 1
+    WHEN c.nombre_caja = 'Caja QR' THEN 2
+    ELSE 3
+  END,
+  c.id_caja ASC
       `;
 
       db.query(q, (err, rows) => {
@@ -364,7 +371,7 @@ class Caja {
             if (!puedeVer) {
               return res.send({ ok: false, msg: "No autorizado a ver este movimiento" });
             }
-            
+
           }
 
           const ref = mov.nro_registro || "";
