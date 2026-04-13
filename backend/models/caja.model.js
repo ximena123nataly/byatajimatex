@@ -195,139 +195,233 @@ class Caja {
       const user_id = this.getUserIdFromToken(req);
       if (!user_id) return res.send({ ok: false, msg: "No autorizado" });
 
-      db.query(
-        `SELECT 
-           u.user_id,
-           u.user_name,
-           u.email,
-           IFNULL(c.id_caja, '') AS id_caja
-         FROM \`user\` u
-         LEFT JOIN caja c ON c.id_usuario = u.user_id
-         WHERE u.user_id <> ?
-         ORDER BY u.user_name ASC`,
-        [user_id],
-        (err, rows) => {
-          if (err) {
-            console.log(err);
-            return res.send({ ok: false, msg: "Error cargando usuarios" });
-          }
-          return res.send({ ok: true, usuarios: rows || [] });
+      const { id_caja_origen } = req.body;
+      if (!id_caja_origen) return res.send({ ok: false, msg: "Falta id_caja_origen" });
+
+      let q = `
+      SELECT
+        c.id_caja,
+        c.id_usuario,
+        c.nombre_caja,
+        c.saldo,
+        u.user_name,
+        u.email
+      FROM caja c
+      LEFT JOIN \`user\` u ON u.user_id = c.id_usuario
+      WHERE c.id_caja <> ?
+    `;
+
+      const params = [id_caja_origen];
+
+      if (!this.isAdmin(req)) {
+        q += ` AND c.id_usuario <> ?`;
+        params.push(user_id);
+      }
+
+      q += `
+      ORDER BY
+        u.user_name ASC,
+        CASE
+          WHEN c.nombre_caja = 'Caja EFECTIVO' THEN 1
+          WHEN c.nombre_caja = 'Caja QR' THEN 2
+          ELSE 3
+        END,
+        c.id_caja ASC
+    `;
+
+      db.query(q, params, (err, rows) => {
+        if (err) {
+          console.log(err);
+          return res.send({ ok: false, msg: "Error cargando cajas destino" });
         }
-      );
+        return res.send({ ok: true, cajas: rows || [] });
+      });
     } catch (e) {
       console.log(e);
-      return res.send({ ok: false, msg: "Error cargando usuarios" });
+      return res.send({ ok: false, msg: "Error cargando cajas destino" });
     }
   };
 
   traspasoSaldo = async (req, res) => {
     try {
-      const id_usuario_origen = this.getUserIdFromToken(req);
-      if (!id_usuario_origen) return res.send({ ok: false, msg: "No autorizado" });
+      const user_id_token = this.getUserIdFromToken(req);
+      if (!user_id_token) return res.send({ ok: false, msg: "No autorizado" });
 
-      const { id_usuario_destino, monto, detalle } = req.body;
+      const { id_caja_origen, id_caja_destino, monto, detalle } = req.body;
       const montoNum = parseFloat(monto);
-      const detalleTrasp = detalle;
 
-      if (!detalle) return res.send({ ok: false, msg: "Ingrese un detalle para el traspaso" });
-      if (!id_usuario_destino) return res.send({ ok: false, msg: "Falta usuario destino" });
+      if (!detalle || !String(detalle).trim()) {
+        return res.send({ ok: false, msg: "Ingrese un detalle para el traspaso" });
+      }
+
+      if (!id_caja_origen) {
+        return res.send({ ok: false, msg: "Falta id_caja_origen" });
+      }
+
+      if (!id_caja_destino) {
+        return res.send({ ok: false, msg: "Falta id_caja_destino" });
+      }
+
       if (!monto || isNaN(montoNum) || montoNum <= 0) {
         return res.send({ ok: false, msg: "Monto inválido" });
       }
-      if (String(id_usuario_origen) === String(id_usuario_destino)) {
-        return res.send({ ok: false, msg: "No puedes traspasarte a ti mismo" });
+
+      if (String(id_caja_origen) === String(id_caja_destino)) {
+        return res.send({ ok: false, msg: "No puedes traspasar a la misma caja" });
       }
 
-      const cajaOrigen = await this.ensureCaja(id_usuario_origen);
-      const cajaDestino = await this.ensureCaja(id_usuario_destino);
+      db.query(
+        `SELECT id_caja, id_usuario, nombre_caja, saldo
+       FROM caja
+       WHERE id_caja = ?
+       LIMIT 1`,
+        [id_caja_origen],
+        (err1, rowsOrigen) => {
+          if (err1) {
+            console.log(err1);
+            return res.send({ ok: false, msg: "Error leyendo caja origen" });
+          }
 
-      const saldoOrigen = parseFloat(cajaOrigen.saldo || 0);
-      if (saldoOrigen < montoNum) {
-        return res.send({ ok: false, msg: "Saldo insuficiente" });
-      }
+          if (!rowsOrigen || rowsOrigen.length === 0) {
+            return res.send({ ok: false, msg: "Caja origen no encontrada" });
+          }
 
-      const nro = "trp_" + uniqid();
+          const cajaOrigen = rowsOrigen[0];
 
-      const d = new Date();
-      const fecha = d.toISOString().slice(0, 10);
-      const hora = d.toTimeString().slice(0, 8);
+          if (!this.isAdmin(req) && String(cajaOrigen.id_usuario) !== String(user_id_token)) {
+            return res.send({ ok: false, msg: "No autorizado para usar esa caja origen" });
+          }
 
-      db.beginTransaction((err0) => {
-        if (err0) {
-          console.log(err0);
-          return res.send({ ok: false, msg: "Error iniciando transacción" });
-        }
+          db.query(
+            `SELECT id_caja, id_usuario, nombre_caja, saldo
+           FROM caja
+           WHERE id_caja = ?
+           LIMIT 1`,
+            [id_caja_destino],
+            (err2, rowsDestino) => {
+              if (err2) {
+                console.log(err2);
+                return res.send({ ok: false, msg: "Error leyendo caja destino" });
+              }
 
-        db.query(
-          `INSERT INTO caja_transacciones
-           (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
-           VALUES (?,?,?,?,?,?,?,?,?)`,
-          [cajaOrigen.id_caja, id_usuario_origen, detalleTrasp, "EGRESO", "TRASPASO", nro, montoNum, fecha, hora],
-          (err1) => {
-            if (err1) {
-              console.log(err1);
-              return db.rollback(() =>
-                res.send({ ok: false, msg: "Error registrando egreso" })
-              );
-            }
+              if (!rowsDestino || rowsDestino.length === 0) {
+                return res.send({ ok: false, msg: "Caja destino no encontrada" });
+              }
 
-            db.query(
-              `INSERT INTO caja_transacciones
-               (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
-               VALUES (?,?,?,?,?,?,?,?,?)`,
-              [cajaDestino.id_caja, id_usuario_destino, detalleTrasp, "INGRESO", "TRASPASO", nro, montoNum, fecha, hora],
-              (err2) => {
-                if (err2) {
-                  console.log(err2);
-                  return db.rollback(() =>
-                    res.send({ ok: false, msg: "Error registrando ingreso" })
-                  );
+              const cajaDestino = rowsDestino[0];
+              const saldoOrigen = parseFloat(cajaOrigen.saldo || 0);
+
+              if (saldoOrigen < montoNum) {
+                return res.send({ ok: false, msg: "Saldo insuficiente" });
+              }
+
+              const nro = "trp_" + uniqid();
+
+              const d = new Date();
+              const fecha = d.toISOString().slice(0, 10);
+              const hora = d.toTimeString().slice(0, 8);
+
+              db.beginTransaction((err0) => {
+                if (err0) {
+                  console.log(err0);
+                  return res.send({ ok: false, msg: "Error iniciando transacción" });
                 }
 
                 db.query(
-                  `UPDATE caja SET saldo = saldo - ? WHERE id_caja=?`,
-                  [montoNum, cajaOrigen.id_caja],
+                  `INSERT INTO caja_transacciones
+                 (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
+                 VALUES (?,?,?,?,?,?,?,?,?)`,
+                  [
+                    cajaOrigen.id_caja,
+                    cajaOrigen.id_usuario,
+                    detalle,
+                    "EGRESO",
+                    "TRASPASO",
+                    nro,
+                    montoNum,
+                    fecha,
+                    hora,
+                  ],
                   (err3) => {
                     if (err3) {
                       console.log(err3);
                       return db.rollback(() =>
-                        res.send({ ok: false, msg: "Error actualizando saldo origen" })
+                        res.send({ ok: false, msg: "Error registrando egreso" })
                       );
                     }
 
                     db.query(
-                      `UPDATE caja SET saldo = saldo + ? WHERE id_caja=?`,
-                      [montoNum, cajaDestino.id_caja],
+                      `INSERT INTO caja_transacciones
+                     (id_caja, id_usuario, detalle, tipo, origen, nro_registro, monto, fecha, hora)
+                     VALUES (?,?,?,?,?,?,?,?,?)`,
+                      [
+                        cajaDestino.id_caja,
+                        cajaDestino.id_usuario,
+                        detalle,
+                        "INGRESO",
+                        "TRASPASO",
+                        nro,
+                        montoNum,
+                        fecha,
+                        hora,
+                      ],
                       (err4) => {
                         if (err4) {
                           console.log(err4);
                           return db.rollback(() =>
-                            res.send({ ok: false, msg: "Error actualizando saldo destino" })
+                            res.send({ ok: false, msg: "Error registrando ingreso" })
                           );
                         }
 
-                        db.commit((err5) => {
-                          if (err5) {
-                            console.log(err5);
-                            return db.rollback(() =>
-                              res.send({ ok: false, msg: "Error confirmando traspaso" })
+                        db.query(
+                          `UPDATE caja SET saldo = saldo - ? WHERE id_caja = ?`,
+                          [montoNum, cajaOrigen.id_caja],
+                          (err5) => {
+                            if (err5) {
+                              console.log(err5);
+                              return db.rollback(() =>
+                                res.send({ ok: false, msg: "Error actualizando saldo origen" })
+                              );
+                            }
+
+                            db.query(
+                              `UPDATE caja SET saldo = saldo + ? WHERE id_caja = ?`,
+                              [montoNum, cajaDestino.id_caja],
+                              (err6) => {
+                                if (err6) {
+                                  console.log(err6);
+                                  return db.rollback(() =>
+                                    res.send({ ok: false, msg: "Error actualizando saldo destino" })
+                                  );
+                                }
+
+                                db.commit((err7) => {
+                                  if (err7) {
+                                    console.log(err7);
+                                    return db.rollback(() =>
+                                      res.send({ ok: false, msg: "Error confirmando traspaso" })
+                                    );
+                                  }
+
+                                  return res.send({
+                                    ok: true,
+                                    msg: "Traspaso realizado",
+                                    nro_registro: nro,
+                                  });
+                                });
+                              }
                             );
                           }
-                          return res.send({
-                            ok: true,
-                            msg: "Traspaso realizado",
-                            nro_registro: nro,
-                          });
-                        });
+                        );
                       }
                     );
                   }
                 );
-              }
-            );
-          }
-        );
-      });
+              });
+            }
+          );
+        }
+      );
     } catch (e) {
       console.log(e);
       return res.send({ ok: false, msg: "Error servidor" });

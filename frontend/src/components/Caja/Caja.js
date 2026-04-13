@@ -18,7 +18,7 @@ function Caja() {
 
   // TRASPASO DE SALDO
   const [showTraspaso, setShowTraspaso] = useState(false);
-  const [usuariosDestino, setUsuariosDestino] = useState([]);
+  const [cajasDestino, setCajasDestino] = useState([]);
   const [destino, setDestino] = useState("");
   const [montoTraspaso, setMontoTraspaso] = useState("");
   const [detalleTraspaso, setDetalleTraspaso] = useState("");
@@ -176,26 +176,27 @@ function Caja() {
   };
 
   // TRASPASO: cargar destinos
-  const cargarDestinosTraspaso = async () => {
+  const cargarDestinosTraspaso = async (idCajaOrigen) => {
     try {
       const res = await fetch(`${backend}/api/caja/get_destinos_traspaso`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({}),
+        body: JSON.stringify({ id_caja_origen: idCajaOrigen }),
       });
 
       const data = await res.json();
+
       if (data?.ok) {
-        setUsuariosDestino(data.usuarios || []);
+        setCajasDestino(data.cajas || []);
       } else {
-        setUsuariosDestino([]);
-        showToast("err", data?.msg || "No se pudieron cargar los usuarios");
+        setCajasDestino([]);
+        showToast("err", data?.msg || "No se pudieron cargar las cajas destino");
       }
     } catch (e) {
       console.log(e);
-      setUsuariosDestino([]);
-      showToast("err", "Error cargando usuarios destino");
+      setCajasDestino([]);
+      showToast("err", "Error cargando cajas destino");
     }
   };
 
@@ -222,7 +223,8 @@ function Caja() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          id_usuario_destino: destino,
+          id_caja_origen: caja?.id_caja,
+          id_caja_destino: destino,
           monto: montoNum,
           detalle: detalleTraspaso,
         }),
@@ -359,7 +361,7 @@ function Caja() {
                   <button
                     className="btn-traspaso"
                     onClick={async () => {
-                      await cargarDestinosTraspaso();
+                      await cargarDestinosTraspaso(caja?.id_caja);
                       setShowTraspaso(true);
                     }}
                     disabled={loading}
@@ -426,10 +428,10 @@ function Caja() {
                   value={destino}
                   onChange={(e) => setDestino(e.target.value)}
                 >
-                  <option value="">Seleccionar usuario</option>
-                  {usuariosDestino.map((u) => (
-                    <option key={u.user_id} value={u.user_id}>
-                      {u.user_name} - Caja #{u.id_caja}
+                  <option value="">Seleccionar caja destino</option>
+                  {cajasDestino.map((u) => (
+                    <option key={u.id_caja} value={u.id_caja}>
+                      {u.user_name} - {u.nombre_caja}
                     </option>
                   ))}
                 </select>
