@@ -33,6 +33,50 @@ function getUserIdFromCookie(req) {
   }
 }
 
+function ensureCajaByTipo(user_id, tipo_pago, cb) {
+  const nombreCaja =
+    String(tipo_pago || "EFECTIVO").toUpperCase() === "QR"
+      ? "Caja QR"
+      : "Caja EFECTIVO";
+
+  db.query(
+    "SELECT id_caja FROM caja WHERE id_usuario = ? AND nombre_caja = ? LIMIT 1",
+    [user_id, nombreCaja],
+    (err, rows) => {
+      if (err) return cb(err);
+
+      if (rows && rows.length > 0) {
+        return cb(null, rows[0].id_caja);
+      }
+
+      db.query(
+        "INSERT INTO caja (id_usuario, nombre_caja, saldo) VALUES (?, ?, 0)",
+        [user_id, nombreCaja],
+        (err2, result) => {
+          if (err2) {
+            if (err2.code === "ER_DUP_ENTRY") {
+              return db.query(
+                "SELECT id_caja FROM caja WHERE id_usuario = ? AND nombre_caja = ? LIMIT 1",
+                [user_id, nombreCaja],
+                (err3, rows2) => {
+                  if (err3) return cb(err3);
+                  if (!rows2 || rows2.length === 0) {
+                    return cb(new Error("No se pudo recuperar la caja creada"));
+                  }
+                  return cb(null, rows2[0].id_caja);
+                }
+              );
+            }
+            return cb(err2);
+          }
+
+          return cb(null, result.insertId);
+        }
+      );
+    }
+  );
+}
+
 class Proforma {
   constructor() { }
 
@@ -219,77 +263,57 @@ class Proforma {
               }
 
               // Si anticipo > 0 => registrar en caja
+              // Si anticipo > 0 => registrar en caja correcta
               if (anticipo > 0 && user_id) {
-                const nombreCaja = tipoPago === "QR" ? "Caja QR" : "Caja EFECTIVO";
+                ensureCajaByTipo(user_id, tipoPago, (errCaja, id_caja) => {
+                  if (errCaja) {
+                    return db.rollback(() =>
+                      res.send({ operation: "error", message: errCaja.message })
+                    );
+                  }
 
-                db.query(
-                  "SELECT id_caja FROM caja WHERE id_usuario=? AND nombre_caja=? LIMIT 1",
-                  [user_id, nombreCaja],
-                  (errCaja, cajaRes) => {
-                    if (errCaja) {
-                      return db.rollback(() =>
-                        res.send({ operation: "error", message: errCaja.message })
-                      );
-                    }
+                  const { fecha, hora } = nowDateTimeTZ();
 
-                    // si no tiene caja, igual guardamos la proforma
-                    if (!cajaRes || cajaRes.length === 0) {
-                      return db.commit(() =>
-                        res.send({
-                          operation: "success",
-                          message: "Proforma added (sin caja)",
-                          info: { id: newId, proforma_id },
-                        })
-                      );
-                    }
-
-                    const id_caja = cajaRes[0].id_caja;
-                    const { fecha, hora } = nowDateTimeTZ();
-
-                    //  origen según tu regla:
-                    // anticipo==total o saldo==0 => PAGADO_TOTAL
-                    // anticipo>0 y saldo>0 => ANTICIPO
-                    const origen = (saldo === 0 || anticipo === total)
+                  const origen =
+                    saldo === 0 || anticipo === total
                       ? "PROFORMA_PAGADO_TOTAL"
                       : "PROFORMA_ANTICIPO";
 
-                    db.query(
-                      `INSERT INTO caja_transacciones
-                       (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
-                       VALUES (?,?,?,?,?,?,?,?)`,
-                      [id_caja, user_id, "INGRESO", origen, proforma_id, anticipo, fecha, hora],
-                      (errTx) => {
-                        if (errTx) {
-                          return db.rollback(() =>
-                            res.send({ operation: "error", message: errTx.message })
-                          );
-                        }
-
-                        db.query(
-                          "UPDATE caja SET saldo = saldo + ? WHERE id_caja=?",
-                          [anticipo, id_caja],
-                          (errUp) => {
-                            if (errUp) {
-                              return db.rollback(() =>
-                                res.send({ operation: "error", message: errUp.message })
-                              );
-                            }
-
-                            db.commit(() =>
-                              res.send({
-                                operation: "success",
-                                message: "Proforma added successfully",
-                                info: { id: newId, proforma_id },
-                              })
-                            );
-                          }
+                  db.query(
+                    `INSERT INTO caja_transacciones
+       (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
+       VALUES (?,?,?,?,?,?,?,?)`,
+                    [id_caja, user_id, "INGRESO", origen, proforma_id, anticipo, fecha, hora],
+                    (errTx) => {
+                      if (errTx) {
+                        return db.rollback(() =>
+                          res.send({ operation: "error", message: errTx.message })
                         );
                       }
-                    );
-                  }
-                );
+
+                      db.query(
+                        "UPDATE caja SET saldo = saldo + ? WHERE id_caja = ?",
+                        [anticipo, id_caja],
+                        (errUp) => {
+                          if (errUp) {
+                            return db.rollback(() =>
+                              res.send({ operation: "error", message: errUp.message })
+                            );
+                          }
+
+                          db.commit(() =>
+                            res.send({
+                              operation: "success",
+                              message: "Proforma added successfully",
+                              info: { id: newId, proforma_id },
+                            })
+                          );
+                        }
+                      );
+                    }
+                  );
+                });
               } else {
-                // ✅ sin anticipo => no mueve caja
                 db.commit(() =>
                   res.send({
                     operation: "success",

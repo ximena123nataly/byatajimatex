@@ -32,7 +32,49 @@ function getUserIdFromCookie(req) {
     return null;
   }
 }
+function ensureCajaByTipo(user_id, tipo_pago, cb) {
+  const nombreCaja =
+    String(tipo_pago || "EFECTIVO").toUpperCase() === "QR"
+      ? "Caja QR"
+      : "Caja EFECTIVO";
 
+  db.query(
+    "SELECT id_caja FROM caja WHERE id_usuario = ? AND nombre_caja = ? LIMIT 1",
+    [user_id, nombreCaja],
+    (err, rows) => {
+      if (err) return cb(err);
+
+      if (rows && rows.length > 0) {
+        return cb(null, rows[0].id_caja);
+      }
+
+      db.query(
+        "INSERT INTO caja (id_usuario, nombre_caja, saldo) VALUES (?, ?, 0)",
+        [user_id, nombreCaja],
+        (err2, result) => {
+          if (err2) {
+            if (err2.code === "ER_DUP_ENTRY") {
+              return db.query(
+                "SELECT id_caja FROM caja WHERE id_usuario = ? AND nombre_caja = ? LIMIT 1",
+                [user_id, nombreCaja],
+                (err3, rows2) => {
+                  if (err3) return cb(err3);
+                  if (!rows2 || rows2.length === 0) {
+                    return cb(new Error("No se pudo recuperar la caja creada"));
+                  }
+                  return cb(null, rows2[0].id_caja);
+                }
+              );
+            }
+            return cb(err2);
+          }
+
+          return cb(null, result.insertId);
+        }
+      );
+    }
+  );
+}
 class Order {
   constructor() { }
 
@@ -131,6 +173,7 @@ class Order {
 
       const order_id = uniqid();
       const grandTotal = Number(req.body.grand_total);
+
       if (!Number.isFinite(grandTotal) || grandTotal <= 0) {
         return res.send({ operation: "error", message: "Monto total inválido" });
       }
@@ -142,8 +185,9 @@ class Order {
       const { fecha, hora } = nowDateTimeTZ();
 
       db.beginTransaction((txErr) => {
-        if (txErr) return res.send({ operation: "error", message: txErr.message });
-
+        if (txErr) {
+          return res.send({ operation: "error", message: txErr.message });
+        }
 
         const q1 =
           "INSERT INTO `orders`(`order_id`, `order_ref`, `customer_id`, `due_date`, `items`, `tax`, `descuento`, `tipo_pago`, `grand_total`, `user_id`) " +
@@ -170,10 +214,10 @@ class Order {
               );
             }
 
-
             const parr = req.body.item_array.map((prod) => {
               return new Promise((resolve, reject) => {
-                const q2 = "UPDATE `products` SET product_stock = product_stock - ? WHERE `product_id`= ?";
+                const q2 =
+                  "UPDATE `products` SET product_stock = product_stock - ? WHERE `product_id` = ?";
                 db.query(q2, [prod.quantity, prod.product_id], (e2) => {
                   if (e2) return reject(e2);
                   resolve();
@@ -183,32 +227,18 @@ class Order {
 
             Promise.all(parr)
               .then(() => {
-
-                const nombreCaja = tipoPago === "QR" ? "Caja QR" : "Caja EFECTIVO";
-                const qcaja = "SELECT id_caja FROM caja WHERE id_usuario=? AND nombre_caja=? LIMIT 1";
-
-                db.query(qcaja, [id_usuario, nombreCaja], (errCaja, cajaRes) => {
+                ensureCajaByTipo(id_usuario, tipoPago, (errCaja, id_caja) => {
                   if (errCaja) {
                     return db.rollback(() =>
                       res.send({ operation: "error", message: errCaja.message })
                     );
                   }
 
-
-                  if (!cajaRes || cajaRes.length === 0) {
-                    return db.commit(() =>
-                      res.send({ operation: "success", message: "Order added (sin caja)" })
-                    );
-                  }
-
-                  const id_caja = cajaRes[0].id_caja;
-
-
                   const qtx = `
-                    INSERT INTO caja_transacciones
-                    (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
-                    VALUES (?,?,?,?,?,?,?,?)
-                  `;
+                  INSERT INTO caja_transacciones
+                  (id_caja, id_usuario, tipo, origen, nro_registro, monto, fecha, hora)
+                  VALUES (?,?,?,?,?,?,?,?)
+                `;
 
                   db.query(
                     qtx,
@@ -220,19 +250,25 @@ class Order {
                         );
                       }
 
+                      db.query(
+                        "UPDATE caja SET saldo = saldo + ? WHERE id_caja = ?",
+                        [grandTotal, id_caja],
+                        (errUp) => {
+                          if (errUp) {
+                            return db.rollback(() =>
+                              res.send({ operation: "error", message: errUp.message })
+                            );
+                          }
 
-                      const qup = "UPDATE caja SET saldo = saldo + ? WHERE id_caja=?";
-                      db.query(qup, [grandTotal, id_caja], (errUp) => {
-                        if (errUp) {
-                          return db.rollback(() =>
-                            res.send({ operation: "error", message: errUp.message })
+                          db.commit(() =>
+                            res.send({
+                              operation: "success",
+                              message: "Order added successfully",
+                              info: { order_id },
+                            })
                           );
                         }
-
-                        db.commit(() =>
-                          res.send({ operation: "success", message: "Order added successfully" })
-                        );
-                      });
+                      );
                     }
                   );
                 });
@@ -240,7 +276,10 @@ class Order {
               .catch((e) => {
                 console.log(e);
                 db.rollback(() =>
-                  res.send({ operation: "error", message: e.message || "Stock update error" })
+                  res.send({
+                    operation: "error",
+                    message: e.message || "Stock update error",
+                  })
                 );
               });
           }
