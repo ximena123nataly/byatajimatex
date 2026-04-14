@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import moment from "moment";
 
 /** =========================
@@ -65,6 +65,31 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
   const [loadingDet, setLoadingDet] = useState(false);
   const [errDet, setErrDet] = useState("");
+
+  const [busqueda, setBusqueda] = useState("");
+
+  const transaccionesFiltradas = useMemo(() => {
+    const texto = String(busqueda || "").toLowerCase().trim();
+
+    if (!texto) return transacciones || [];
+
+    return (transacciones || []).filter((t) =>
+      [
+        t.id_transaccion,
+        t.id_usuario,
+        t.id_caja,
+        t.tipo,
+        t.origen,
+        t.nro_registro,
+        t.monto,
+        t.fecha,
+        t.hora,
+        t.detalle,
+      ]
+        .map((v) => String(v ?? "").toLowerCase())
+        .some((v) => v.includes(texto))
+    );
+  }, [transacciones, busqueda]);
 
   const abrir = () => setShow(true);
   const cerrar = () => {
@@ -613,9 +638,9 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
       const filas = itemsArr.map((it) => {
         const cant = toNumber(it.cantidad ?? it.quantity);
-        const pu   = toNumber(it.precio_unitario ?? it.rate);
-        const tot  = toNumber(it.total ?? cant * pu);
-        const det  = safe(it.detalle || it.product_name || "").replace(/\n/g, "<br/>");
+        const pu = toNumber(it.precio_unitario ?? it.rate);
+        const tot = toNumber(it.total ?? cant * pu);
+        const det = safe(it.detalle || it.product_name || "").replace(/\n/g, "<br/>");
         return `
           <tr>
             <td class="td-right" style="width:28px;">${cant}</td>
@@ -704,7 +729,7 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
     if (String(tipo_detalle).toUpperCase() === "TRASPASO") {
       const arr = Array.isArray(detalle) ? detalle : [];
-      const eg  = arr.find((x) => x.tipo === "EGRESO");
+      const eg = arr.find((x) => x.tipo === "EGRESO");
       const ing = arr.find((x) => x.tipo === "INGRESO");
       itemsHtml = `
         <hr class="sep-dashed"/>
@@ -1142,14 +1167,59 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
   return (
     <div className="caja-card caja-tx-card">
-      <div className="caja-tx-header" style={{ display: "flex", justifyContent: "space-between" }}>
-        <h3>Movimientos</h3>
+      <div
+        className="caja-tx-header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Movimientos</h3>
+
+        <div
+          style={{
+            position: "relative",
+            width: "280px",
+            maxWidth: "100%",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              left: "12px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              fontSize: "15px",
+              color: "#666",
+              pointerEvents: "none",
+            }}
+          >
+            🔍
+          </span>
+
+          <input
+            type="text"
+            className="my_form_control"
+            placeholder="Buscar movimiento..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            style={{
+              width: "100%",
+              paddingLeft: "36px",
+            }}
+          />
+        </div>
       </div>
 
       {loading ? (
         <p className="muted">Cargando movimientos...</p>
       ) : !transacciones || transacciones.length === 0 ? (
         <p className="muted">Aún no hay movimientos.</p>
+      ) : transaccionesFiltradas.length === 0 ? (
+        <p className="muted">No se encontraron movimientos.</p>
       ) : (
         <div className="tabla-wrap">
           <table className="tabla-caja">
@@ -1169,7 +1239,7 @@ export default function CajaTransacciones({ transacciones, loading }) {
             </thead>
 
             <tbody>
-              {transacciones.map((t) => (
+              {transaccionesFiltradas.map((t) => (
                 <tr key={t.id_transaccion}>
                   <td>{t.id_transaccion}</td>
                   <td>{t.id_usuario}</td>
