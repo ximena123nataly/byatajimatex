@@ -11,52 +11,87 @@ class Product {
 
 	getProducts = (req, res) => {
 		try {
-			let d = jwt.decode(req.cookies.accessToken, { complete: true });
-			let email = d.payload.email;
-			let role = d.payload.role;
+			jwt.decode(req.cookies.accessToken, { complete: true });
 
 			new Promise((resolve, reject) => {
+				const searchValue = String(req.body.search_value || "").trim();
+				const startValue = parseInt(req.body.start_value || 0, 10);
 
-				let tsa = ""
-				if (req.body.search_value != "") {
-					tsa = `WHERE name LIKE "%${req.body.search_value}%" OR description LIKE "%${req.body.search_value}%"`
+				let whereClause = "";
+				let params = [];
+
+				if (searchValue !== "") {
+					whereClause = `
+					WHERE
+						name LIKE ?
+						OR description LIKE ?
+						OR category LIKE ?
+						OR material LIKE ?
+						OR gender LIKE ?
+						OR size LIKE ?
+				`;
+					const likeValue = `%${searchValue}%`;
+					params.push(likeValue, likeValue, likeValue, likeValue, likeValue, likeValue);
 				}
 
-				let tso = ""
-				if ((req.body.sort_column != "") && (req.body.sort_order != "")) {
-					tso = `ORDER BY ${req.body.sort_column} ${req.body.sort_order}`
+				let orderClause = "";
+				const allowedSortColumns = ["name", "gender", "category", "product_stock", "timeStamp"];
+				const allowedSortOrders = ["ASC", "DESC"];
+
+				if (
+					allowedSortColumns.includes(req.body.sort_column) &&
+					allowedSortOrders.includes(String(req.body.sort_order || "").toUpperCase())
+				) {
+					orderClause = ` ORDER BY ${req.body.sort_column} ${String(req.body.sort_order).toUpperCase()} `;
 				}
 
-				let q = "SELECT * FROM `products` " + tsa + tso + " LIMIT ?, 10"
-				db.query(q, [req.body.start_value], (err, result) => {
-					if (err) {
-						return reject(err);
-					}
+				let qData = `
+  SELECT *
+  FROM products
+  ${whereClause}
+  ${orderClause}
+`;
 
-					if (req.body.search_value != "") {
-						return resolve({ operation: "success", message: 'search products got', info: { products: result, count: result.length } });
-					}
+				let dataParams = [...params];
 
-					let q = "SELECT COUNT(*) AS val FROM `products`"
-					db.query(q, (err, result2) => {
-						if (err) {
-							return reject(err);
-						}
+				if (searchValue === "") {
+					qData += ` LIMIT ?, 10 `;
+					dataParams.push(startValue);
+				}
 
-						resolve({ operation: "success", message: '10 products got', info: { products: result, count: result2[0].val } });
-					})
-				})
+				db.query(qData, dataParams, (err, result) => {
+					if (err) return reject(err);
+
+					const qCount = `
+					SELECT COUNT(*) AS val
+					FROM products
+					${whereClause}
+				`;
+
+					db.query(qCount, params, (err2, result2) => {
+						if (err2) return reject(err2);
+
+						resolve({
+							operation: "success",
+							message: "products got",
+							info: {
+								products: result,
+								count: result2[0].val
+							}
+						});
+					});
+				});
 			})
 				.then((value) => {
 					res.send(value);
 				})
 				.catch((err) => {
 					console.log(err);
-					res.send({ operation: "error", message: 'Something went wrong' });
-				})
+					res.send({ operation: "error", message: "Something went wrong" });
+				});
 		} catch (error) {
 			console.log(error);
-			res.send({ operation: "error", message: 'Something went wrong' });
+			res.send({ operation: "error", message: "Something went wrong" });
 		}
 	}
 

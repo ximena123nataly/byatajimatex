@@ -1057,6 +1057,10 @@ function Products() {
     }
   }, [editImage])
 
+  useEffect(() => {
+    setTablePage(1);
+  }, [searchInput]);
+
   const updateProduct = async () => {
     if (editName === "") {
       swal("¡Ups!", "El nombre no puede estar vacío", "error")
