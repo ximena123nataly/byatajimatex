@@ -1080,8 +1080,8 @@ function Proformas() {
                 )}
               >
                 {String(obj?.estado || "").toUpperCase() === "BORDADO_REALIZADO"
-                  ? "Volver pendiente"
-                  : "Marcar bordado"}
+                  ? "BORDADO REALIZADO"
+                  : "BORDADO PENDIENTE"}
               </button>
             )}
 

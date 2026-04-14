@@ -750,35 +750,7 @@ function OrderAddNew() {
                     </div>
 
 
-                    <div style={{ marginTop: "12px", marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: "bold", marginBottom: "8px" }}>
-                        Tipo de pago
-                      </label>
 
-                      <div style={{ display: "flex", gap: "18px", alignItems: "center", flexWrap: "wrap" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <input
-                            type="radio"
-                            name="tipo_pago_venta"
-                            value="EFECTIVO"
-                            checked={tipoPago === "EFECTIVO"}
-                            onChange={(e) => setTipoPago(e.target.value)}
-                          />
-                          Efectivo
-                        </label>
-
-                        <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <input
-                            type="radio"
-                            name="tipo_pago_venta"
-                            value="QR"
-                            checked={tipoPago === "QR"}
-                            onChange={(e) => setTipoPago(e.target.value)}
-                          />
-                          QR
-                        </label>
-                      </div>
-                    </div>
 
 
                   </div>
@@ -929,6 +901,37 @@ function OrderAddNew() {
                   </button>
 
                   <div style={{ margin: "0 15px" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", margin: "0.6rem 0 1rem 0" }}>
+                      <div style={{ width: "20%", marginRight: "8%" }}>
+                        <label style={{ display: "block", fontWeight: "bold", marginBottom: "8px" }}>
+                          Tipo de pago
+                        </label>
+
+                        <div style={{ display: "flex", gap: "18px", alignItems: "center", flexWrap: "wrap" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <input
+                              type="radio"
+                              name="tipo_pago_venta"
+                              value="EFECTIVO"
+                              checked={tipoPago === "EFECTIVO"}
+                              onChange={(e) => setTipoPago(e.target.value)}
+                            />
+                            Efectivo
+                          </label>
+
+                          <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <input
+                              type="radio"
+                              name="tipo_pago_venta"
+                              value="QR"
+                              checked={tipoPago === "QR"}
+                              onChange={(e) => setTipoPago(e.target.value)}
+                            />
+                            QR
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", margin: "0.2rem 0" }}>
                       <div style={{ marginRight: "1rem", color: "rgb(98, 102, 100)" }}><h4>Subtotal</h4></div>
                       <div style={{ width: "20%", marginRight: "8%" }}>

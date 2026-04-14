@@ -953,6 +953,17 @@ function ProformasAddNew() {
               + Agregar ítem
             </button>
             <hr />
+
+            <div className="col">
+              <label>Costura</label>
+              <input
+                className="my_input"
+                type="number"
+                value={costura}
+                onChange={(e) => setCostura(e.target.value)}
+              />
+            </div>
+            <hr />
             <div className="col">
               <label>Tipo de pago</label>
               <div style={{ display: "flex", gap: "18px", marginTop: "10px", alignItems: "center" }}>
@@ -978,16 +989,6 @@ function ProformasAddNew() {
                   QR
                 </label>
               </div>
-            </div>
-            <hr />
-            <div className="col">
-              <label>Costura</label>
-              <input
-                className="my_input"
-                type="number"
-                value={costura}
-                onChange={(e) => setCostura(e.target.value)}
-              />
             </div>
             <hr />
 
