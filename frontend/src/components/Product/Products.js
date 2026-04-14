@@ -1267,7 +1267,13 @@ function Products() {
                   </div>
                   <div className='form-group mb-2'>
                     <label className='fst-italic fw-bold'>Stock</label>
-                    <input className='my_form_control' type='number' value={editStock} disabled />
+                    <input
+                      className='my_form_control'
+                      type='number'
+                      value={editStock}
+                      onChange={(e) => { setEditStock(e.target.value) }}
+                      disabled={permission?.delete !== true}
+                    />
                   </div>
 
                 </div>
