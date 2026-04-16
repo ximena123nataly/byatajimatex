@@ -569,25 +569,140 @@ class Proforma {
   };
 
   // DELETE PROFORMA (no toca caja por ahora, lo hacemos si quieres)
+  // DELETE PROFORMA (revirtiendo caja)
   deleteProforma = (req, res) => {
     try {
-      jwt.decode(req.cookies.accessToken, { complete: true });
+      const user_id = getUserIdFromCookie(req);
+      if (!user_id) {
+        return res.send({ operation: "error", message: "No autorizado" });
+      }
 
-      new Promise((resolve, reject) => {
-        const q = "DELETE FROM proformas WHERE id = ?";
-        db.query(q, [req.body.id], (err) => {
-          if (err) return reject(err);
-          resolve({
-            operation: "success",
-            message: "Proforma eliminada con éxito",
-          });
-        });
-      })
-        .then((value) => res.send(value))
-        .catch((err) => {
-          console.log(err);
-          res.send({ operation: "error", message: "Something went wrong" });
-        });
+      const id = req.body?.id;
+      if (!id) {
+        return res.send({ operation: "error", message: "Falta id de proforma" });
+      }
+
+      db.beginTransaction((txErr) => {
+        if (txErr) {
+          return res.send({ operation: "error", message: txErr.message });
+        }
+
+        db.query(
+          `SELECT id, proforma_id
+         FROM proformas
+         WHERE id = ?
+         LIMIT 1`,
+          [id],
+          (err1, rows) => {
+            if (err1) {
+              return db.rollback(() =>
+                res.send({ operation: "error", message: err1.message })
+              );
+            }
+
+            if (!rows || rows.length === 0) {
+              return db.rollback(() =>
+                res.send({ operation: "error", message: "Proforma no encontrada" })
+              );
+            }
+
+            const proforma = rows[0];
+            const nroRegistro = proforma.proforma_id;
+
+            db.query(
+              `SELECT id_caja, SUM(monto) AS total
+             FROM caja_transacciones
+             WHERE nro_registro = ?
+               AND origen IN ('PROFORMA_ANTICIPO', 'PROFORMA_PAGADO_TOTAL', 'PROFORMA_SALDO_PAGADO')
+             GROUP BY id_caja`,
+              [nroRegistro],
+              (err2, txRows) => {
+                if (err2) {
+                  return db.rollback(() =>
+                    res.send({ operation: "error", message: err2.message })
+                  );
+                }
+
+                const movimientos = txRows || [];
+
+                const revertirCaja = () => {
+                  if (movimientos.length === 0) {
+                    return borrarMovimientos();
+                  }
+
+                  const tareas = movimientos.map((mov) => {
+                    return new Promise((resolve, reject) => {
+                      db.query(
+                        "UPDATE caja SET saldo = saldo - ? WHERE id_caja = ?",
+                        [Number(mov.total || 0), mov.id_caja],
+                        (errUp) => {
+                          if (errUp) return reject(errUp);
+                          resolve();
+                        }
+                      );
+                    });
+                  });
+
+                  Promise.all(tareas)
+                    .then(() => borrarMovimientos())
+                    .catch((e) => {
+                      return db.rollback(() =>
+                        res.send({ operation: "error", message: e.message })
+                      );
+                    });
+                };
+
+                const borrarMovimientos = () => {
+                  db.query(
+                    `DELETE FROM caja_transacciones
+                   WHERE nro_registro = ?
+                     AND origen IN ('PROFORMA_ANTICIPO', 'PROFORMA_PAGADO_TOTAL', 'PROFORMA_SALDO_PAGADO')`,
+                    [nroRegistro],
+                    (err3) => {
+                      if (err3) {
+                        return db.rollback(() =>
+                          res.send({ operation: "error", message: err3.message })
+                        );
+                      }
+
+                      borrarProforma();
+                    }
+                  );
+                };
+
+                const borrarProforma = () => {
+                  db.query(
+                    "DELETE FROM proformas WHERE id = ?",
+                    [id],
+                    (err4) => {
+                      if (err4) {
+                        return db.rollback(() =>
+                          res.send({ operation: "error", message: err4.message })
+                        );
+                      }
+
+                      db.commit((err5) => {
+                        if (err5) {
+                          return db.rollback(() =>
+                            res.send({ operation: "error", message: err5.message })
+                          );
+                        }
+
+                        return res.send({
+                          operation: "success",
+                          message: "Proforma eliminada y caja revertida con éxito",
+                        });
+                      });
+                    }
+                  );
+                };
+
+                revertirCaja();
+              }
+            );
+          }
+        );
+      });
     } catch (error) {
       console.log(error);
       res.send({ operation: "error", message: "Something went wrong" });
