@@ -197,7 +197,8 @@ function ProformasAddNew() {
   //  IMPRESION
   const imprimirProforma = (p) => {
     const items = Array.isArray(p.items) ? p.items : [];
-
+    const subtotalItemsPrint = items.reduce((acc, it) => acc + toNumber(it.total), 0);
+    const costuraPrint = Math.max(0, toNumber(p.costura));
     const filas = items
       .map((it) => {
         const cant = toNumber(it.cantidad);
@@ -326,13 +327,15 @@ function ProformasAddNew() {
     </table>
 
     <div class="totals">
-      <table>
-        <tr><td>Total</td><td>${money(p.total_general)}</td></tr>
-        <tr><td>Anticipo</td><td>${money(p.anticipo)}</td></tr>        
-        <tr><td>Descuento</td><td>${money(p.descuento ?? 0)}</td></tr>
-        <tr><td>Saldo</td><td>${money(p.saldo)}</td></tr>
-      </table>
-    </div>
+  <table>
+    <tr><td>Subtotal</td><td>${money(subtotalItemsPrint)}</td></tr>
+    <tr><td>Costura</td><td>${money(costuraPrint)}</td></tr>
+    <tr><td>Total</td><td>${money(p.total_general ?? 0)}</td></tr>
+    <tr><td>Anticipo</td><td>${money(p.anticipo ?? 0)}</td></tr>
+    <tr><td>Descuento</td><td>${money(p.descuento ?? 0)}</td></tr>
+    <tr><td>Saldo</td><td>${money(p.saldo ?? 0)}</td></tr>
+  </table>
+</div>
   </div>
 
   <script>
@@ -377,7 +380,8 @@ function ProformasAddNew() {
         .replace(/'/g, "&#039;");
 
     const items = Array.isArray(p.items) ? p.items : [];
-
+    const subtotalItemsPrint = items.reduce((acc, it) => acc + toNumber(it.total), 0);
+    const costuraPrint = Math.max(0, toNumber(p.costura));
     const filas = items
       .map((it) => {
         const cant = toNumber(it.cantidad);
@@ -537,11 +541,13 @@ function ProformasAddNew() {
     </table>
 
     <div class="totals">
-      <div class="t-row"><span>Total:</span><span>${money(p.total_general ?? 0)}</span></div>
-      <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>      
-      <div class="t-row"><span>Descuento:</span><span>${money(p.descuento ?? 0)}</span></div>
-      <div class="t-row grande"><span>SALDO:</span><span>${money(p.saldo ?? 0)}</span></div>
-    </div>
+  <div class="t-row"><span>Subtotal:</span><span>${money(subtotalItemsPrint)}</span></div>
+  <div class="t-row"><span>Costura:</span><span>${money(costuraPrint)}</span></div>
+  <div class="t-row"><span>Total:</span><span>${money(p.total_general ?? 0)}</span></div>
+  <div class="t-row"><span>Anticipo:</span><span>${money(p.anticipo ?? 0)}</span></div>
+  <div class="t-row"><span>Descuento:</span><span>${money(p.descuento ?? 0)}</span></div>
+  <div class="t-row grande"><span>SALDO:</span><span>${money(p.saldo ?? 0)}</span></div>
+</div>
 
     <div class="firma">Firma / Sello</div>
   </div>
