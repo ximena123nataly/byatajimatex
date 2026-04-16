@@ -56,7 +56,7 @@ const formatProforma = (v) => String(v ?? "").padStart(7, "0");
 /** =========================
  * Component
  * ========================= */
-export default function CajaTransacciones({ transacciones, loading }) {
+export default function CajaTransacciones({ transacciones, loading, caja }) {
   const [show, setShow] = useState(false);
 
   const [mov, setMov] = useState(null);
@@ -68,12 +68,36 @@ export default function CajaTransacciones({ transacciones, loading }) {
 
   const [busqueda, setBusqueda] = useState("");
 
+  // Filtro por rango de fechas
+  const [showFiltro, setShowFiltro] = useState(false);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [filtroActivo, setFiltroActivo] = useState(false);
+
   const transaccionesFiltradas = useMemo(() => {
     const texto = String(busqueda || "").toLowerCase().trim();
+    let lista = transacciones || [];
 
-    if (!texto) return transacciones || [];
+    // Filtro por rango de fechas
+    if (filtroActivo) {
+      if (fechaDesde) {
+        lista = lista.filter((t) => {
+          const f = String(t.fecha || "").split("T")[0];
+          return f >= fechaDesde;
+        });
+      }
+      if (fechaHasta) {
+        lista = lista.filter((t) => {
+          const f = String(t.fecha || "").split("T")[0];
+          return f <= fechaHasta;
+        });
+      }
+    }
 
-    return (transacciones || []).filter((t) =>
+    // Filtro por texto
+    if (!texto) return lista;
+
+    return lista.filter((t) =>
       [
         t.id_transaccion,
         t.id_usuario,
@@ -89,7 +113,7 @@ export default function CajaTransacciones({ transacciones, loading }) {
         .map((v) => String(v ?? "").toLowerCase())
         .some((v) => v.includes(texto))
     );
-  }, [transacciones, busqueda]);
+  }, [transacciones, busqueda, filtroActivo, fechaDesde, fechaHasta]);
 
   const abrir = () => setShow(true);
   const cerrar = () => {
@@ -608,6 +632,178 @@ export default function CajaTransacciones({ transacciones, loading }) {
   /** =========================
    * (Opcional) imprimir desde modal (ya cargado)
    * ========================= */
+  /** =========================
+   * PRINT: Reporte filtrado de movimientos
+   * ========================= */
+  const imprimirReporteFiltrado = () => {
+    const now = new Date();
+    const impFecha = moment(now).format("DD/MM/YYYY");
+    const impHora  = moment(now).format("HH:mm:ss");
+    const logoUrl  = `${window.location.origin}${process.env.PUBLIC_URL || ""}/tajima.png`;
+
+    const periodoLabel = (() => {
+      if (fechaDesde && fechaHasta) return `${fechaDesde} al ${fechaHasta}`;
+      if (fechaDesde) return `Desde ${fechaDesde}`;
+      if (fechaHasta) return `Hasta ${fechaHasta}`;
+      return "Todos los movimientos";
+    })();
+
+    const totalIngresos = transaccionesFiltradas
+      .filter((t) => t.tipo === "INGRESO")
+      .reduce((acc, t) => acc + toNumber(t.monto), 0);
+
+    const totalEgresos = transaccionesFiltradas
+      .filter((t) => t.tipo === "EGRESO")
+      .reduce((acc, t) => acc + toNumber(t.monto), 0);
+
+    const saldoCaja = toNumber(caja?.saldo ?? 0);
+
+    const filas = transaccionesFiltradas.map((t) => `
+      <tr>
+        <td>${safe(String(t.id_transaccion ?? ""))}</td>
+        <td>${safe(fmtFecha(t.fecha))}</td>
+        <td>${safe(fmtHora(t.hora))}</td>
+        <td><span class="badge ${t.tipo === "INGRESO" ? "badge-in" : "badge-out"}">${safe(t.tipo)}</span></td>
+        <td>${safe(t.origen ?? "")}</td>
+        <td class="wrap">${safe(t.nro_registro ?? "-")}</td>
+        <td class="right">Bs ${money(t.monto)}</td>
+      </tr>`).join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Reporte de Movimientos</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    html, body { background: #fff; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111; }
+    .wrap { word-break: break-word; overflow-wrap: anywhere; }
+    .muted { color: #555; }
+    .right { text-align: right; }
+    .center { text-align: center; }
+    .print-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px; padding-bottom: 10px; border-bottom: 2px solid #111; margin-bottom: 12px;
+    }
+    .brand { display: flex; gap: 12px; align-items: flex-start; }
+    .brand img { width: 110px; height: auto; object-fit: contain; }
+    .brand .company { font-size: 11px; line-height: 1.25; }
+    .brand .company b { font-size: 12px; }
+    .docbox { text-align: right; }
+    .doc-title { font-size: 20px; font-weight: 900; letter-spacing: .5px; }
+    .doc-sub { margin-top: 6px; font-size: 11px; line-height: 1.35; }
+    .periodo-bar {
+      background: #f4f4f4; border: 1px solid #ddd; border-radius: 8px;
+      padding: 8px 14px; margin-bottom: 12px; font-size: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { font-size: 11px; padding: 7px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+    th { text-align: left; font-weight: 800; background: #fafafa; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 10px; font-weight: 900; border: 1px solid #111;
+    }
+    .badge-in  { background: #e8fff1; border-color: #16a34a; color: #166534; }
+    .badge-out { background: #fff1f2; border-color: #ef4444; color: #991b1b; }
+    .totales-box {
+      width: 320px; margin-left: auto; margin-top: 14px;
+      border: 1px solid #ddd; border-radius: 10px; padding: 10px 14px;
+    }
+    .totales-box .line {
+      display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0;
+    }
+    .totales-box .line.grande {
+      font-size: 14px; font-weight: 900; border-top: 2px solid #111;
+      margin-top: 6px; padding-top: 6px;
+    }
+    .saldo-caja-box {
+      margin-top: 16px; padding: 12px 16px;
+      border: 2px solid #111; border-radius: 10px;
+      background: #f9fafb;
+    }
+    .saldo-caja-box .titulo { font-size: 13px; font-weight: 900; margin-bottom: 6px; }
+    .saldo-caja-box .fila { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+    .saldo-caja-box .fila.total { font-size: 16px; font-weight: 900; border-top: 2px solid #111; margin-top: 6px; padding-top: 6px; }
+    .saldo-positivo { color: #16a34a; }
+    .saldo-negativo { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="print-header">
+    <div class="brand">
+      <img src="${logoUrl}" alt="TAJIMA"/>
+      <div class="company">
+        <b>BORDADOS COMPUTARIZADOS</b><br/>
+        Y APLICACIONES TAJIMA TEXTIL<br/>
+        <span class="muted">E-mail:</span> byatajima@gmail.com<br/>
+        Dir.: Av. Juan Pablo II Ceja<br/>
+        (El Alto lado Tránsito - Bolivia)<br/>
+        Cel: 75866135-75274747-77221750
+      </div>
+    </div>
+    <div class="docbox">
+      <div class="doc-title">REPORTE DE MOVIMIENTOS</div>
+      <div class="doc-sub">
+        <div><b>Caja:</b> #${safe(String(caja?.id_caja ?? "-"))} — ${safe(caja?.nombre_caja ?? "-")}</div>
+        <div><b>Usuario:</b> ${safe(String(caja?.id_usuario ?? "-"))}</div>
+        <div><b>Impreso:</b> ${safe(impFecha)} ${safe(impHora)}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="periodo-bar">
+    <span><b>Período:</b> ${safe(periodoLabel)}</span>
+    <span><b>Registros:</b> ${transaccionesFiltradas.length}</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>Hora</th>
+        <th>Tipo</th>
+        <th>Origen</th>
+        <th>Referencia</th>
+        <th class="right">Monto</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filas || `<tr><td colspan="7" class="center muted" style="padding:16px;">(Sin movimientos en el período)</td></tr>`}
+    </tbody>
+  </table>
+
+  <div class="totales-box">
+    <div class="line"><span>Total Ingresos</span><span class="saldo-positivo">Bs ${money(totalIngresos)}</span></div>
+    <div class="line"><span>Total Egresos</span><span class="saldo-negativo">Bs ${money(totalEgresos)}</span></div>
+    <div class="line grande"><span>Neto período</span><span>Bs ${money(totalIngresos - totalEgresos)}</span></div>
+  </div>
+
+  <div class="saldo-caja-box">
+    <div class="titulo">Saldo en caja asignada</div>
+    <div class="fila"><span>Caja N°:</span><span>#${safe(String(caja?.id_caja ?? "-"))}</span></div>
+    <div class="fila"><span>Nombre:</span><span>${safe(caja?.nombre_caja ?? "-")}</span></div>
+    <div class="fila"><span>Usuario:</span><span>${safe(String(caja?.id_usuario ?? "-"))}</span></div>
+    <div class="fila total ${saldoCaja >= 0 ? "saldo-positivo" : "saldo-negativo"}">
+      <span>SALDO ACTUAL</span><span>Bs ${money(saldoCaja)}</span>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+
+    abrirPrint(html);
+  };
+
   const imprimirDesdeModal = () => {
     if (!mov) return;
     const html = buildHtmlMovimientoBonito({
@@ -1179,40 +1375,123 @@ export default function CajaTransacciones({ transacciones, loading }) {
       >
         <h3 style={{ margin: 0 }}>Movimientos</h3>
 
-        <div
-          style={{
-            position: "relative",
-            width: "280px",
-            maxWidth: "100%",
-          }}
-        >
-          <span
-            style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              fontSize: "15px",
-              color: "#666",
-              pointerEvents: "none",
-            }}
-          >
-            🔍
-          </span>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
 
-          <input
-            type="text"
-            className="my_form_control"
-            placeholder="Buscar movimiento..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            style={{
-              width: "100%",
-              paddingLeft: "36px",
-            }}
-          />
+          {/* Botón Filtrar movimientos */}
+          <button
+            className={`btn-filtro${filtroActivo ? " btn-filtro-activo" : ""}`}
+            onClick={() => setShowFiltro(true)}
+          >
+            📅 Filtrar{filtroActivo ? ` ✔` : ""}
+          </button>
+
+          {/* Botón Imprimir reporte filtrado */}
+          <button
+            className="btn-imprimir-reporte"
+            onClick={imprimirReporteFiltrado}
+            disabled={transaccionesFiltradas.length === 0}
+          >
+            🖨️ Imprimir reporte
+          </button>
+
+          {/* Buscador */}
+          <div style={{ position: "relative", width: "260px", maxWidth: "100%" }}>
+            <span
+              style={{
+                position: "absolute", left: "12px", top: "50%",
+                transform: "translateY(-50%)", fontSize: "15px",
+                color: "#666", pointerEvents: "none",
+              }}
+            >
+              🔍
+            </span>
+            <input
+              type="text"
+              className="my_form_control"
+              placeholder="Buscar movimiento..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              style={{ width: "100%", paddingLeft: "36px" }}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Modal filtro de fechas */}
+      {showFiltro && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000,
+          }}
+          onClick={() => setShowFiltro(false)}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: "14px", padding: "24px",
+              width: "380px", maxWidth: "95vw",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: "0 0 16px 0" }}>📅 Filtrar por fechas</h3>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label style={{ display: "block", fontWeight: 700, marginBottom: "4px", fontSize: "13px" }}>
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  className="my_form_control"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontWeight: 700, marginBottom: "4px", fontSize: "13px" }}>
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  className="my_form_control"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+              <button
+                className="btn-ver"
+                style={{ padding: "8px 14px" }}
+                onClick={() => {
+                  setFechaDesde("");
+                  setFechaHasta("");
+                  setFiltroActivo(false);
+                  setShowFiltro(false);
+                }}
+              >
+                Limpiar
+              </button>
+
+              <button
+                className="btn-filtro btn-filtro-activo"
+                style={{ padding: "8px 18px" }}
+                onClick={() => {
+                  setFiltroActivo(!!(fechaDesde || fechaHasta));
+                  setShowFiltro(false);
+                }}
+              >
+                Aplicar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <p className="muted">Cargando movimientos...</p>

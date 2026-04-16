@@ -342,6 +342,161 @@ function Expenses() {
     w.document.close();
   };
 
+   // ✅ TÉRMICA: impresión 80mm para gastos
+  const imprimirGastoTermico = (p) => {
+    if (!p) return;
+
+    const safe = (s) =>
+      String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    //const items = Array.isArray(p.items) ? p.items : [];
+
+    let items = [];
+    try { items = p.items ? JSON.parse(p.items) : []; } catch (e) { items = []; }
+
+    
+
+
+    const filas = items.map((it) => {
+      const cant = toNumber(it.quantity);
+      const pu   = toNumber(it.rate);
+      const tot  = cant * pu;
+      const det  = safe(it.detalle || "").replace(/\n/g, "<br/>");
+      return `
+        <tr>
+          <td class="td-right" style="width:28px;">${cant}</td>
+          <td class="td-left wrap">${det}</td>
+          <td class="td-right" style="width:52px;">${money(pu)}</td>
+          <td class="td-right" style="width:56px;">${money(tot)}</td>
+        </tr>`;
+    }).join("");
+
+    const subtotalVal = items.reduce((acc, it) => acc + toNumber(it.quantity) * toNumber(it.rate), 0);
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Gasto ${safe(p.ref || "")}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Lucida Console', Courier, monospace;
+      font-size: 11px;
+      color: #000;
+      width: 80mm;
+    }
+    .ticket { width: 80mm; padding: 4mm 4mm 8mm 4mm; }
+    .center { text-align: center; }
+    .bold   { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    .wrap   { word-break: break-word; overflow-wrap: anywhere; }
+    .empresa-nombre { font-size: 13px; font-weight: 800; text-align: center; -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000; }
+    .empresa-sub    { font-size: 10px; text-align: center; line-height: 1.3; }
+    .sep-solid  { border: 0; border-top: 1px solid #000; margin: 3px 0; }
+    .sep-dashed { border: 0; border-top: 1px dashed #000; margin: 3px 0; }
+    .num-ref { font-size: 15px; font-weight: 800; text-align: center; margin: 2px 0; -webkit-text-stroke: 0.5px #000; text-shadow: 0.5px 0 0 #000; }
+    .info-row { display: flex; justify-content: space-between; font-size: 10px; gap: 4px; }
+    .info-row span:first-child { font-weight: 700; -webkit-text-stroke: 0.3px #000; text-shadow: 0.3px 0 0 #000; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      font-size: 10px; text-align: left;
+      border-top: 1px solid #000; border-bottom: 1px solid #000;
+      padding: 2px;
+    }
+    tbody td { font-size: 10px; padding: 2px; vertical-align: top; border-bottom: 1px dashed #ccc; }
+    tbody tr:last-child td { border-bottom: 1px solid #000; }
+    .td-right { text-align: right; }
+    .td-left  { text-align: left; }
+    .totals { margin-top: 4px; font-size: 11px; }
+    .totals .t-row { display: flex; justify-content: space-between; padding: 1px 0; }
+    .totals .t-row.grande {
+      font-size: 13px; font-weight: 800;
+      border-top: 1px solid #000; margin-top: 2px; padding-top: 2px;
+      -webkit-text-stroke: 0.4px #000; text-shadow: 0.4px 0 0 #000;
+    }
+    .firma { margin-top: 10mm; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+
+    <div class="center" style="margin-bottom:4px;">
+      <img src="/tajima.png" alt="TAJIMA" style="width:30mm; height:auto; display:block; margin:0 auto;" />
+    </div>
+
+    <div class="empresa-nombre">BYATAJIMATEX</div>
+    <div class="empresa-sub">
+      BORDADOS COMPUTARIZADOS<br/>
+      Y APLICACIONES<br/>
+      Av. Juan Pablo II Ceja<br/>
+      (El Alto lado Tránsito - Bolivia)<br/>
+      Cel.: 75866135 · 75274747 · 77221750<br/>
+      byatajima@gmail.com
+    </div>
+
+    <hr class="sep-solid"/>
+    <div class="center bold" style="font-size:11px; margin-bottom:1px;">GASTO</div>
+    <div class="num-ref">Ref: ${safe(p.expense_id || "--")}</div>
+
+    <hr class="sep-dashed"/>
+    <div class="info-row"><span>Fecha:</span><span>${safe(p.due_date || "")}</span></div>
+
+    <hr class="sep-dashed"/>
+    <div class="info-row"><span>Proveedor:</span><span class="wrap">${safe(p.supplier_name || "-")}</span></div>
+
+
+    <hr class="sep-solid"/>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:28px;" class="td-right">Cant</th>
+          <th class="td-left">Detalle</th>
+          <th style="width:52px;" class="td-right">P/U</th>
+          <th style="width:56px;" class="td-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filas || `<tr><td colspan="4" class="td-left" style="padding:3px;">(Sin ítems)</td></tr>`}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="t-row"><span>Subtotal:</span><span>${money(subtotalVal)}</span></div>
+      <div class="t-row"><span>   </span><span>  </span></div>
+      <div class="t-row grande"><span>TOTAL:</span><span>${money(p.grand_total)}</span></div>
+    </div>
+
+    <div class="firma">Firma / Sello</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    };
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank", "width=400,height=600");
+    if (!w) {
+      swal("Bloqueado", "Tu navegador bloqueó la ventana de impresión. Permite pop-ups.", "warning");
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  };
+
   //  imprimir reporte (filtrado)
   const imprimirGastosFiltrados = async () => {
     const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_expenses`, {
@@ -742,6 +897,14 @@ function Expenses() {
               disabled={!viewExpenseDetails}
             >
               Imprimir
+            </button>
+
+            <button
+              className="btn btn-outline-primary"
+              onClick={() => imprimirGastoTermico(viewExpenseDetails)}
+              disabled={!viewExpenseDetails}
+            >
+              Impresion Termica
             </button>
 
             <button className='btn btn-outline-danger' onClick={handleViewModalClose}>

@@ -406,7 +406,7 @@ function Caja() {
             )}
 
             <div style={{ width: "100%" }}>
-              <CajaTransacciones transacciones={transacciones} loading={loadingTx} />
+              <CajaTransacciones transacciones={transacciones} loading={loadingTx} caja={caja} />
             </div>
           </div>
         </div>

@@ -148,6 +148,57 @@
   color: #fff;
 }
 
+/* Botón filtrar movimientos */
+.btn-filtro{
+  border: 2px solid #3b82f6;
+  background: #fff;
+  color: #3b82f6;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+
+.btn-filtro:hover{
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btn-filtro-activo{
+  background: #3b82f6;
+  color: #fff;
+}
+
+.btn-filtro-activo:hover{
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+/* Botón imprimir reporte */
+.btn-imprimir-reporte{
+  border: 2px solid #7c3aed;
+  background: #fff;
+  color: #7c3aed;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+
+.btn-imprimir-reporte:hover{
+  background: #7c3aed;
+  color: #fff;
+}
+
+.btn-imprimir-reporte:disabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* =====================================================
    MODAL
    ===================================================== */
@@ -246,6 +297,31 @@ body.dark-mode,
   .btn-ver:hover{
     background: #ff9900;
     color: #fff;
+  }
+
+  .btn-filtro{
+    background: transparent;
+    color: #60a5fa;
+    border-color: #60a5fa;
+  }
+
+  .btn-filtro:hover,
+  .btn-filtro-activo{
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+  }
+
+  .btn-imprimir-reporte{
+    background: transparent;
+    color: #a78bfa;
+    border-color: #a78bfa;
+  }
+
+  .btn-imprimir-reporte:hover{
+    background: #7c3aed;
+    color: #fff;
+    border-color: #7c3aed;
   }
 
   .caja-modal-box{
