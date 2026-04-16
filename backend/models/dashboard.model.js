@@ -190,7 +190,20 @@ class Dashboard {
           });
         });
 
-        Promise.all([p1, p2, p3, p4, p5])
+        let p6 = new Promise((rs, rj) => {
+          let q = `
+    SELECT COUNT(*) AS bordados_listos_entregar
+    FROM proformas
+    WHERE entregado = 0
+      AND UPPER(COALESCE(estado, '')) = 'BORDADO_REALIZADO'
+  `;
+          db.query(q, (err, result) => {
+            if (err) return rj(err);
+            rs(result[0]);
+          });
+        });
+
+        Promise.all([p1, p2, p3, p4, p5, p6])
           .then((result) => {
             resolve({ operation: 'success', message: 'data for products', info: result });
           })

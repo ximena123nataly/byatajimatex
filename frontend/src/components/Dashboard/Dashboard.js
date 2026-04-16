@@ -143,6 +143,20 @@ function Dashboard() {
                           </div>
                         </div>
 
+                        <div className="row mb-1 align-items-center">
+                          <div className="col-9">
+                            <Link
+                              to="/proformas?listos=1"
+                              className="dashboard-pendientes-link"
+                            >
+                              Bordados listos para entregar
+                            </Link>
+                          </div>
+
+                          <div className="col-3 fw-bold text-end">
+                            {productStats?.[5]?.bordados_listos_entregar ?? 0}
+                          </div>
+                        </div>
 
                         <div className="row mb-1">
                           <div className='col-9'>Número total de artículos:</div>

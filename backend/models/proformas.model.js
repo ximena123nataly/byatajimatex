@@ -105,11 +105,9 @@ class Proforma {
           whereParts.push(`UPPER(COALESCE(estado, '')) IN ('PENDIENTE_BORDAR', 'ACTIVA', '')`);
         }
 
-
-        if (req.body.search_value && req.body.search_value !== "") {
-          const sv = String(req.body.search_value).trim();
-          whereParts.push(`(CAST(id AS CHAR) LIKE ? OR cliente LIKE ? OR celular LIKE ?)`);
-          params.push(`%${sv}%`, `%${sv}%`, `%${sv}%`);
+        if (req.body.only_listos_entregar) {
+          whereParts.push(`entregado = 0`);
+          whereParts.push(`UPPER(COALESCE(estado, '')) = 'BORDADO_REALIZADO'`);
         }
 
         const tsa = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";

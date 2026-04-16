@@ -34,6 +34,7 @@ function Proformas() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const onlyPendientes = params.get("pendientes") === "1";
+  const onlyListosEntregar = params.get("listos") === "1";
 
   const formatProforma = (id) => String(id ?? "").padStart(7, "0");
 
@@ -136,6 +137,7 @@ function Proformas() {
         sort_order: so,
         search_value: scv,
         only_pendientes: onlyPendientes,
+        only_listos_entregar: onlyListosEntregar,
         desde: from || null,
         hasta: to || null,
       }),
@@ -166,6 +168,7 @@ function Proformas() {
     sortOrder,
     searchInput,
     onlyPendientes,
+    onlyListosEntregar,
     filterFrom,
     filterTo,
   ]);
@@ -407,6 +410,7 @@ function Proformas() {
         imprimir: true,
         search_value: searchInput,
         only_pendientes: onlyPendientes,
+        only_listos_entregar: onlyListosEntregar,
         desde: desdeReporte,
         hasta: hastaReporte,
       }),
