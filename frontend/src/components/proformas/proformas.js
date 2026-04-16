@@ -80,12 +80,17 @@ function Proformas() {
       swal("¡Ups!", "Error de conexión con el servidor", "error");
     }
   };
+
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = moment().format("YYYY-MM-DD");
+
     setDesde(today);
     setHasta(today);
-  }, []);
 
+    // importante: visibles en pantalla, pero sin activar filtro
+    setFilterFrom(null);
+    setFilterTo(null);
+  }, []);
 
   useEffect(() => {
     moment.locale("es");
@@ -114,7 +119,14 @@ function Proformas() {
       .catch(console.log);
   }, []);
 
-  const getProformas = async (sv, sc, so, scv) => {
+  const getProformas = async (
+    sv,
+    sc,
+    so,
+    scv,
+    from = filterFrom,
+    to = filterTo
+  ) => {
     const result = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_proformas`, {
       method: "POST",
       headers: { "Content-type": "application/json; charset=UTF-8" },
@@ -124,14 +136,9 @@ function Proformas() {
         sort_order: so,
         search_value: scv,
         only_pendientes: onlyPendientes,
-
-
-        desde: filterFrom || null,
-        hasta: filterTo || null,
-
-
+        desde: from || null,
+        hasta: to || null,
       }),
-
       credentials: "include",
     });
 
@@ -139,14 +146,29 @@ function Proformas() {
     setProformas(body.info?.proformas || []);
     setCount(body.info?.count || 0);
   };
-
   useEffect(() => {
     if (permission !== null) {
-      getProformas((tablePage - 1) * 10, sortColumn, sortOrder, searchInput)
+      getProformas(
+        (tablePage - 1) * 10,
+        sortColumn,
+        sortOrder,
+        searchInput,
+        filterFrom,
+        filterTo
+      )
         .then(() => setPageState(2))
         .catch(() => setPageState(3));
     }
-  }, [permission, tablePage, sortColumn, sortOrder, searchInput, onlyPendientes]);
+  }, [
+    permission,
+    tablePage,
+    sortColumn,
+    sortOrder,
+    searchInput,
+    onlyPendientes,
+    filterFrom,
+    filterTo,
+  ]);
 
 
 
@@ -355,24 +377,27 @@ function Proformas() {
     if (estado === "BORDADO_REALIZADO") return "row-bordado-realizado";
     return "row-bordado-pendiente";
   };
+
   const filtrarPorFechas = () => {
-    setFilterFrom(desde || null);
-    setFilterTo(hasta || null);
+    const from = desde || null;
+    const to = hasta || null;
+
+    setFilterFrom(from);
+    setFilterTo(to);
     setTablePage(1);
-    getProformas(0, sortColumn, sortOrder, searchInput);
+
+    getProformas(0, sortColumn, sortOrder, searchInput, from, to);
   };
+
   const fmtLargo = (fecha) => {
     if (!fecha) return "";
-    const f = new Date(fecha);
-    return f.toLocaleDateString("es-BO", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
+    return moment(fecha, "YYYY-MM-DD").format("D [de] MMMM [de] YYYY");
   };
 
 
   const imprimirReporteProformas = async () => {
+    const desdeReporte = filterFrom;
+    const hastaReporte = filterTo;
 
     const res = await fetch(`${process.env.REACT_APP_BACKEND_ORIGIN}/get_proformas`, {
       method: "POST",
@@ -382,11 +407,10 @@ function Proformas() {
         imprimir: true,
         search_value: searchInput,
         only_pendientes: onlyPendientes,
-        desde: filterFrom,
-        hasta: filterTo,
+        desde: desdeReporte,
+        hasta: hastaReporte,
       }),
     });
-
 
     const body = await res.json();
     const filasData = body.info?.proformas || [];
@@ -401,14 +425,13 @@ function Proformas() {
       0
     );
 
-
     const rangoTexto =
-      desde && hasta
-        ? `del ${fmtLargo(desde)} al ${fmtLargo(hasta)}`
-        : desde && !hasta
-          ? `del ${fmtLargo(desde)} al ${fmtLargo(moment().format("YYYY-MM-DD"))}`
-          : !desde && hasta
-            ? `del ${fmtLargo(moment().subtract(30, "days").format("YYYY-MM-DD"))} al ${fmtLargo(hasta)}`
+      desdeReporte && hastaReporte
+        ? `del ${fmtLargo(desdeReporte)} al ${fmtLargo(hastaReporte)}`
+        : desdeReporte && !hastaReporte
+          ? `del ${fmtLargo(desdeReporte)} al ${fmtLargo(moment().format("YYYY-MM-DD"))}`
+          : !desdeReporte && hastaReporte
+            ? `del ${fmtLargo(moment().subtract(30, "days").format("YYYY-MM-DD"))} al ${fmtLargo(hastaReporte)}`
             : `del ${fmtLargo(moment().startOf("month").format("YYYY-MM-DD"))} al ${fmtLargo(moment().format("YYYY-MM-DD"))}`;
 
     // ===== FILAS HTML =====
@@ -1238,7 +1261,7 @@ function Proformas() {
                     <div>
                       <b>Tipo de pago:</b> {selected.tipo_pago || "-"}
                     </div>
-                    
+
                     <div>
                       <b>Entregado:</b> {selected.entregado ? "Sí" : "No"}
                     </div>
