@@ -2,12 +2,12 @@ const db = require('../db/conn.js');
 const jwt = require('jsonwebtoken');
 
 class Dashboard {
-  constructor() {}
+  constructor() { }
 
   getReportStats = (req, res) => {
     try {
       new Promise((resolve, reject) => {
-        
+
         let p1 = new Promise((rs, rj) => {
           let q =
             'SELECT (SELECT COUNT(*) FROM user WHERE user_role="employee") AS employee_count, (SELECT COUNT(*) FROM customers) AS customer_count, (SELECT COUNT(*) FROM suppliers) AS supplier_count FROM dual';
@@ -17,7 +17,7 @@ class Dashboard {
           });
         });
 
-        
+
         let p2 = new Promise((rs, rj) => {
           let q = `
             SELECT
@@ -41,7 +41,7 @@ class Dashboard {
           });
         });
 
-       
+
         let p3 = new Promise((rs, rj) => {
           let q = `
             SELECT
@@ -65,7 +65,7 @@ class Dashboard {
           });
         });
 
-        
+
         let p4 = new Promise((rs, rj) => {
           let q = `
             SELECT
@@ -138,7 +138,7 @@ class Dashboard {
           });
         });
 
-        
+
         let p4 = new Promise((rs, rj) => {
           let q =
             'SELECT * FROM orders WHERE MONTH(timeStamp) = MONTH(CURRENT_DATE) AND YEAR(timeStamp) = YEAR(CURRENT_DATE);';
@@ -176,13 +176,14 @@ class Dashboard {
           });
         });
 
-       
+
         let p5 = new Promise((rs, rj) => {
           let q = `
-            SELECT COUNT(*) AS bordados_pendientes
-            FROM proformas
-            WHERE entregado = 0
-          `;
+    SELECT COUNT(*) AS bordados_pendientes
+    FROM proformas
+    WHERE entregado = 0
+      AND UPPER(COALESCE(estado, '')) IN ('PENDIENTE_BORDAR', 'ACTIVA', '')
+  `;
           db.query(q, (err, result) => {
             if (err) return rj(err);
             rs(result[0]);
@@ -209,7 +210,7 @@ class Dashboard {
   getGraphStats = (req, res) => {
     try {
       new Promise((resolve, reject) => {
-        
+
         let q1 = `
           SELECT
             IFNULL(SUM(grand_total),0) as Total,
