@@ -494,12 +494,16 @@ class Caja {
 
           // PROFORMA
           if (String(mov.origen || "").startsWith("PROFORMA")) {
+            // ref puede ser "0000167" (proforma_id formateado) o el id numérico
+            const refNum = parseInt(ref, 10); // quita ceros a la izquierda → 167
             return db.query(
               `SELECT *
                FROM proformas
-               WHERE proforma_id=? OR CAST(id AS CHAR)=?
+               WHERE proforma_id = ?
+                  OR CAST(id AS CHAR) = ?
+                  OR id = ?
                LIMIT 1`,
-              [ref, ref],
+              [ref, ref, isNaN(refNum) ? ref : refNum],
               (e2, prows) => {
                 if (e2) {
                   console.log(e2);

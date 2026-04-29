@@ -488,6 +488,7 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
         </table>
 
         <div class="totals">
+          ${toNumber(detalle.costura) > 0 ? `<div class="line"><span>Costura</span><b>Bs ${money(detalle.costura)}</b></div>` : ""}
           <div class="line"><span>Anticipo</span><b>Bs ${money(detalle.anticipo)}</b></div>
           <div class="line"><span>Total</span><b>Bs ${money(detalle.total_general)}</b></div>
           <div class="line"><span>Saldo</span><b>Bs ${money(detalle.saldo)}</b></div>
@@ -868,6 +869,7 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
           </tbody>
         </table>
         <div class="totals">
+          ${toNumber(detalle.costura) > 0 ? `<div class="t-row"><span>Costura:</span><span>${money(detalle.costura)}</span></div>` : ""}
           <div class="t-row"><span>Anticipo:</span><span>${money(detalle.anticipo)}</span></div>
           <div class="t-row"><span>Total:</span><span>${money(detalle.total_general)}</span></div>
           <div class="t-row grande"><span>SALDO:</span><span>${money(detalle.saldo)}</span></div>
@@ -1173,7 +1175,14 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
           </>
         );
 
-      const items = Array.isArray(detalle.detalle) ? detalle.detalle : safeJson(detalle.items);
+      // Intentar obtener los ítems desde cualquier campo posible
+      let items = [];
+      if (Array.isArray(detalle.detalle)) items = detalle.detalle;
+      else if (typeof detalle.detalle === "string" && detalle.detalle.trim().startsWith("[")) items = safeJson(detalle.detalle);
+      else if (Array.isArray(detalle.items)) items = detalle.items;
+      else if (typeof detalle.items === "string") items = safeJson(detalle.items);
+      else if (Array.isArray(detalle.productos)) items = detalle.productos;
+      else if (typeof detalle.productos === "string") items = safeJson(detalle.productos);
 
       return (
         <>
@@ -1195,14 +1204,28 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
               <b>Celular:</b> {detalle.celular || "-"}
             </div>
             <div>
-              <b>Total:</b> {detalle.total_general ?? "-"}
+              <b>Total:</b> Bs {Number(detalle.total_general ?? 0).toFixed(2)}
             </div>
             <div>
-              <b>Anticipo:</b> {detalle.anticipo ?? "-"}
+              <b>Anticipo:</b> Bs {Number(detalle.anticipo ?? 0).toFixed(2)}
             </div>
             <div>
-              <b>Saldo:</b> {detalle.saldo ?? "-"}
+              <b>Saldo:</b> Bs {Number(detalle.saldo ?? 0).toFixed(2)}
             </div>
+            <div>
+              <b>Entregado:</b> {Number(detalle.entregado) === 1 ? "✅ SÍ" : "❌ NO"}
+            </div>
+            {detalle.fecha_entrega && (
+              <div>
+                <b>Fecha entrega:</b> {fmtFecha(detalle.fecha_entrega)}{" "}
+                {detalle.hora_entrega ? String(detalle.hora_entrega).slice(0, 5) : ""}
+              </div>
+            )}
+            {detalle.descripcion && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <b>Descripción:</b> {detalle.descripcion}
+              </div>
+            )}
           </div>
 
           <div style={{ marginTop: 10 }}>
@@ -1242,6 +1265,26 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
                 )}
               </tbody>
             </table>
+            {items.length > 0 && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <div style={{ width: 220, border: "1px solid #ddd", borderRadius: 8, padding: "8px 12px", fontSize: 13 }}>
+                  {toNumber(detalle.costura) > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+                      <span>Costura:</span><b>Bs {Number(detalle.costura).toFixed(2)}</b>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+                    <span>Anticipo:</span><b>Bs {Number(detalle.anticipo ?? 0).toFixed(2)}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+                    <span>Total:</span><b>Bs {Number(detalle.total_general ?? 0).toFixed(2)}</b>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderTop: "2px solid #111", marginTop: 4, fontWeight: 900 }}>
+                    <span>Saldo:</span><span>Bs {Number(detalle.saldo ?? 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       );
@@ -1270,7 +1313,7 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
               <b>Ref:</b> {detalle.order_ref || detalle.order_id || "-"}
             </div>
             <div>
-              <b>Total:</b> {detalle.grand_total ?? "-"}
+              <b>Total:</b> Bs {Number(detalle.grand_total ?? 0).toFixed(2)}
             </div>
             <div>
               <b>Cliente:</b> {detalle.customer_name || detalle.customer_id || "-"}
@@ -1311,6 +1354,15 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
                 )}
               </tbody>
             </table>
+            {detalle.grand_total != null && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <div style={{ width: 200, border: "1px solid #ddd", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 900 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>TOTAL:</span><span>Bs {Number(detalle.grand_total).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       );
@@ -1337,7 +1389,7 @@ export default function CajaTransacciones({ transacciones, loading, caja }) {
               <b>Ref:</b> {detalle.expense_ref || detalle.expense_id || "-"}
             </div>
             <div>
-              <b>Total:</b> {detalle.grand_total ?? detalle.total ?? "-"}
+              <b>Total:</b> Bs {Number(detalle.grand_total ?? detalle.total ?? 0).toFixed(2)}
             </div>
             <div>
               <b>Proveedor:</b> {detalle.supplier_name || detalle.supplier_id || "-"}
