@@ -109,7 +109,20 @@ class Proforma {
           whereParts.push(`entregado = 0`);
           whereParts.push(`UPPER(COALESCE(estado, '')) = 'BORDADO_REALIZADO'`);
         }
+        // 🔍 BUSCADOR
+        if (req.body.search_value) {
+          const search = `%${req.body.search_value}%`;
 
+          whereParts.push(`(
+    proforma_id LIKE ? OR
+    cliente LIKE ? OR
+    celular LIKE ? OR
+    total_general LIKE ? OR
+    saldo LIKE ?
+  )`);
+
+          params.push(search, search, search, search, search);
+        }
         const tsa = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
 
